@@ -35,6 +35,7 @@ The package id is permanent from the moment it is typed on **Create app**.
 | service account | `honestsolitaire-ci@honestsolitaire-ci.iam.gserviceaccount.com` |
 | Play permissions | Release to testing tracks; View app information and download bulk reports — nothing else |
 | secret | `PLAY_SERVICE_ACCOUNT_JSON` |
+| key id | `32606ad6c44c1638d37563534944474e9626346a` (public; needed to revoke the right key) |
 
 ## Constraints
 
@@ -47,5 +48,10 @@ The package id is permanent from the moment it is typed on **Create app**.
 
 ## Setup status
 
-- 2026-09-23: upload keystore created (see [[android-signing]]). Runbook steps
-  1–6 not yet done; tracked by issue #20.
+- 2026-09-23: upload keystore created (see [[android-signing]]).
+- 2026-09-23: runbook steps 1–6 done. Owner created the app entry and invited
+  the service account; `tools/setup_play_ci.sh` created the Cloud project and
+  service account (the key-create step failed once with NOT_FOUND while the new
+  account propagated, and passed on the idempotent re-run ~20 s later);
+  `tools/set_ci_secrets.sh` set the four keystore secrets; `play-api-check`
+  run 35935643708 passed both Play access and keystore steps. Issue #20.
