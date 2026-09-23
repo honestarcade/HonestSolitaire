@@ -70,8 +70,8 @@ ad-hoc ledger entry in `.n8/decisions.md` and suggest `/n8-replan`.
    same deal, in any build. No deal is bundled. *(planned: M2 engine guard)*
 4. **"Winnable deals only" is honest.** With that option on, every deal the
    app hands out has been proven solvable by the on-device solver before it is
-   shown; with it off, the deal is a true uniform shuffle. *(planned: M2
-   engine guard)*
+   shown; with it off, the deal is a true uniform shuffle. *(planned: M2,
+   epic #3)*
 
 ## n8SDLC project
 
