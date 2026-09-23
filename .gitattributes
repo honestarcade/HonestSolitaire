@@ -1,0 +1,5 @@
+# Normalise line endings so a CRLF checkout cannot change what the guards read.
+# This applies on check-in of newly staged content only.
+* text=auto eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf

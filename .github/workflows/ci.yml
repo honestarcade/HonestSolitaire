@@ -1,0 +1,150 @@
+# The pull-request gate.
+#
+# It runs the same script a contributor runs locally — tools/gate.sh — rather
+# than restating its steps, so "green locally" and "green in CI" cannot drift
+# into meaning different things. A step added to the gate is a step CI gains.
+#
+# The invariant guards run as their own named step before the full gate, so a
+# breached project invariant is the first red line in the checks list rather
+# than something to find inside a long log. They run twice in total; the second
+# run is inside gate.sh and costs seconds.
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Not `true`. This file is `workflow_call`ed by release.yml, which declares
+  # `cancel-in-progress: false` — but the gate that does the work runs in THIS
+  # group, so on a tag ref a second run would cancel a release's own gate.
+  # A pull request still cancels its superseded runs; a tag never does.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLUTTER_SUPPRESS_ANALYTICS: "true"
+      APP_PACKAGE_ID: com.honestarcade.solitaire
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v7
+
+      # Before the toolchain, because it takes seconds and a broken script is
+      # cheaper to learn about now than after a four-minute setup.
+      - id: shellcheck
+        name: Shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: ./tools
+          severity: warning
+
+      - id: java
+        name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # flutter-version-file reads .fvmrc, the single place the exact version
+      # is pinned. tools/gate.sh reads the same file and warns when a local
+      # Flutter differs from it.
+      - id: flutter
+        name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - id: deps
+        name: Resolve dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - id: guards
+        name: Invariant guards
+        run: flutter test --no-pub --tags guard
+
+      - id: gate
+        name: Quality gate
+        run: tools/gate.sh
+
+      # Only on a pull request: a workflow_call from the release workflow
+      # builds its own signed bundle and uploads that one instead.
+      - id: artifact
+        name: Upload unsigned bundle
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: honest-solitaire-aab-${{ github.sha }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 7
+          if-no-files-found: error
+
+  # The guards' own gate. Every fix in Honest Sudoku's own history began as a
+  # defect that the suite reported green, so "the suite passes" is not
+  # evidence that the suite can fail. tools/mutation_check.py reintroduces
+  # every known defect one at a time and requires the guards to catch each
+  # one, naming the assertion that must fire — a mutation that merely turns
+  # the suite red some other way is reported as WRONG-REASON, not a pass.
+  #
+  # Its own job rather than a step in gate.sh: it runs the guard suite once
+  # per mutation, which is minutes, and tools/gate.sh is the script a
+  # contributor runs locally before every commit.
+  mutations:
+    runs-on: ubuntu-latest
+    # This starts near-instant with one worked-example mutation and grows
+    # with your own guard suite. Honest Sudoku's own history is the warning
+    # about this number: it hit a 30-minute default at 102 entries and a
+    # 45-minute ceiling at 127, cancelling mid-run and taking a release with
+    # it once. Measure with `tools/mutation_check.py --list`, don't guess,
+    # and raise this — or split the battery across jobs — before it happens
+    # to you.
+    timeout-minutes: 30
+    env:
+      FLUTTER_SUPPRESS_ANALYTICS: "true"
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v7
+
+      - id: java
+        name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - id: flutter
+        name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - id: deps
+        name: Resolve dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - id: mutations
+        name: Mutation battery
+        env:
+          # Python buffers stdout when it is not a terminal, so a cancelled
+          # job would otherwise show no progress lines at all — not even one
+          # `[N/M]`. Unbuffered, the log shows how far it got.
+          PYTHONUNBUFFERED: "1"
+        run: tools/mutation_check.py

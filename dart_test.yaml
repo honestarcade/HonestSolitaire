@@ -1,0 +1,12 @@
+# Declares the tags the guard suite uses, so `flutter test` does not warn
+# about an unknown tag. CI can run only the guards with
+# `flutter test --tags guard`; they are part of a plain `flutter test` too.
+tags:
+  guard:
+    description: Invariant and project-identity guards that read repository files.
+  slow:
+    description: >-
+      Guards that cost more than an assertion to run — a guard that spawns a
+      child process, for instance. tools/mutation_check.py's default run
+      excludes this tag; a mutation whose guard needs it sets `slow=True`
+      so the battery still exercises it, just not on every entry.
