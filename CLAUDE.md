@@ -57,17 +57,17 @@ ad-hoc ledger entry in `.n8/decisions.md` and suggest `/n8-replan`.
    permission removal rules are forbidden: a plugin that declares a permission
    is not adopted. *(test-enforced: `test/guards/manifest_permission_example_test.dart`
    over the source manifest and `tools/check_aab.sh` over every built bundle —
-   guard: M0)*
+   guard: #15)*
 2. **Lean dependencies.** A third-party package is added only when necessary,
    carries a trailing `# why: <reason>` on its key line in `pubspec.yaml`, and
    never brings ads, analytics, or network access. The SDK entries (`flutter`,
    `flutter_test`, `flutter_localizations`) and `flutter_lints` are exempt from
    the justification. *(blocklist and justification test-enforced:
-   `test/guards/dependency_policy_example_test.dart` — guard: M0; "necessary"
+   `test/guards/dependency_policy_example_test.dart` — guard: #16; "necessary"
    is honor-system, checked by audits)*
 3. **Deals are generated on the device, from a seed, deterministically.** The
    same seed and options (game, draw count or suit count) always produce the
-   same deal, in any build. No deal is bundled. *(planned: M2 engine guard)*
+   same deal, in any build. No deal is bundled. *(planned: M2, epic #3)*
 4. **"Winnable deals only" is honest.** With that option on, every deal the
    app hands out has been proven solvable by the on-device solver before it is
    shown; with it off, the deal is a true uniform shuffle. *(planned: M2,
