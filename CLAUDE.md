@@ -62,9 +62,9 @@ ad-hoc ledger entry in `.n8/decisions.md` and suggest `/n8-replan`.
    carries a trailing `# why: <reason>` on its key line in `pubspec.yaml`, and
    never brings ads, analytics, or network access. The SDK entries (`flutter`,
    `flutter_test`, `flutter_localizations`) and `flutter_lints` are exempt from
-   the justification. *(blocklist test-enforced:
-   `test/guards/dependency_policy_example_test.dart` — guard: M0; the
-   justification line is honor-system until M2's guard story)*
+   the justification. *(blocklist and justification test-enforced:
+   `test/guards/dependency_policy_example_test.dart` — guard: M0; "necessary"
+   is honor-system, checked by audits)*
 3. **Deals are generated on the device, from a seed, deterministically.** The
    same seed and options (game, draw count or suit count) always produce the
    same deal, in any build. No deal is bundled. *(planned: M2 engine guard)*

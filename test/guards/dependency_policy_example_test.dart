@@ -51,6 +51,41 @@ List<String> blockedDependencies(Iterable<String> directDependencyNames) {
   return offenders;
 }
 
+/// Direct dependencies exempt from the justification rule: the SDK itself and
+/// the lint set (CLAUDE.md invariant 2).
+const justificationExempt = {
+  'flutter',
+  'flutter_test',
+  'flutter_localizations',
+  'flutter_lints',
+};
+
+/// Direct dependencies in [pubspec] whose key line carries no trailing
+/// `# why: <reason>` comment.
+List<String> unjustifiedDependencies(String pubspec) {
+  final offenders = <String>[];
+  var inDepsBlock = false;
+  for (final line in pubspec.split('\n')) {
+    if (RegExp(r'^(dependencies|dev_dependencies):\s*$').hasMatch(line)) {
+      inDepsBlock = true;
+      continue;
+    }
+    if (!inDepsBlock) continue;
+    if (RegExp(r'^\S').hasMatch(line)) {
+      inDepsBlock = false;
+      continue;
+    }
+    final match = RegExp(r'^  ([a-zA-Z0-9_]+):(.*)$').firstMatch(line);
+    if (match == null) continue;
+    final name = match.group(1)!;
+    if (justificationExempt.contains(name)) continue;
+    if (!RegExp(r'#\s*why:\s*\S').hasMatch(match.group(2)!)) {
+      offenders.add(name);
+    }
+  }
+  return offenders;
+}
+
 void main() {
   group('the rule itself, proven both ways', () {
     test('an ordinary package is allowed', () {
@@ -111,6 +146,39 @@ void main() {
         offenders,
         isEmpty,
         reason: describeOffenders('dependency-policy', offenders),
+      );
+    });
+  });
+
+  group('every third-party package explains itself', () {
+    test('a package with a reason passes, the SDK needs none', () {
+      const pubspec = """
+dependencies:
+  flutter:
+    sdk: flutter
+  collection: ^1.19.0 # why: the engine needs ListEquality
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+""";
+      expect(unjustifiedDependencies(pubspec), isEmpty);
+    });
+
+    test('a package without a reason is caught', () {
+      const pubspec = """
+dependencies:
+  collection: ^1.19.0
+  path: ^1.9.0 # why:
+""";
+      expect(unjustifiedDependencies(pubspec), ['collection', 'path']);
+    });
+
+    test('the real pubspec.yaml', () {
+      final offenders = unjustifiedDependencies(readFile('pubspec.yaml'));
+      expect(
+        offenders,
+        isEmpty,
+        reason: describeOffenders('missing-why', offenders),
       );
     });
   });
