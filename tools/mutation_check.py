@@ -147,6 +147,10 @@ MUTATIONS: list[Mutation] = [
              # file's own rule: a verdict is "the suite went red AND the
              # marker is in its output", never just "the suite went red".
              'no step runs tools/gate.sh exactly'),
+    Mutation("#M0", "a package loses its justification", "pubspec.yaml",
+             sub(r"^(  yaml: \S+) # why: .*$", r"\1", flags=re.M),
+             "a third-party package would ship with no recorded reason",
+             'missing-why: 1 offender'),
 ]
 
 

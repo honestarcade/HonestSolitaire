@@ -48,4 +48,4 @@ The package id is permanent from the moment it is typed on **Create app**.
 ## Setup status
 
 - 2026-09-23: upload keystore created (see [[android-signing]]). Runbook steps
-  1–6 not yet done.
+  1–6 not yet done; tracked by issue #20.
