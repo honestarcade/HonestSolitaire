@@ -124,3 +124,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The setup-script tests run on a PATH built from a dozen symlinked coreutils plus stubs, not `/usr/bin:/bin`.
   **Why:** GitHub's Ubuntu runners ship real `gh` and `gcloud` in /usr/bin; a test must not be able to reach them.
   **Issue:** #41
+
+## /n8-plan M2 -- 2026-09-24
+
+- **Decision:** M2 is twelve stories (#59–#70) under epic #3; the roadmap's single engine phase was re-sliced into the phases in the milestone description.
+  **Why:** Vertical slices sized for one session each; the coverage check split Spider scoring out of the Spider rules story (#61 → #61 + #63) because one story owned more items than it had criteria.
+  **Issue:** #3
+- **Decision:** Owner answers, round one ("all recommended"): Spider scores 500 / −1 per move / +100 per run; Unlimited undo off = only the last move, never a draw/deal; undo never penalised; unlimited Klondike passes in every mode; foundation→tableau allowed (−15 standard); auto-finish triggers when every tableau card is face up and stock/waste are empty, FINISH as soon as every tableau card is face up; "No moves left" offers Undo and New deal; winnable deals Klondike only; the Settings toggle is the default and the New Klondike screen overrides per deal; winnable search shows progress, is cancellable, and after ~5 s offers keep searching or a random deal; the deal number is shown on the pause card.
+  **Why:** Recorded on the stories that carry them, and on epic #5 for M4's screens; the replay-by-number feature was captured as #58.
+  **Issue:** #59–#70, #5, #58
+- **Decision:** Owner answers, round two: all recommended except time — "Time should have an impact on scoring. Faster solves, higher scores." The planner's rule, approved at the gate: −2 per 10 s in timed standard Klondike (floor 0), a 700,000 ÷ seconds (minimum 30 s) win bonus in timed games of both kinds, none in Vegas or untimed; the time penalty is tied to the clock so undo never refunds it; untimed games still count play time; restarting a won deal is allowed.
+  **Why:** Classic Windows Klondike's time rules are the familiar reading of "faster solves, higher scores"; tying the penalty to the clock keeps undo from becoming a score exploit.
+  **Issue:** #62, #63, #64
+- **Decision:** Invariants 3 and 4 are annotated `guard: #70 (planned)`; the uniformity of a non-winnable shuffle is recorded as honor-system.
+  **Why:** #70 is the guard story; measuring uniformity is not planned.
+  **Issue:** #70
