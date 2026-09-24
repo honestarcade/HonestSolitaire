@@ -14,7 +14,7 @@ const packageId = 'com.honestarcade.solitaire';
 const appLabel = 'Honest Solitaire';
 const minSdk = 24;
 
-/// Every `com.honestarcade.*` / `com.example.*` package literal in [text]
+/// Every studio or template-example package literal in [text]
 /// that is not [expected]. Segments are lower-case, so a suffix such as
 /// `.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` ends the match.
 List<String> foreignPackageIds(String text, String expected) =>
