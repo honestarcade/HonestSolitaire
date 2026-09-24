@@ -46,6 +46,21 @@ List<String> releaseOrderViolations(String releaseYaml) {
   if (cert < 0 || cert > play) {
     violations.add('the certificate check runs before the Play upload');
   }
+  // A skipped or forgiven job or step satisfies nothing it guards (#45):
+  // `if: always()` on ship would ship past a failed gate, and `if: false` or
+  // `continue-on-error` on a check would wave its failure through.
+  bool lenient(YamlMap node) =>
+      node.containsKey('if') || node['continue-on-error'] != null;
+  if (lenient(ship)) violations.add('ship runs only when the gate passed');
+  for (final (index, what) in [
+    (scan, 'the permission scan'),
+    (cert, 'the certificate check'),
+    (play, 'the Play upload'),
+  ]) {
+    if (index >= 0 && lenient(steps[index])) {
+      violations.add('$what can neither be skipped nor forgiven');
+    }
+  }
   final uploads = steps.where(
     (s) => '${s['uses']}'.startsWith('r0adkll/upload-google-play@'),
   );
@@ -89,6 +104,34 @@ jobs:
         'ship needs gate',
         'the certificate check runs before the Play upload',
         'every Play upload targets internal',
+      ]);
+    });
+
+    test('a skipped or forgiven job or step is caught', () {
+      final lenient = good
+          .replaceFirst(
+            '    needs: gate\n',
+            '    needs: gate\n    if: always()\n',
+          )
+          .replaceFirst(
+            '      - run: tools/verify_upload_cert.sh\n',
+            '      - run: tools/verify_upload_cert.sh\n'
+                '        continue-on-error: true\n',
+          )
+          .replaceFirst(
+            '      - run: tools/check_aab.sh\n',
+            '      - run: tools/check_aab.sh\n        if: false\n',
+          )
+          .replaceFirst(
+            '      - uses: r0adkll/upload-google-play@v1\n',
+            '      - uses: r0adkll/upload-google-play@v1\n'
+                '        if: always()\n',
+          );
+      expect(releaseOrderViolations(lenient), [
+        'ship runs only when the gate passed',
+        'the permission scan can neither be skipped nor forgiven',
+        'the certificate check can neither be skipped nor forgiven',
+        'the Play upload can neither be skipped nor forgiven',
       ]);
     });
 

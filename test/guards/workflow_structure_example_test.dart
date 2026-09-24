@@ -99,9 +99,24 @@ void main() {
 
     test('no step in either required job may fail quietly', () {
       final jobs = workflow['jobs'] as YamlMap;
+      // A skipped job satisfies a required check (#45), so neither job, nor
+      // the step that runs its command, may carry an `if:`.
+      const commands = {
+        'tools/gate.sh',
+        'tools/mutation_check.py',
+        'flutter test --no-pub --tags guard',
+      };
       final lenient = [
         for (final name in ['gate', 'mutations'])
-          if ((jobs[name] as YamlMap)['continue-on-error'] != null) name,
+          if ((jobs[name] as YamlMap)['continue-on-error'] != null ||
+              (jobs[name] as YamlMap).containsKey('if'))
+            name,
+        for (final name in ['gate', 'mutations'])
+          for (final step
+              in ((jobs[name] as YamlMap)['steps'] as YamlList)
+                  .whereType<YamlMap>())
+            if (commands.contains(step['run']) && step.containsKey('if'))
+              '$name/${step['id'] ?? step['name']}: if',
         for (final name in ['gate', 'mutations'])
           for (final step
               in ((jobs[name] as YamlMap)['steps'] as YamlList)
@@ -112,21 +127,28 @@ void main() {
       expect(
         lenient,
         isEmpty,
-        reason: describeOffenders('workflow-continue-on-error', lenient),
+        reason: describeOffenders('workflow-skippable', lenient),
       );
     });
 
-    test('the PR bundle is named after the PR head, not the merge ref', () {
+    test('every PR bundle is named after the PR head, not the merge ref', () {
       final steps =
           ((workflow['jobs'] as YamlMap)['gate'] as YamlMap)['steps']
               as YamlList;
-      final artifact = steps.whereType<YamlMap>().firstWhere(
-        (s) => '${s['uses']}'.startsWith('actions/upload-artifact@'),
-      );
-      expect(
-        (artifact['with'] as YamlMap)['name'],
-        r'honest-solitaire-aab-${{ github.event.pull_request.head.sha || github.sha }}',
-      );
+      final names = [
+        for (final s in steps.whereType<YamlMap>())
+          if ('${s['uses']}'.startsWith('actions/upload-artifact@'))
+            '${(s['with'] as YamlMap?)?['name']}',
+      ];
+      expect(names, isNotEmpty);
+      final wrong = names
+          .where(
+            (n) => !n.contains(
+              r'${{ github.event.pull_request.head.sha || github.sha }}',
+            ),
+          )
+          .toList();
+      expect(wrong, isEmpty, reason: describeOffenders('artifact-name', wrong));
     });
   });
 
