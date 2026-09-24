@@ -151,6 +151,61 @@ MUTATIONS: list[Mutation] = [
              sub(r"^(  yaml: \S+) # why: .*$", r"\1", flags=re.M),
              "a third-party package would ship with no recorded reason",
              'missing-why: 1 offender'),
+    Mutation("#28", "the app stops being portrait-only",
+             "android/app/src/main/AndroidManifest.xml",
+             sub(r'\n\s*android:screenOrientation="portrait"', ""),
+             "the app would rotate, which the design never lays out",
+             'android-identity: MainActivity is not locked to portrait'),
+    Mutation("#29", "a wrong package is reported as a permission",
+             "tools/check_aab.sh",
+             sub(r'(echo "PACKAGE MISSING: expected \$PACKAGE in \$AAB" >&2\n)  exit 2\n',
+                 r"\1"),
+             "a wrong package id would be misdiagnosed as permissions",
+             'bundle-scan: a wrong package was not diagnosed as one',
+             slow=True),
+    Mutation("#30", "the bundle scan waves through a third-party request",
+             "tools/check_aab.sh",
+             sub(r'  else\n    OFFENDERS="\$OFFENDERS\$name\n"\n  fi\ndone <<EOF\n\$PERM_ENTRIES',
+                 '  else\n    :\n  fi\ndone <<EOF\n$PERM_ENTRIES'),
+             "an SDK's own permission request would ship past the scan",
+             'bundle-scan: a third-party permission request was not refused',
+             slow=True),
+    Mutation("#31a", "the main manifest declares a permission",
+             "android/app/src/main/AndroidManifest.xml",
+             sub(r'(<manifest [^>]*>\n)',
+                 r'\1    <permission android:name="com.honestarcade.solitaire.P" />\n'),
+             "a permission declaration would ship, and only the bundle scan would see it",
+             'manifest-permission-element: 1 offender'),
+    Mutation("#31b", "a manifest strips a permission at build time",
+             "android/app/src/debug/AndroidManifest.xml",
+             sub(r'<uses-permission android:name="android.permission.INTERNET"/>',
+                 '<uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>'),
+             "a removal rule would hide a plugin's permission instead of refusing the plugin",
+             'manifest-removal-rule: 1 offender'),
+    Mutation("#32", "a blocked package hides behind a commented header",
+             "pubspec.yaml",
+             sub(r'^dev_dependencies:$',
+                 'dev_dependencies: # test only\n  google_mobile_ads: ^5.0.0 # why: mutation',
+                 flags=re.M),
+             "an ads SDK would pass the dependency guard",
+             'dependency-policy: 1 offender'),
+    Mutation("#33a", "a release request without every key debug-signs",
+             "android/app/build.gradle.kts",
+             sub(r'if \(hsReleaseRequested && !hsSigningComplete\) \{\n[^\n]*\n[^\n]*\n\}\n', ""),
+             "HS_RELEASE=1 with a missing secret would build a debug-signed bundle",
+             'signing-fail-closed: 1 offender'),
+    Mutation("#33b", "git stops ignoring keystores",
+             ".gitignore",
+             sub(r'^\*\.keystore\n', "", flags=re.M),
+             "a keystore dropped in the tree could be committed",
+             'key-material-not-ignored:'),
+    Mutation("#34", "the gate exits 0 after a failing step",
+             "tools/gate.sh",
+             sub(r'(echo "GATE FAILED at \$label \(exit \$status\)" >&2\n)    exit "\$status"',
+                 r'\1    exit 0'),
+             "a failing gate would read as a pass to CI",
+             'gate-failure-path: a failing step did not fail the gate',
+             slow=True),
 ]
 
 
@@ -296,10 +351,11 @@ def main() -> int:
                 names.append(name)
         elif kind == "print":
             # NOTE the environment-sensitivity, because it bit on the first
-            # CI run: a print can be CONDITIONAL. `signing_guard_test.dart`
-            # prints `... could not be reached` only where the Android SDK is
-            # missing, which is true of this battery's job and false on a
-            # developer's machine, so `'reached'` was vacuous in CI alone.
+            # CI run (Honest Sudoku's, whose battery this is): a print can be
+            # CONDITIONAL. Its `signing_guard_test.dart` printed `... could
+            # not be reached` only where the Android SDK was missing, which
+            # was true of the battery's job and false on a developer's
+            # machine, so `'reached'` was vacuous in CI alone.
             # That is the audit being right rather than flaky -- a marker
             # that a run prints cannot discriminate IN THAT RUN -- and the
             # remedy is a marker distinctive enough that no message contains
@@ -339,9 +395,10 @@ def main() -> int:
               f"pass by reading nothing", file=sys.stderr)
         return 2
     # And every message a guard COULD print, from the source. What actually
-    # printed is environment-dependent -- `signing_guard_test.dart`'s
-    # `could not be reached` appears only where no Android SDK is installed,
-    # which made `'reached'` vacuous in CI and fine locally -- so the audit
+    # printed is environment-dependent -- Honest Sudoku's
+    # `signing_guard_test.dart` printed `could not be reached` only where no
+    # Android SDK was installed, which made `'reached'` vacuous in CI and
+    # fine locally -- so the audit
     # reads the literals too and is the same verdict everywhere. Conservative
     # by construction: it may flag a marker that only MIGHT be printed, and
     # the remedy for that is a more distinctive marker, which always exists.
