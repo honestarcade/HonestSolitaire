@@ -91,3 +91,24 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** #39 and #40 share one commit: both change ci.yml's gate/mutations structure and are asserted in the same guard file.
   **Why:** Inseparable in those two files.
   **Issue:** #39, #40
+
+## /n8-verify M0,M1 (re-verification) -- 2026-09-24
+
+- **Decision:** Guards defend against honest mistakes, not deliberate evasion (owner's choice, asked after ~20 nearby bypasses surfaced in one round). Plausible-accident findings were filed (#44–#49, #37 and #41 reopened); the deliberate shapes — a `/* */` or `if (false)` around the signing refusal, single-quoted or re-prefixed `tools:node`, the package id planted elsewhere in the manifest, a nested key borrowing a package's `# why:` — are recorded as not guarded by design in CLAUDE.md.
+  **Why:** Filing every text-match bypass is the loop that took Honest Sudoku 18 rounds; code review and the ruleset own intent.
+  **Issue:** #1, #2
+- **Decision:** The owner's note that the launcher icon is the template's was logged against epic #7 (M5), not filed as an M0 failure.
+  **Why:** No M0 criterion covers the icon; the design's icon is epic #7's acceptance criterion.
+  **Issue:** #7
+
+## /n8-exec M0 (second fix pass) -- 2026-09-24
+
+- **Decision:** The identity guard reads package ids from the parsed workflows by key (`APP_PACKAGE_ID`, `packageName`, `PACKAGE`, and `play_promote.sh`'s argument) and requires each workflow to name at least one.
+  **Why:** Matching by the studio prefix missed any other id; requiring a value per file keeps a renamed key from emptying the check.
+  **Issue:** #44
+- **Decision:** The `<uses-permission>` rule now covers every manifest except `src/debug` and `src/profile`; the `<permission*>` rule covers all.
+  **Why:** Flutter's own dev-only INTERNET request lives in those two, which are never uploaded.
+  **Issue:** #47
+- **Decision:** Corrected comments name the command that computes a count instead of stating one.
+  **Why:** CLAUDE.md's rule; the "7 failures" and "ONE test" sentences went stale exactly because they were counts.
+  **Issue:** #48

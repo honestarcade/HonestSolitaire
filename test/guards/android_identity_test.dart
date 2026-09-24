@@ -7,6 +7,7 @@ library;
 // inline fixtures, then applied to the real files.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'repo_files.dart';
 
@@ -23,6 +24,39 @@ List<String> foreignPackageIds(String text, String expected) =>
         .map((m) => m.group(0)!)
         .where((id) => id != expected)
         .toList();
+
+/// Keys whose value names the Play package in a workflow.
+const packageKeys = {'APP_PACKAGE_ID', 'packageName', 'PACKAGE'};
+
+/// Every value under a [packageKeys] key anywhere in [workflowYaml], plus the
+/// package argument of each `tools/play_promote.sh` call in a `run:` body.
+List<String> packageValues(String workflowYaml) {
+  final values = <String>[];
+  void walk(Object? node) {
+    if (node is YamlMap) {
+      for (final e in node.entries) {
+        if (packageKeys.contains('${e.key}') &&
+            e.value is! YamlMap &&
+            e.value is! YamlList) {
+          values.add('${e.value}');
+        }
+        if ('${e.key}' == 'run' && e.value is String) {
+          for (final m in RegExp(
+            r'play_promote\.sh\s+"?([^"\s]+)"?',
+          ).allMatches(e.value as String)) {
+            values.add(m.group(1)!);
+          }
+        }
+        walk(e.value);
+      }
+    } else if (node is YamlList) {
+      node.forEach(walk);
+    }
+  }
+
+  walk(loadYaml(workflowYaml));
+  return values;
+}
 
 /// The value of `name = "…"` / `name = N` in a Gradle Kotlin script.
 String? gradleValue(String gradle, String name) {
@@ -80,6 +114,27 @@ void main() {
         ),
         isNot(contains('portrait')),
       );
+    });
+
+    test('packageValues reads every package-bearing key, typo included', () {
+      const workflow = r'''
+env:
+  APP_PACKAGE_ID: com.honestarcade.solitaire
+jobs:
+  ship:
+    steps:
+      - with:
+          packageName: com.honestarcde.solitaire
+      - env:
+          PACKAGE: com.acme.solitaire
+        run: tools/play_promote.sh "com.honestarcade.sudoku" internal alpha
+''';
+      expect(packageValues(workflow), [
+        'com.honestarcade.solitaire',
+        'com.honestarcde.solitaire',
+        'com.acme.solitaire',
+        'com.honestarcade.sudoku',
+      ]);
     });
 
     test('gradleValue reads quoted and bare values', () {
@@ -153,6 +208,22 @@ void main() {
         readFile('tools/check_aab.sh'),
         contains('PACKAGE="\${APP_PACKAGE_ID:-$packageId}"'),
         reason: 'android-identity: check_aab.sh does not default to $packageId',
+      );
+    });
+
+    test('every package-bearing workflow value is exactly the package', () {
+      final offenders = <String>[];
+      for (final path in trackedFilesUnder('.github/workflows')) {
+        final values = packageValues(readFile(path));
+        if (values.isEmpty) offenders.add('$path: names no package');
+        for (final v in values) {
+          if (v != packageId) offenders.add('$path: $v');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: describeOffenders('android-identity-workflow', offenders),
       );
     });
 

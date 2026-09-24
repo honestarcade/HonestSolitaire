@@ -69,8 +69,15 @@ List<String> sourceManifests() =>
 void main() {
   group('the real manifest as it stands', () {
     test('declares no uses-permission element', () {
-      final manifest = readFile('android/app/src/main/AndroidManifest.xml');
-      final offenders = usesPermissionOffenders(manifest);
+      // Every manifest a release could merge: main, release, flavours. The
+      // debug and profile manifests carry Flutter's own dev-only INTERNET
+      // request and are never uploaded.
+      final offenders = [
+        for (final path in sourceManifests())
+          if (!path.contains('/src/debug/') && !path.contains('/src/profile/'))
+            for (final line in usesPermissionOffenders(readFile(path)))
+              '$path: $line',
+      ];
       expect(
         offenders,
         isEmpty,
@@ -78,9 +85,12 @@ void main() {
       );
     });
 
-    test('declares no permission element', () {
-      final manifest = readFile('android/app/src/main/AndroidManifest.xml');
-      final offenders = permissionElementOffenders(manifest);
+    test('no manifest under android/ declares a permission element', () {
+      final offenders = [
+        for (final path in sourceManifests())
+          for (final element in permissionElementOffenders(readFile(path)))
+            '$path: $element',
+      ];
       expect(
         offenders,
         isEmpty,

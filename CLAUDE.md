@@ -51,6 +51,17 @@ Load-bearing constraints no story may breach without an explicit conversation
 with the project owner. Changing one is plan drift by definition: log it as an
 ad-hoc ledger entry in `.n8/decisions.md` and suggest `/n8-replan`.
 
+**What the guards defend against (owner, 2026-09-24):** honest mistakes — a
+typo, a debugging edit left in, a copied snippet, a plugin that brings a
+permission. Deliberate evasion is for code review and the `main` ruleset, not
+for a text-matching guard. A verification that finds a bypass files it only
+if an honest edit could plausibly produce it; shapes that need intent — a
+refusal wrapped in `/* */` or `if (false)`, an odd XML quote or namespace
+prefix chosen to dodge a pattern, a string planted to satisfy a match, a
+nested key reusing a package's name — are recorded here as not guarded by
+design, not filed. This is what stopped the round-after-round bypass hunt
+Honest Sudoku went through.
+
 1. **No ads, no tracking, no analytics, no network.** The release build
    declares no Android permissions at all (INTERNET included) and all player
    data stays on the device. Fonts are bundled, never fetched. Build-time

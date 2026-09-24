@@ -41,10 +41,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # The guard suite, minus any `slow`-tagged test.
 #
-# ONE test carries it: `the flag the workflow sets is the flag the guard
-# reads`, which spawns a child `flutter test` (#245). So this excludes
-# exactly that one, and the entry that needs it sets `slow=True`. The
-# machinery stays because the reason for it is real and was measured: a guard
+# Guards that spawn processes carry it (`grep -l "'slow'" test/guards/*.dart`
+# lists them); Honest Sudoku introduced the tag for a guard that spawned a
+# child `flutter test` (its #245). The entries whose guard needs one set
+# `slow=True`. The machinery stays because the reason for it is real and was measured: a guard
 # whose input is expensive is run once per mutation, and a 45s test turns a
 # 20-minute battery into 90. When the next expensive guard arrives it tags
 # itself and the mutations that need it set `slow=True` (#229).
@@ -206,6 +206,18 @@ MUTATIONS: list[Mutation] = [
              "a failing gate would read as a pass to CI",
              'gate-failure-path: a failing step did not fail the gate',
              slow=True),
+    Mutation("#44", "the Play upload names a typo'd package",
+             ".github/workflows/release.yml",
+             sub(r"packageName: com\.honestarcade\.solitaire",
+                 "packageName: com.honestarcde.solitaire"),
+             "the release would upload to, or fail against, the wrong app",
+             'android-identity-workflow: 1 offender'),
+    Mutation("#47", "a variant manifest declares a permission",
+             "android/app/src/profile/AndroidManifest.xml",
+             sub(r'(<manifest [^>]*>\n)',
+                 r'\1    <permission android:name="com.honestarcade.solitaire.P" />\n'),
+             "a permission declared outside main would pass the source guard",
+             'manifest-permission-element: 1 offender'),
     Mutation("#35", "the keystore step turns on shell tracing",
              ".github/workflows/release.yml",
              sub(r'(      - id: keystore\n        name: Decode the upload keystore\n'
