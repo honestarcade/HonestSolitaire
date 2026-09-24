@@ -49,3 +49,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `lib/main.dart` is a branded placeholder screen, not the design's splash.
   **Why:** M0/M1 deliver infrastructure; screens belong to later milestones, planned from the design by `/n8-plan`.
   **Issue:** M0 epic
+
+## Ad-hoc -- 2026-09-23
+
+- **Change:** The first real run of the promote workflow (internal → closed testing, #22) moved from M1 to M7.
+  **Why:** Owner: there is nothing to test yet. The workflow and `tools/play_promote.sh` still ship in M1 from the template; only their proof moves to when the closed test starts.
+  **Affects:** M1 (epic #2 no longer needs a promotion to close; its AC is annotated), M7 (epic #10 gains the first promotion ahead of the 12-tester closed test).
