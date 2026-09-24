@@ -17,31 +17,35 @@ import 'repo_files.dart';
 /// `secrets['X']`, `toJSON(secrets)` — not only the dotted form (#46).
 final _secretExpr = RegExp(r'\$\{\{[^}]*\bsecrets\b');
 
-/// True when a shell script turns on tracing: any `set` whose arguments carry
-/// an x flag (`set -x`, `set -euxo pipefail`, `set -e -x`) or `-o xtrace`
-/// anywhere among them, or a shell started with such a flag (`bash -x`).
+/// True when a shell script turns on tracing: any `set` whose options carry
+/// an x flag (`set -x`, `set -euxo pipefail`, `set -e -x`) or `xtrace` as the
+/// argument of an `o`-ending group (`set -o xtrace`, `set -euo xtrace`), or a
+/// shell started with such options (`bash -x`, GitHub's default
+/// `bash --noprofile --norc -eo pipefail {0}` with `-x` appended).
 bool tracesShell(String script) {
   for (final m in RegExp(
-    r'(?:^|[;&|(\s])set((?:[ \t]+[^\s;&|#]+)+)',
+    r'(?:^|[;&|(\s])(?:set|(?:ba|z|k)?sh)((?:[ \t]+[^\s;&|#]+)+)',
     multiLine: true,
   ).allMatches(script)) {
-    if (_argsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
-  }
-  for (final m in RegExp(
-    r'\b(?:ba|z|k)?sh((?:[ \t]+-[^\s;&|#]*)+)',
-  ).allMatches(script)) {
-    if (_argsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
+    if (_optionsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
   }
   return false;
 }
 
-bool _argsTrace(List<String> args) {
+/// Reads [args] as shell options: `--long` options are skipped, a `-` group
+/// is checked for x, and a group ending in `o` consumes the next word as its
+/// option name. Scanning stops at the first word that is none of these, so `bash tools/run.sh -x` is a script
+/// argument, not tracing.
+bool _optionsTrace(List<String> args) {
   for (var i = 0; i < args.length; i++) {
     final a = args[i];
-    if (a == '-o' && i + 1 < args.length && args[i + 1] == 'xtrace') {
-      return true;
+    if (RegExp(r'^--[a-zA-Z][a-zA-Z-]*$').hasMatch(a)) continue;
+    if (!RegExp(r'^-[a-zA-Z]+$').hasMatch(a)) return false;
+    if (a.contains('x')) return true;
+    if (a.endsWith('o') && i + 1 < args.length) {
+      if (args[i + 1] == 'xtrace') return true;
+      i++;
     }
-    if (RegExp(r'^-[a-zA-Z]*x[a-zA-Z]*$').hasMatch(a)) return true;
   }
   return false;
 }
@@ -107,6 +111,8 @@ jobs:
           set -euo pipefail
           set +x
           tools/verify_upload_cert.sh --exit-code
+          bash tools/run.sh -x
+          set -o pipefail
 ''';
 
     test('secrets in step env with no tracing pass', () {
@@ -146,6 +152,11 @@ jobs:
         run: echo '${{ toJSON(secrets) }}'
       - id: ten
         run: echo "${{ secrets['X'] }}"
+      - id: eleven
+        shell: bash --noprofile --norc -eo pipefail -x {0}
+        run: echo hi
+      - id: twelve
+        run: set -euo xtrace
   other:
     defaults:
       run:
@@ -165,6 +176,8 @@ jobs:
         'ship/eight: shell traces',
         'ship/nine: secret in run',
         'ship/ten: secret in run',
+        'ship/eleven: shell traces',
+        'ship/twelve: shell tracing',
         'other: default shell traces',
       ]);
       expect(secretExposures('defaults:\n  run:\n    shell: bash -x {0}\n'), [
