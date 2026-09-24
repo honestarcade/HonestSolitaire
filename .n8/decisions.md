@@ -112,3 +112,15 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Corrected comments name the command that computes a count instead of stating one.
   **Why:** CLAUDE.md's rule; the "7 failures" and "ONE test" sentences went stale exactly because they were counts.
   **Issue:** #48
+
+## /n8-exec M1 (second fix pass) -- 2026-09-24
+
+- **Decision:** Required jobs (gate, mutations, ship) and the safety steps (the gate and battery commands; the scan, certificate and Play steps) may carry no `if:` and no `continue-on-error`; steps that legitimately run conditionally (the PR-only artifact upload, the always-run summary and cleanup steps) are not in that set.
+  **Why:** A skipped job satisfies a required check, so a skip is a pass; the conditional steps above report or clean up and gate nothing.
+  **Issue:** #45
+- **Decision:** Shell tracing is read from every `shell:` (step, job and workflow defaults) and from any `set` whose arguments carry an x flag or `-o xtrace`; `set +x` and `--long-options` are not tracing.
+  **Why:** The debugging edits that plausibly leak a secret; the negative fixture pins the benign forms.
+  **Issue:** #46
+- **Decision:** The setup-script tests run on a PATH built from a dozen symlinked coreutils plus stubs, not `/usr/bin:/bin`.
+  **Why:** GitHub's Ubuntu runners ship real `gh` and `gcloud` in /usr/bin; a test must not be able to reach them.
+  **Issue:** #41
