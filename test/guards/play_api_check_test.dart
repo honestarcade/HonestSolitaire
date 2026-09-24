@@ -32,7 +32,10 @@ while [ $# -gt 0 ]; do
 done
 case "$method $url" in
   "POST "*/edits) printf '{"id":"e1"}' > "$out"; printf '%s' "${EDIT_STATUS:-200}" ;;
-  *"/tracks") printf '{"tracks":[{"track":"internal"}]}' > "$out"; printf '%s' "${TRACKS_STATUS:-200}" ;;
+  *"/tracks")
+    body="${TRACKS_BODY:-}"
+    [ -n "$body" ] || body='{"tracks":[{"track":"internal"}]}'
+    printf '%s' "$body" > "$out"; printf '%s' "${TRACKS_STATUS:-200}" ;;
 esac
 exit 0
 ''';
@@ -114,6 +117,17 @@ void main() {
       final r = runStep('play', _play);
       expect(r.exitCode, 0, reason: r.output);
       expect(r.summary, contains('Tracks: internal'));
+    });
+
+    test('a brand-new app with no tracks passes', () {
+      final r = runStep('play', {..._play, 'TRACKS_BODY': '{"tracks":[]}'});
+      expect(
+        [r.exitCode, r.summary.contains('none yet')],
+        [0, true],
+        reason:
+            'play-api-check: a new app with no tracks failed the check\n'
+            '${r.output}',
+      );
     });
 
     test('a 403 fails the check', () {
