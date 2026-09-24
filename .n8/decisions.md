@@ -139,3 +139,15 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Invariants 3 and 4 are annotated `guard: #70 (planned)`; the uniformity of a non-winnable shuffle is recorded as honor-system.
   **Why:** #70 is the guard story; measuring uniformity is not planned.
   **Issue:** #70
+
+## /n8-plan M3 -- 2026-09-24
+
+- **Decision:** M3 is ten stories (#72–#81) under epic #4, each blocked by the M2 engine stories it uses; the roadmap's single board phase was re-sliced.
+  **Why:** The coverage check split the Klondike tap story (8 items, 6 criteria) into rendering (#74) and taps (#75) and made the Spider story's criteria one per item.
+  **Issue:** #4
+- **Decision:** Owner answers, round one ("all recommended"; long-press peek kept for both games after an explanation): illegal moves shake and clear; the clock starts at the first move and stops when paused, backgrounded or won; one-tap with no destination selects; hints are amber rings until the next action; "No moves left" is a non-covering banner with Undo and New deal; the win card's streak, See statistics and Main menu, and the pause card's Rules, Settings and Main menu, wait for M4 (DESCOPED in M3); auto-finish steps 60 ms apart until M5 animates; NEW deals the same options until M4's setup screens; a temporary pause-card switch reaches Spider until M4's menu; the board scales from the 390-point design.
+  **Why:** M3 ships a playable board before the menus and settings exist; the temporary switch is removed by M4.
+  **Issue:** #80, #81
+- **Decision:** Owner answers, round two ("all good"): 23 behaviours covering clock resets and formats, tap semantics, drag highlights and peek bounds, pause-card and back behaviour, tool-row states, the banner's placement, large-card and left-handed layouts, the waste fan, edge-to-edge felt, the 480-point cap and ignoring system text size on the board. Gate defaults approved with "go": the cards always show full stats; a finished kept game deals fresh; a Spider stock tap within 300 ms of a deal is ignored; 48 dp minimum tap areas; the top bar does not mirror; the clock runs under the banner; wrong-suit foundation taps redirect; an empty stock with an empty waste shakes; a tap below a column acts on its top card.
+  **Why:** Recorded on the stories that carry them.
+  **Issue:** #72–#81
