@@ -40,6 +40,32 @@ List<String> usesPermissionOffenders(String manifestXml) {
   return offenders;
 }
 
+/// `<permission>`, `<permission-group>` and `<permission-tree>` elements in
+/// [manifestXml]: a declaration is not a request, but invariant 1 wants
+/// neither, and the bundle scan treats a declaration as an offender too.
+List<String> permissionElementOffenders(String manifestXml) =>
+    RegExp(r'<permission(?:-group|-tree)?\b[^>]*>')
+        .allMatches(stripXmlComments(manifestXml))
+        .map((m) => m.group(0)!)
+        .toList();
+
+/// Build-time removal rules (`tools:node="remove"` / `"removeAll"`). CLAUDE.md
+/// invariant 1 forbids them: a plugin that declares a permission is not
+/// adopted, rather than adopted and then stripped.
+List<String> removalRuleOffenders(String manifestXml) =>
+    RegExp(r'tools:node\s*=\s*"(?:remove|removeAll)"')
+        .allMatches(stripXmlComments(manifestXml))
+        .map((m) => m.group(0)!)
+        .toList();
+
+/// Every AndroidManifest.xml under android/ that a build would read — on disk,
+/// tracked or not, build output excluded.
+List<String> sourceManifests() =>
+    filesUnder('android')
+        .where((p) => p.endsWith('AndroidManifest.xml'))
+        .where((p) => !p.contains('/build/') && !p.contains('/.gradle/'))
+        .toList();
+
 void main() {
   group('the real manifest as it stands', () {
     test('declares no uses-permission element', () {
@@ -49,6 +75,31 @@ void main() {
         offenders,
         isEmpty,
         reason: describeOffenders('permission-guard', offenders),
+      );
+    });
+
+    test('declares no permission element', () {
+      final manifest = readFile('android/app/src/main/AndroidManifest.xml');
+      final offenders = permissionElementOffenders(manifest);
+      expect(
+        offenders,
+        isEmpty,
+        reason: describeOffenders('manifest-permission-element', offenders),
+      );
+    });
+
+    test('no manifest under android/ carries a removal rule', () {
+      final manifests = sourceManifests();
+      expect(manifests, contains('android/app/src/main/AndroidManifest.xml'));
+      final offenders = [
+        for (final path in manifests)
+          for (final rule in removalRuleOffenders(readFile(path)))
+            '$path: $rule',
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason: describeOffenders('manifest-removal-rule', offenders),
       );
     });
   });
@@ -88,6 +139,35 @@ void main() {
 </manifest>
 ''';
       expect(usesPermissionOffenders(commented), isEmpty);
+    });
+  });
+
+  group('the element and removal rules, proven both ways', () {
+    test('permission declarations of all three kinds are caught', () {
+      const dirty = '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="com.x.P" />
+    <permission-group android:name="com.x.G" />
+    <permission-tree android:name="com.x.T" />
+    <!-- <permission android:name="com.x.Commented" /> -->
+    <application android:label="app" />
+</manifest>
+''';
+      expect(permissionElementOffenders(dirty), hasLength(3));
+      expect(
+        permissionElementOffenders('<manifest><application/></manifest>'),
+        isEmpty,
+      );
+    });
+
+    test('a removal rule is caught, a commented one is not', () {
+      const dirty = '''
+<uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+<uses-permission android:name="android.permission.CAMERA" tools:node = "removeAll" />
+<!-- <uses-permission tools:node="remove" /> -->
+<activity tools:node="merge" />
+''';
+      expect(removalRuleOffenders(dirty), hasLength(2));
     });
   });
 }
