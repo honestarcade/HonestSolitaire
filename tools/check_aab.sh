@@ -75,6 +75,22 @@ if [ -z "$STRINGS" ]; then
   exit 3
 fi
 
+# The package id first, and on its own: the allowlisted self-permission below
+# is derived from it, so a wrong id used to surface as bogus PERMISSION lines
+# and exit 1, hiding the real diagnosis (#29).
+#
+# The package must appear as a whole token: followed by end-of-run or by a
+# character that cannot continue an id. `grep -x` is wrong here — the protobuf
+# packs the next field's bytes straight after the string, so the real run reads
+# `com.honestarcade.solitaire"K` and never equals the id on its own. This form
+# still rejects a longer id that merely starts with this one.
+# grep -c rather than grep -q, so an early exit cannot SIGPIPE the printf.
+PACKAGE_HITS="$(printf '%s\n' "$STRINGS" | grep -cE "(^|[^.A-Za-z0-9_])${PACKAGE//./\\.}([^.A-Za-z0-9_]|\$)" || true)"
+if [ "${PACKAGE_HITS:-0}" -eq 0 ]; then
+  echo "PACKAGE MISSING: expected $PACKAGE in $AAB" >&2
+  exit 2
+fi
+
 # What counts as an offender, and why the obvious rule is wrong.
 #
 # A byte scan cannot see XML structure, and `android.permission.X` appears in a
@@ -330,19 +346,6 @@ fi
 
 OFFENDERS="$(printf '%s' "$OFFENDERS" | grep -v '^$' | sort -u || true)"
 
-# The package must appear as a whole token: followed by end-of-run or by a
-# character that cannot continue an id. `grep -x` was the obvious choice and is
-# wrong here — the protobuf packs the next field's bytes straight after the
-# string, so the real run reads `com.honestarcade.solitaire"K` and never equals the
-# id on its own. This form still rejects the longer scaffold id
-# (…solitaire.solitaire_name), which is what the exact match was for.
-# grep -c here too, for the same SIGPIPE reason as the entry check above.
-PACKAGE_HITS="$(printf '%s\n' "$STRINGS" | grep -cE "(^|[^.A-Za-z0-9_])${PACKAGE//./\\.}([^.A-Za-z0-9_]|\$)" || true)"
-PACKAGE_OK=0
-if [ "${PACKAGE_HITS:-0}" -gt 0 ]; then
-  PACKAGE_OK=1
-fi
-
 # Report everything found before exiting, so one run tells the whole story.
 STATUS=0
 if [ -n "$OFFENDERS" ]; then
@@ -352,11 +355,6 @@ if [ -n "$OFFENDERS" ]; then
 $OFFENDERS
 EOF
   STATUS=1
-fi
-
-if [ "$PACKAGE_OK" -eq 0 ]; then
-  echo "PACKAGE MISSING: expected $PACKAGE in $AAB" >&2
-  [ "$STATUS" -eq 0 ] && STATUS=2
 fi
 
 if [ "$STATUS" -ne 0 ]; then

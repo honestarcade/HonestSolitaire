@@ -15,6 +15,7 @@ library;
 // something on day one even before you've decided what your own policy is.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'repo_files.dart';
 
@@ -60,31 +61,59 @@ const justificationExempt = {
   'flutter_lints',
 };
 
+/// Every direct dependency named in [pubspec], read structurally (#32): a
+/// line scan missed a commented header, deeper indentation, quoted keys and
+/// CRLF endings, and each let a blocked package through.
+List<String> directDependencies(String pubspec) {
+  final doc = loadYaml(pubspec);
+  if (doc is! YamlMap) return const [];
+  return [
+    for (final section in const [
+      'dependencies',
+      'dev_dependencies',
+      'dependency_overrides',
+    ])
+      if (doc[section] is YamlMap)
+        for (final key in (doc[section] as YamlMap).keys) '$key',
+  ];
+}
+
 /// Direct dependencies in [pubspec] whose key line carries no trailing
-/// `# why: <reason>` comment.
+/// `# why: <reason>` comment. The parser drops comments, so each key's own
+/// line is found in the text — quotes and any indentation allowed — and a key
+/// whose line cannot be found counts as unjustified.
 List<String> unjustifiedDependencies(String pubspec) {
+  final text = pubspec.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
   final offenders = <String>[];
-  var inDepsBlock = false;
-  for (final line in pubspec.split('\n')) {
-    if (RegExp(r'^(dependencies|dev_dependencies):\s*$').hasMatch(line)) {
-      inDepsBlock = true;
-      continue;
-    }
-    if (!inDepsBlock) continue;
-    if (RegExp(r'^\S').hasMatch(line)) {
-      inDepsBlock = false;
-      continue;
-    }
-    final match = RegExp(r'^  ([a-zA-Z0-9_]+):(.*)$').firstMatch(line);
-    if (match == null) continue;
-    final name = match.group(1)!;
+  for (final name in directDependencies(text)) {
     if (justificationExempt.contains(name)) continue;
-    if (!RegExp(r'#\s*why:\s*\S').hasMatch(match.group(2)!)) {
+    final line = RegExp(
+      '^[ \\t]+["\']?${RegExp.escape(name)}["\']?[ \\t]*:(.*)\$',
+      multiLine: true,
+    ).firstMatch(text);
+    if (line == null || !RegExp(r'#\s*why:\s*\S').hasMatch(line.group(1)!)) {
       offenders.add(name);
     }
   }
   return offenders;
 }
+
+/// pubspec shapes that are valid YAML and used to slip past both rules.
+const bypassShapes = {
+  'a comment on the header': '''
+dependencies: # runtime
+  google_mobile_ads: ^5.0.0
+''',
+  'four-space indentation': '''
+dependencies:
+    google_mobile_ads: ^5.0.0
+''',
+  'a quoted key': '''
+dependencies:
+  "google_mobile_ads": ^5.0.0
+''',
+  'CRLF line endings': 'dependencies:\r\n  google_mobile_ads: ^5.0.0\r\n',
+};
 
 void main() {
   group('the rule itself, proven both ways', () {
@@ -103,8 +132,20 @@ void main() {
         'google_mobile_ads',
         'firebase_analytics',
       ]);
-      expect(offenders, hasLength(2));
+      expect(offenders, [
+        'google_mobile_ads (matches *_ads)',
+        'firebase_analytics (matches *analytics*)',
+      ]);
+      expect(blockedDependencies(['firebase_crashlytics']), hasLength(1));
     });
+
+    for (final shape in bypassShapes.entries) {
+      test('${shape.key} does not hide a blocked package', () {
+        final names = directDependencies(shape.value);
+        expect(blockedDependencies(names), hasLength(1));
+        expect(unjustifiedDependencies(shape.value), ['google_mobile_ads']);
+      });
+    }
 
     test('an unrelated word containing "ads" is not caught', () {
       // The false-positive class `*_ads`'s underscore boundary exists to
@@ -119,28 +160,8 @@ void main() {
 
   group('this project\'s real pubspec.yaml', () {
     test('declares no blocked dependency', () {
-      final pubspec = readFile('pubspec.yaml');
-      // A minimal top-level-key reader, matching the style of the rule
-      // above: pure text, no YAML package required for this small a job. A
-      // real project's version of this will likely want `package:yaml` for
-      // full structural parsing — see workflow_structure_example_test.dart
-      // for that pattern.
-      final names = <String>[];
-      var inDepsBlock = false;
-      for (final line in pubspec.split('\n')) {
-        if (RegExp(r'^(dependencies|dev_dependencies):\s*$').hasMatch(line)) {
-          inDepsBlock = true;
-          continue;
-        }
-        if (inDepsBlock) {
-          if (RegExp(r'^\S').hasMatch(line)) {
-            inDepsBlock = false;
-            continue;
-          }
-          final match = RegExp(r'^  ([a-zA-Z0-9_]+):').firstMatch(line);
-          if (match != null) names.add(match.group(1)!);
-        }
-      }
+      final names = directDependencies(readFile('pubspec.yaml'));
+      expect(names, contains('yaml'), reason: 'the reader found nothing');
       final offenders = blockedDependencies(names);
       expect(
         offenders,
