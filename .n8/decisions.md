@@ -104,7 +104,7 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 ## /n8-exec M0 (second fix pass) -- 2026-09-24
 
 - **Decision:** The identity guard reads package ids from the parsed workflows by key (`APP_PACKAGE_ID`, `packageName`, `PACKAGE`, and `play_promote.sh`'s argument) and requires each workflow to name at least one.
-  **Why:** Matching by the studio prefix missed any other id; requiring a value per file keeps a renamed key from emptying the check.
+  **Why:** Matching by the studio prefix missed any other id. Requiring a value per file catches a workflow whose only package key is renamed; a file with several keys still passes if one is renamed (corrected 2026-09-24, #52).
   **Issue:** #44
 - **Decision:** The `<uses-permission>` rule now covers every manifest except `src/debug` and `src/profile`; the `<permission*>` rule covers all.
   **Why:** Flutter's own dev-only INTERNET request lives in those two, which are never uploaded.

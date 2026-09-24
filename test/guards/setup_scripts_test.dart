@@ -44,6 +44,8 @@ exit 0
 
 const _keytool = r'''#!/bin/sh
 echo "keytool $*" >> "$STUB_LOG"
+case "$*" in *-help*) echo "Key and Certificate Management Tool"; exit 0 ;; esac
+[ -n "${KEYTOOL_FAIL:-}" ] && exit 1
 exit 0
 ''';
 
@@ -199,6 +201,30 @@ void main() {
         credentials: creds().replaceAll(RegExp(r'export HS_KEY_ALIAS.*\n'), ''),
       );
       expect([r.exitCode, r.output], [2, contains('HS_KEY_ALIAS is missing')]);
+    });
+
+    test('a password that does not open the keystore is refused', () {
+      final r = runScript(
+        'set_ci_secrets.sh',
+        credentials: creds(),
+        env: {'KEYTOOL_FAIL': '1'},
+      );
+      expect(
+        [r.exitCode, r.calls.any((c) => c.startsWith('gh '))],
+        [2, false],
+        reason:
+            'setup-scripts: a keystore the password cannot open was '
+            'uploaded\n${r.output}',
+      );
+      expect(r.output, contains('do not open the keystore'));
+    });
+
+    test('a keystore path that cannot be read is refused', () {
+      final r = runScript(
+        'set_ci_secrets.sh',
+        credentials: creds().replaceAll('@KEYSTORE@', '/nonexistent/k.p12'),
+      );
+      expect([r.exitCode, r.output], [2, contains('is not readable')]);
     });
 
     test('an unreadable credentials file is refused', () {

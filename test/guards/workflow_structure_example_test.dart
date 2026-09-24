@@ -13,9 +13,10 @@ library;
 // so the rule sees what the runner sees.
 //
 // What's here is intentionally smaller: `package:yaml`'s own `loadYaml`,
-// used directly, with structural assertions on the real ci.yml. Grow this the way Honest Sudoku's did — one real defect
-// at a time, each with its own mutation in tools/mutation_check.py — rather
-// than building the general case up front.
+// used directly, with structural assertions on the real ci.yml. Grow this
+// the way Honest Sudoku's did — one real defect at a time, each with its own
+// mutation in tools/mutation_check.py — rather than building the general case
+// up front.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yaml/yaml.dart';
