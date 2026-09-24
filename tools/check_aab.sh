@@ -27,10 +27,10 @@
 #   done
 #   env -i PATH="$BIN" HOME="$HOME" "$BIN/bash" tools/check_aab.sh   # rc=0
 #
-# Dropping dirname from that loop reproduces `line 26: dirname: command not
-# found`. Re-run it whenever this script gains a command.
+# Dropping dirname from that loop reproduces `dirname: command not found` at
+# the `cd` below. Re-run it whenever this script gains a command.
 # (awk arrived with the element decoder in #80 and the list was not updated
-# until #105; dirname was missing from the day the `cd` on line 26 was
+# until #105; dirname was missing from the day the `cd` below was
 # written and survived #105's correction of the line directly above it — the
 # fourth occurrence of a header sentence asserted rather than checked, in one
 # file (#87, #105, #114).)
@@ -314,8 +314,9 @@ if printf '%s\n' "$STRINGS" | grep -qF 'flutterEmbedding'; then
   #      "did I see the self-permission?", and the self-permission is exactly
   #      what such a decoder still sees. A bundle carrying
   #      com.evilads.sdk.TRACK_USER alongside it scans clean too. What
-  #      catches that shape is the fixture suite: the same mutation gives 7
-  #      failures in test/guards/bundle_scan_test.dart. The protection
+  #      catches that shape is the fixture suite: the same mutation fails
+  #      its third-party request and declaration cases
+  #      (test/guards/bundle_scan_test.dart, #30). The protection
   #      exists; it is one layer up from where the narrative put it.
   #   2. DECLARE_SEEN and REQUEST_SEEN are set from a decoded NAME, not from
   #      a confirmed element, so a synthetic bundle with no <permission>
