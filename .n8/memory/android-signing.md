@@ -11,11 +11,11 @@ metadata:
   outside the repository, chmod 600. PKCS12, alias `upload`, RSA 2048,
   dname `O=Honest Arcade, CN=Honest Solitaire`. Created 2026-09-23 by
   `tools/make_upload_key.sh` with a randomly generated password.
-- **Password:** in `~/HonestArcadeApps/secrets/solitaire-signing-credentials.txt`
-  (chmod 600). **Owner action: move it into your password manager.** Keep the
-  file until `tools/set_ci_secrets.sh` has run — that script parses it — then
-  delete it. PKCS12 has one password, so `HS_KEY_PASS` equals
-  `HS_KEYSTORE_PASS`.
+- **Password:** in the owner's password manager, and in the `HS_KEYSTORE_PASS`
+  / `HS_KEY_PASS` repository secrets. The credentials file the script wrote was
+  deleted on 2026-09-23 after `tools/set_ci_secrets.sh` ran; to run that script
+  again, recreate it from the password manager. PKCS12 has one password, so
+  `HS_KEY_PASS` equals `HS_KEYSTORE_PASS`.
 - **Certificate:** committed at `android/signing/upload_certificate.pem`; the
   fingerprint is in `android/signing/README.md`.
 - **Build consumption:** `android/app/build.gradle.kts` reads

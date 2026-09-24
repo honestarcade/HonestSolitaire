@@ -22,8 +22,9 @@ what it produced for this app.
 | package | `com.honestarcade.solitaire` |
 | type | Game, free |
 | default language | English (US) |
-| Console app id | _(owner: fill in after runbook step 1)_ |
-| developer account id | _(same developer account as Honest Sudoku)_ |
+| Console app id | `4975858088283771554` |
+| developer account id | `5264586118822775573` (same account as Honest Sudoku) |
+| owner account | `ntpond@gmail.com` |
 
 The package id is permanent from the moment it is typed on **Create app**.
 
@@ -55,3 +56,5 @@ The package id is permanent from the moment it is typed on **Create app**.
   account propagated, and passed on the idempotent re-run ~20 s later);
   `tools/set_ci_secrets.sh` set the four keystore secrets; `play-api-check`
   run 35935643708 passed both Play access and keystore steps. Issue #20.
+- 2026-09-23: owner copied the keystore password to their password manager;
+  `solitaire-signing-credentials.txt` deleted.
