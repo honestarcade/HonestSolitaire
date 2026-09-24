@@ -68,6 +68,67 @@ void main() {
             'locally" and "green in CI" can drift apart',
       );
     });
+    test('ci.yml runs on pull requests and can be called by release.yml', () {
+      final on = workflow['on'] ?? workflow[true];
+      expect(
+        on is YamlMap &&
+            on.containsKey('pull_request') &&
+            on.containsKey('workflow_call'),
+        isTrue,
+        reason:
+            'workflow-structure: ci.yml no longer triggers on '
+            'pull_request and workflow_call',
+      );
+    });
+
+    test('the mutations job runs the battery, not a paraphrase of it', () {
+      final jobs = workflow['jobs'] as YamlMap;
+      expect(jobs.keys, containsAll(['gate', 'mutations']));
+      final runLines = ((jobs['mutations'] as YamlMap)['steps'] as YamlList)
+          .whereType<YamlMap>()
+          .map((step) => step['run'])
+          .whereType<String>()
+          .toList();
+      expect(
+        runLines,
+        contains('tools/mutation_check.py'),
+        reason:
+            'workflow-structure: no step runs tools/mutation_check.py '
+            'exactly, so a surviving mutation could leave the check green',
+      );
+    });
+
+    test('no step in either required job may fail quietly', () {
+      final jobs = workflow['jobs'] as YamlMap;
+      final lenient = [
+        for (final name in ['gate', 'mutations'])
+          if ((jobs[name] as YamlMap)['continue-on-error'] != null) name,
+        for (final name in ['gate', 'mutations'])
+          for (final step
+              in ((jobs[name] as YamlMap)['steps'] as YamlList)
+                  .whereType<YamlMap>())
+            if (step['continue-on-error'] != null)
+              '$name/${step['id'] ?? step['name']}',
+      ];
+      expect(
+        lenient,
+        isEmpty,
+        reason: describeOffenders('workflow-continue-on-error', lenient),
+      );
+    });
+
+    test('the PR bundle is named after the PR head, not the merge ref', () {
+      final steps =
+          ((workflow['jobs'] as YamlMap)['gate'] as YamlMap)['steps']
+              as YamlList;
+      final artifact = steps.whereType<YamlMap>().firstWhere(
+        (s) => '${s['uses']}'.startsWith('actions/upload-artifact@'),
+      );
+      expect(
+        (artifact['with'] as YamlMap)['name'],
+        r'honest-solitaire-aab-${{ github.event.pull_request.head.sha || github.sha }}',
+      );
+    });
   });
 
   group('the rule survives a structural disguise a text scan would miss', () {
