@@ -73,3 +73,21 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Two history notes in `tools/mutation_check.py` now say they describe Honest Sudoku's `signing_guard_test.dart`, and a stale duplicate of the #121 comment in `tools/gate.sh` that recommended `|| true` was removed.
   **Why:** Both were false about this repository (the CLAUDE.md claims rule).
   **Issue:** #33, #34
+
+## /n8-exec M1 (verification fix pass) -- 2026-09-24
+
+- **Decision:** #38 (the GitHub-release attach step never ran) is carried, not fixed, in this pass.
+  **Why:** Only a real GitHub release exercises it, and cutting one is `/n8-release`'s act, not a fix pass's. It is `sev:medium`, so it does not block M1's closure; it closes on the next release run that logs 'asset attached and its hash re-verified'.
+  **Issue:** #38
+- **Decision:** The secrets guard also forbids secrets in job- and workflow-level `env:`, not only in `run:` bodies and shell tracing.
+  **Why:** release.yml's header promises step-level scoping; the guard makes that sentence executed rather than asserted (Rule 2).
+  **Issue:** #35
+- **Decision:** play-api-check's steps are tested by running their own `run:` bodies, extracted from the parsed workflow, under bash with gcloud/curl/keytool stubs.
+  **Why:** A copy of the script in the test would drift from the workflow; running the workflow's text is what makes a regression in it visible.
+  **Issue:** #41
+- **Decision:** The certificate refusal is tested with a key generated in the test (keytool + jarsigner) and the committed certificate as the foreign one.
+  **Why:** No real key material may be used; the release job's own certificate must be the one that fails to match.
+  **Issue:** #37
+- **Decision:** #39 and #40 share one commit: both change ci.yml's gate/mutations structure and are asserted in the same guard file.
+  **Why:** Inseparable in those two files.
+  **Issue:** #39, #40
