@@ -54,8 +54,13 @@ void main() {
       ['v1.2.3', '0', '1'],
       ['v1.2.3', '12', '10'],
       ['v1.2.3', '12'],
+      ['v1.2.3-rc.01', '12', '1'],
+      ['v1.2.3-', '12', '1'],
+      ['v1.2.3-rc..1', '12', '1'],
+      // A newline would inject a line into the step's output file (#37).
+      ['v1.2.3\nx', '12', '1'],
     ]) {
-      test('refuses ${bad.join(' ')}', () {
+      test('refuses ${bad.join(' ').replaceAll('\n', r'\n')}', () {
         final r = _run('ci_version.sh', bad);
         expect(
           [r.exitCode, '${r.stdout}'.contains('code=')],
