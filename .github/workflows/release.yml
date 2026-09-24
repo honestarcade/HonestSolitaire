@@ -11,8 +11,9 @@
 #
 # Secrets are supplied as step-level `env:` on the four steps that need them,
 # never job-wide, so a step with no business seeing the keystore password does
-# not have it in scope. No step prints one; a guard asserts that and refuses
-# `set -x` anywhere in this directory.
+# not have it in scope. No step prints one: test/guards/workflow_secrets_test.dart
+# refuses secrets outside a step's env:/with:, and shell tracing — `set` with
+# an x flag or `-o xtrace`, or a tracing `shell:` — anywhere in this directory.
 name: Release
 run-name: Release ${{ github.ref_name }}
 

@@ -13,14 +13,38 @@ import 'package:yaml/yaml.dart';
 
 import 'repo_files.dart';
 
-final _secretExpr = RegExp(r'\$\{\{[^}]*\bsecrets\.');
+/// Any use of the `secrets` context inside an expression — `secrets.X`,
+/// `secrets['X']`, `toJSON(secrets)` — not only the dotted form (#46).
+final _secretExpr = RegExp(r'\$\{\{[^}]*\bsecrets\b');
 
-/// Shell tracing in a `run:` body: `set -x`, `set -o xtrace`, a flag cluster
-/// containing x (`set -euxo pipefail`), or `bash -x`/`sh -x`.
-final _tracing = RegExp(
-  r'(^|[;&|\s])(set\s+(-[a-wyzA-Z]*x[a-zA-Z]*|-o\s+xtrace)|(ba)?sh\s+-[a-wyzA-Z]*x)',
-  multiLine: true,
-);
+/// True when a shell script turns on tracing: any `set` whose arguments carry
+/// an x flag (`set -x`, `set -euxo pipefail`, `set -e -x`) or `-o xtrace`
+/// anywhere among them, or a shell started with such a flag (`bash -x`).
+bool tracesShell(String script) {
+  for (final m in RegExp(
+    r'(?:^|[;&|(\s])set((?:[ \t]+[^\s;&|#]+)+)',
+    multiLine: true,
+  ).allMatches(script)) {
+    if (_argsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
+  }
+  for (final m in RegExp(
+    r'\b(?:ba|z|k)?sh((?:[ \t]+-[^\s;&|#]*)+)',
+  ).allMatches(script)) {
+    if (_argsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
+  }
+  return false;
+}
+
+bool _argsTrace(List<String> args) {
+  for (var i = 0; i < args.length; i++) {
+    final a = args[i];
+    if (a == '-o' && i + 1 < args.length && args[i + 1] == 'xtrace') {
+      return true;
+    }
+    if (RegExp(r'^-[a-zA-Z]*x[a-zA-Z]*$').hasMatch(a)) return true;
+  }
+  return false;
+}
 
 /// Every way [workflowYaml] could expose a secret, one line per finding.
 List<String> secretExposures(String workflowYaml) {
@@ -28,13 +52,29 @@ List<String> secretExposures(String workflowYaml) {
   if (doc is! YamlMap) return ['not a YAML mapping'];
   final findings = <String>[];
   bool mentionsSecret(Object? node) => _secretExpr.hasMatch('$node');
+  String? defaultShell(Object? owner) {
+    if (owner is! YamlMap) return null;
+    final defaults = owner['defaults'];
+    if (defaults is! YamlMap || defaults['run'] is! YamlMap) return null;
+    final shell = (defaults['run'] as YamlMap)['shell'];
+    return shell == null ? null : '$shell';
+  }
+
   if (mentionsSecret(doc['env'])) findings.add('workflow-level env');
+  final workflowShell = defaultShell(doc);
+  if (workflowShell != null && tracesShell(workflowShell)) {
+    findings.add('workflow default shell traces');
+  }
   final jobs = doc['jobs'];
   if (jobs is! YamlMap) return findings;
   for (final entry in jobs.entries) {
     final job = entry.value;
     if (job is! YamlMap) continue;
     if (mentionsSecret(job['env'])) findings.add('${entry.key}: job-level env');
+    final jobShell = defaultShell(job);
+    if (jobShell != null && tracesShell(jobShell)) {
+      findings.add('${entry.key}: default shell traces');
+    }
     final steps = job['steps'];
     if (steps is! YamlList) continue;
     for (final step in steps.whereType<YamlMap>()) {
@@ -42,7 +82,11 @@ List<String> secretExposures(String workflowYaml) {
       final run = step['run'];
       if (run is String) {
         if (_secretExpr.hasMatch(run)) findings.add('$id: secret in run');
-        if (_tracing.hasMatch(run)) findings.add('$id: shell tracing');
+        if (tracesShell(run)) findings.add('$id: shell tracing');
+      }
+      final shell = step['shell'];
+      if (shell != null && tracesShell('$shell')) {
+        findings.add('$id: shell traces');
       }
     }
   }
@@ -58,9 +102,11 @@ jobs:
       - id: keystore
         env:
           PASS: ${{ secrets.PASS }}
+        shell: bash --noprofile --norc -eo pipefail {0}
         run: |
           set -euo pipefail
-          tools/verify_upload_cert.sh
+          set +x
+          tools/verify_upload_cert.sh --exit-code
 ''';
 
     test('secrets in step env with no tracing pass', () {
@@ -89,6 +135,22 @@ jobs:
         run: |
           true
           set -o xtrace
+      - id: six
+        run: set -e -x
+      - id: seven
+        run: set -eu -o xtrace
+      - id: eight
+        shell: bash -x {0}
+        run: echo hi
+      - id: nine
+        run: echo '${{ toJSON(secrets) }}'
+      - id: ten
+        run: echo "${{ secrets['X'] }}"
+  other:
+    defaults:
+      run:
+        shell: bash -eux {0}
+    steps: []
 ''';
       expect(secretExposures(dirty), [
         'workflow-level env',
@@ -98,6 +160,15 @@ jobs:
         'ship/three: shell tracing',
         'ship/four: shell tracing',
         'ship/five: shell tracing',
+        'ship/six: shell tracing',
+        'ship/seven: shell tracing',
+        'ship/eight: shell traces',
+        'ship/nine: secret in run',
+        'ship/ten: secret in run',
+        'other: default shell traces',
+      ]);
+      expect(secretExposures('defaults:\n  run:\n    shell: bash -x {0}\n'), [
+        'workflow default shell traces',
       ]);
     });
   });
