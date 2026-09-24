@@ -41,11 +41,12 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # The guard suite, minus any `slow`-tagged test.
 #
-# Guards that spawn processes carry it (`grep -l "'slow'" test/guards/*.dart`
-# lists them); Honest Sudoku introduced the tag for a guard that spawned a
-# child `flutter test` (its #245). The entries whose guard needs one set
-# `slow=True`. The machinery stays because the reason for it is real and was measured: a guard
-# whose input is expensive is run once per mutation, and a 45s test turns a
+# Guards whose input is an expensive child pipeline (bash, zip, keytool)
+# carry it — `grep -l "'slow'" test/guards/*.dart` lists them; a guard that
+# only shells out to `git` does not. Honest Sudoku introduced the tag for a
+# guard that spawned a child `flutter test` (its #245). The entries whose
+# guard needs one set `slow=True`. The machinery stays because the reason
+# for it is real and was measured: a guard whose input is expensive is run once per mutation, and a 45s test turns a
 # 20-minute battery into 90. When the next expensive guard arrives it tags
 # itself and the mutations that need it set `slow=True` (#229).
 SUITE = ["flutter", "test", "--no-pub", "--tags", "guard",
@@ -296,6 +297,19 @@ MUTATIONS: list[Mutation] = [
              sub(r'\[ "\$KEY_PASS" = "\$KEYSTORE_PASS" \] \|\| \{', 'true || {'),
              "a password the release build cannot use would be uploaded",
              'setup-scripts: a key-password mismatch was uploaded',
+             slow=True),
+    Mutation("#53", "a keystore step traces through a bundled -o",
+             ".github/workflows/release.yml",
+             sub(r'(      - id: keystore_check\n(?:[^\n]*\n)*?          )set -euo pipefail',
+                 r'\1set -euo xtrace'),
+             "the keystore password would be echoed into a public log",
+             'workflow-secret-exposure: 1 offender'),
+    Mutation("#54", "set_ci_secrets ignores a keystore it cannot open",
+             "tools/set_ci_secrets.sh",
+             sub(r'-alias "\$KEY_ALIAS" > /dev/null 2>&1 \|\| \{',
+                 '-alias "$KEY_ALIAS" > /dev/null 2>&1 || true; false && {'),
+             "a password that cannot open the keystore would be uploaded",
+             'setup-scripts: a keystore the password cannot open was uploaded',
              slow=True),
 ]
 
