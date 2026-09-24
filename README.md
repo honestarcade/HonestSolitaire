@@ -62,7 +62,9 @@ git tag v0.1.0 && git push origin v0.1.0
 `.github/workflows/release.yml` triggers on any `v*` tag. It re-runs the whole
 PR gate first, then builds a signed bundle, scans it for Android permissions,
 checks it against the committed upload certificate, attaches it to the GitHub
-release, and uploads it to the Play **internal** track. The Play upload is the
+release if one exists for the tag (`/n8-release` creates the two together; a
+bare `git tag` leaves the bundle in the run's artifacts only), and uploads it to
+the Play **internal** track. The Play upload is the
 last step, so a failure anywhere earlier ships nothing.
 
 **Never re-tag a version that shipped; ship the next one.** Play will not

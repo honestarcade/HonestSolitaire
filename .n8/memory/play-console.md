@@ -58,3 +58,7 @@ The package id is permanent from the moment it is typed on **Create app**.
   run 35935643708 passed both Play access and keystore steps. Issue #20.
 - 2026-09-23: owner copied the keystore password to their password manager;
   `solitaire-signing-credentials.txt` deleted.
+- 2026-09-24: `v0.1.0` (code 1011) uploaded to the internal track by release
+  run 35937560222; this first upload enrolled Play App Signing with the
+  committed upload certificate. Tagged with a bare `git tag`, so no GitHub
+  release holds the bundle — it is in that run's artifact. Issue #21.
