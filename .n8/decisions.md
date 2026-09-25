@@ -181,3 +181,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Gate defaults approved with "go": every in-app mark moves to Frog Across's corners; the start-screen-to-splash shift is accepted; the pause card rises like the win card; TalkBack skips the deal and the cascade; the phone's Touch feedback setting also silences ticks; the Haptics description names foundations and the peek; TalkBack announces selection; refused music retries on the next resume; quick fades remain with Card animations off; foundations show empty behind the win card. The red suit darkens from #C6483D to #C4453A to pass contrast under the owner's round-one contrast answer.
   **Why:** Product-facing guesses from the pass-2 re-simulation, listed at the gate.
   **Issue:** #97, #99, #102, #104, #105, #107, #108
+
+## /n8-plan M6 -- 2026-09-25
+
+- **Decision:** M6 is eight stories (#111–#118) under epic #9, all waiting on M5's last story (#109); the carried M1 bugs #56 and #57 moved into M6 to be fixed in #118, and #38 (the GitHub-release attach never ran) is closed by the first release candidate in #113.
+  **Why:** 13 items from epic #9 and the carried bugs, all owned by an acceptance criterion; Honest Sudoku's M6 was planned but never executed, so its issue texts were the only model.
+  **Issue:** #9, #38, #56, #57
+- **Decision:** Owner answers, round one ("1) S26 Ultra / everything else good"): the reference device is a Samsung Galaxy S26 Ultra and there is no second device, so API 24 and the smallest screen are emulator runs, said plainly; release candidates are `v1.0.0-rc.N`; every option is exercised on the phone at least once (a sampling rule, not every combination); the owner runs the phone play-through and the accessibility sweep, the agent the emulators, timing and the end-to-end suite; 95 % of winnable searches must finish before the 5 s point on the phone, or the search is made faster (the point never moves); critical/high bugs must be fixed and medium/low may carry with the owner's OK; the end-to-end suite runs locally before each candidate, not in CI.
+  **Why:** Recorded on the stories that carry them; epic #9's bug criterion was amended to match.
+  **Issue:** #111–#118, #9
+- **Decision:** Owner answers, round two ("recs fine except … If a clip is rejected, you will create me three versions to choose from. If those three are rejected the cycle will repeat three at a time (with feedback) until a suitable clip is found."): the severity rule (critical: crash, lost game or stats, unfinishable game; high: misleads or blocks play or visibly breaks the design on the S26; medium: noticeable but harmless; low: polish — the agent assigns, only the owner changes); rejected clips regenerated three versions per round with no cap; the TalkBack sweep is sighted, on short pre-found deals; test documents live in `qa/`, not the public `docs/` site. Epic #9's sound criterion was amended accordingly.
+  **Why:** Recorded on the stories that carry them.
+  **Issue:** #115, #116, #118, #9
+- **Decision:** Gate defaults approved with "go": the end-to-end script never runs on the owner's phone unless asked (it uninstalls the app and its saves); the Spider TalkBack win is played by hand (auto-finish is Klondike-only); bugs no automated test can reach are fixed against a written manual check that failed first; emulator-only defects are high when content is unreadable or unreachable, otherwise medium or low; the owner adds their Google account to the internal testers list before rc.1; new sound options are heard as WAV files on the phone, not through an in-app build.
+  **Why:** Product-facing guesses from the pass-2 re-simulation, listed at the gate.
+  **Issue:** #112, #113, #114, #115, #116, #118
