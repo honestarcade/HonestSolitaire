@@ -311,6 +311,11 @@ MUTATIONS: list[Mutation] = [
              "a password that cannot open the keystore would be uploaded",
              'setup-scripts: a keystore the password cannot open was uploaded',
              slow=True),
+    Mutation("#59", "the engine imports Flutter", "lib/engine/card.dart",
+             sub(r"^library;\n", "library;\n\nimport 'package:flutter/foundation.dart';\n",
+                 flags=re.M),
+             "the engine would need a Flutter binding, so it could not run in a bare isolate",
+             'engine-imports: 1 offender'),
 ]
 
 
