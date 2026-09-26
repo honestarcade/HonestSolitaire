@@ -226,3 +226,15 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** #60 and #61 share one commit (b8042fd).
   **Why:** Both write parts of `game.dart`, which does not compile with either part missing.
   **Issue:** #60, #61
+- **Decision:** `Solved.moves` and `KlondikeGame.solution` are `List<Move>`, not `List<KlondikeMove>`.
+  **Why:** `Flip` is a shared move, and a solution for a game with auto-flip off must carry its flips.
+  **Issue:** #66
+- **Decision:** The solver's transposition key sorts all seven columns, not only the empty ones; the default budget is 40,000 nodes (measured 2026-09-26 on the development Mac: 64 % draw 1, 47 % draw 3 over seeds 1–200, mean 226 / 303 ms per deal; at 60,000: 65 % / 48.5 %, 441 / 560 ms).
+  **Why:** Klondike is symmetric under any column permutation, so the wider key loses no solution; the smaller budget keeps the floors with room under the 1 s mean on a slower CI runner.
+  **Issue:** #66
+- **Decision:** `solve` gained `allowFoundationToTableau` and the auto-finish fallback passes false.
+  **Why:** Without it the fallback finished a board by pulling diamonds back off a foundation to re-align a draw-3 stock — legal, but FINISH must sweep up, never down, as the story's greedy description says.
+  **Issue:** #67
+- **Decision:** `canFinish` is memoised with an `Expando<bool>` in `finish.dart` rather than a field on `KlondikeGame`.
+  **Why:** `finish.dart` is its own library and the game class needs no knowledge of the finish; the effect — one computation per immutable game object — is the same.
+  **Issue:** #67

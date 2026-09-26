@@ -48,6 +48,30 @@ class KlondikeOptions {
     'timed': timed,
   };
 
+  /// The inverse of [toJson]; throws [FormatException] on a bad value.
+  factory KlondikeOptions.fromJson(Map<String, Object?> json) {
+    final draw = json['draw'];
+    final scoring = json['scoring'];
+    final autoFlip = json['autoFlip'];
+    final timed = json['timed'];
+    if (draw is! int || !DrawMode.values.any((d) => d.count == draw)) {
+      throw FormatException('bad draw mode $draw');
+    }
+    if (scoring is! String ||
+        !ScoringMode.values.any((s) => s.name == scoring)) {
+      throw FormatException('bad scoring mode $scoring');
+    }
+    if (autoFlip is! bool || timed is! bool) {
+      throw const FormatException('autoFlip and timed must be booleans');
+    }
+    return KlondikeOptions(
+      draw: DrawMode.values.firstWhere((d) => d.count == draw),
+      scoring: ScoringMode.values.byName(scoring),
+      autoFlip: autoFlip,
+      timed: timed,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       other is KlondikeOptions &&

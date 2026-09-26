@@ -13,11 +13,15 @@
 /// keeps it that way.
 library;
 
+import 'dart:async';
+import 'dart:isolate';
+
 import 'card.dart';
 import 'deal_number.dart';
 import 'deck.dart';
 import 'rng.dart';
 import 'scoring.dart';
+import 'solver.dart';
 
 part 'history.dart';
 part 'klondike.dart';
@@ -169,6 +173,10 @@ sealed class Move {
 
   /// Compact JSON for saved games (#69) and the solver's lines (#66).
   Map<String, Object?> toJson();
+
+  /// The inverse of [toJson] for every move kind of both games. Throws
+  /// [FormatException] on anything else.
+  static Move fromJson(Map<String, Object?> json) => _moveFromJson(json);
 }
 
 /// A game of either kind, immutable: every operation returns a new game.

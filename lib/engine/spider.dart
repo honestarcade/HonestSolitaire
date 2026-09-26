@@ -40,6 +40,28 @@ class SpiderOptions {
     'timed': timed,
   };
 
+  /// The inverse of [toJson]; throws [FormatException] on a bad value.
+  factory SpiderOptions.fromJson(Map<String, Object?> json) {
+    final suits = json['suits'];
+    final relaxed = json['relaxed'];
+    final autoFlip = json['autoFlip'];
+    final timed = json['timed'];
+    if (suits is! int || !SpiderSuits.values.any((s) => s.count == suits)) {
+      throw FormatException('bad suit count $suits');
+    }
+    if (relaxed is! bool || autoFlip is! bool || timed is! bool) {
+      throw const FormatException(
+        'relaxed, autoFlip and timed must be booleans',
+      );
+    }
+    return SpiderOptions(
+      suits: SpiderSuits.fromCount(suits),
+      relaxed: relaxed,
+      autoFlip: autoFlip,
+      timed: timed,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       other is SpiderOptions &&
