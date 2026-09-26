@@ -57,12 +57,19 @@ class Unsolvable extends SolveResult {
 const int defaultNodeBudget = 40000;
 
 /// Searches from [game] with at most [nodeBudget] expanded states.
-SolveResult solve(KlondikeGame game, {int nodeBudget = defaultNodeBudget}) {
+///
+/// [allowFoundationToTableau] false leaves cards on the foundations once
+/// they are there — auto-finish (#67) sweeps up, never back down.
+SolveResult solve(
+  KlondikeGame game, {
+  int nodeBudget = defaultNodeBudget,
+  bool allowFoundationToTableau = true,
+}) {
   if (nodeBudget <= 0) {
     throw ArgumentError.value(nodeBudget, 'nodeBudget', 'must be > 0');
   }
   if (game.isWon) return const Solved([], 0);
-  return _Search(game, nodeBudget).run();
+  return _Search(game, nodeBudget, allowFoundationToTableau).run();
 }
 
 // ---------------------------------------------------------------- compact
@@ -174,10 +181,12 @@ class _Frame {
 }
 
 class _Search {
-  _Search(this.game, this.budget) : drawCount = game.options.draw.count;
+  _Search(this.game, this.budget, this.allowFoundationToTableau)
+    : drawCount = game.options.draw.count;
 
   final KlondikeGame game;
   final int budget;
+  final bool allowFoundationToTableau;
   final int drawCount;
   final Set<String> visited = {};
   int nodes = 0;
@@ -456,7 +465,7 @@ class _Search {
     final stockEdges = _stockEdges(s);
 
     // Foundation to tableau.
-    for (var f = 0; f < 4; f++) {
+    for (var f = 0; f < 4 && allowFoundationToTableau; f++) {
       final rank = s.foundation[f];
       if (rank == 0) continue;
       final id = f * 13 + rank - 1;
