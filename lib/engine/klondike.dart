@@ -264,7 +264,7 @@ class KlondikeGame extends Game {
     required this.lastDrawCount,
     required this.lastDelta,
     required this.winnable,
-    required List<KlondikeMove>? solution,
+    required List<Move>? solution,
     required this._previous,
     required this._lastUndone,
   }) : tableau = _fixedPiles(tableau),
@@ -422,7 +422,7 @@ class KlondikeGame extends Game {
   final bool winnable;
 
   /// The proven line from the deal, when [winnable].
-  final List<KlondikeMove>? solution;
+  final List<Move>? solution;
 
   @override
   final HistoryEntry? _previous;
@@ -494,7 +494,7 @@ class KlondikeGame extends Game {
     int? lastDrawCount,
     int? lastDelta,
     bool? winnable,
-    List<KlondikeMove>? solution,
+    List<Move>? solution,
     bool clearSolution = false,
     HistoryEntry? previous,
     bool clearPrevious = false,
