@@ -9,6 +9,10 @@ The design source is the claude.ai/design project `88279a49-c9f2-46fd-996c-c1fa9
 file `Honest Solitaire.dc.html` (read it with the `claude_design` MCP / DesignSync
 `get_file`). It holds every screen, the prototype game rules, the settings
 list and the brand sheet; `.n8/config.yml` records it as `design_source`.
+On the development machine a local copy sits at
+`.n8/local/design/Honest Solitaire.dc.html` (gitignored — the design is not
+published with the repository); read that first and fall back to the MCP when
+it is absent, as on a fresh clone.
 
 The quality gate is **`tools/gate.sh`** — one command running the six steps CI
 runs, in order: dependencies against the lockfile, `dart analyze --fatal-infos`,
