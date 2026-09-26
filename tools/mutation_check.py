@@ -316,6 +316,18 @@ MUTATIONS: list[Mutation] = [
                  flags=re.M),
              "the engine would need a Flutter binding, so it could not run in a bare isolate",
              'engine-imports: 1 offender'),
+    Mutation("#70a", "the shuffle is seeded from the clock", "lib/engine/rng.dart",
+             sub(r"Rng\(int seed\) : _state = seed & _mask32;",
+                 "Rng(int seed) : _state = (seed ^ DateTime.now().microsecond) & _mask32;"),
+             "the same deal number would deal different cards on every device",
+             'engine-determinism:'),
+    Mutation("#70b", "the dealer marks a deal winnable without solving it",
+             "lib/engine/winnable_dealer.dart",
+             sub(r"final solution = result is Solved \? result\.moves : null;",
+                 "final solution = result is Solved ? result.moves : const <Move>[];"),
+             "every deal would be handed out as winnable with no proof",
+             'engine-winnable: a deal marked winnable did not win',
+             slow=True),
 ]
 
 

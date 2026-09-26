@@ -82,13 +82,15 @@ Honest Sudoku went through.
    is honor-system, checked by audits)*
 3. **Deals are generated on the device, from a seed, deterministically.** The
    same seed and options (game, draw count or suit count) always produce the
-   same deal, in any build. No deal is bundled. *(test-enforced once
-   merged — guard: #70 (planned))*
+   same deal, in any build. No deal is bundled. *(test-enforced:
+   `test/guards/engine_determinism_test.dart` — golden deals, a 1..300 sweep
+   and a fresh-isolate comparison — guard: #70 (merged))*
 4. **"Winnable deals only" is honest.** With that option on, every deal the
    app hands out has been proven solvable by the on-device solver before it is
    shown; with it off, the deal is a true uniform shuffle. *(the winnable
-   half test-enforced once merged — guard: #70 (planned); uniformity of the
-   random shuffle is honor-system)*
+   half test-enforced: `test/guards/engine_winnable_test.dart` replays every
+   found solution to a win — guard: #70 (merged); uniformity of the random
+   shuffle is not measured and stays honor-system)*
 
 ## n8SDLC project
 

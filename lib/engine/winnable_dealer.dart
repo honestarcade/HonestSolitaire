@@ -196,12 +196,13 @@ void _worker(_WorkerArgs args) {
       KlondikeGame.deal(number, options),
       nodeBudget: args.nodeBudget,
     );
-    if (result is Solved) {
+    final solution = result is Solved ? result.moves : null;
+    if (solution != null) {
       args.port.send([
         'f',
         tried,
         number.value,
-        [for (final m in result.moves) m.toJson()],
+        [for (final m in solution) m.toJson()],
       ]);
       return;
     }
