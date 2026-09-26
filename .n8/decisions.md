@@ -196,3 +196,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Gate defaults approved with "go": the end-to-end script never runs on the owner's phone unless asked (it uninstalls the app and its saves); the Spider TalkBack win is played by hand (auto-finish is Klondike-only); bugs no automated test can reach are fixed against a written manual check that failed first; emulator-only defects are high when content is unreadable or unreachable, otherwise medium or low; the owner adds their Google account to the internal testers list before rc.1; new sound options are heard as WAV files on the phone, not through an in-app build.
   **Why:** Product-facing guesses from the pass-2 re-simulation, listed at the gate.
   **Issue:** #112, #113, #114, #115, #116, #118
+
+## /n8-plan M7 -- 2026-09-26
+
+- **Decision:** M7 is nine new stories (#120–#128) plus the existing #22 (extended with a production-refusal guard and relabelled comments) under epic #10, all waiting on M6's last story (#118); the coverage check split the declarations story in two (#121 privacy/ads/data safety, #122 rating/audience/countries). Epic #10's duplicated #22 criterion was removed.
+  **Why:** 11 items from epic #10, all owned by an acceptance criterion; Honest Sudoku's planned M7 (#68–#75) was the model.
+  **Issue:** #10, #22
+- **Decision:** Owner answers, round one ("recs are good" with notes): the agent drafts the listing and the owner approves and uploads it (the CI account keeps release-only permissions); six script-made screenshots and a feature graphic, English only; contact email "Same as sudoku" (`support@honestarcade.app`); audience 13+; every country; testers are "a later step … I will line up testers for solitaire, sudoku, and frog across all at once"; production straight to 100 %; a fix during the hold ships as 1.0.N without restarting the clock; the README, a v1.0.0 GitHub release and the wiki record the launch.
+  **Why:** Recorded on the stories that carry them.
+  **Issue:** #120–#128
+- **Decision:** Owner answers, round two ("all recs"): Vegas scoring is answered as not simulated gambling (no betting, no wager, no money), the resulting rating accepted; testers report problems to support@honestarcade.app; one tester note covers the three apps (Frog Across's paragraph left for the owner); only blocking bugs change the testers' build, the rest go to the backlog; the listing does not mention Android backup (it is in the data-safety answers and privacy policy); the owner approves the store images; the Statistics screenshot shows real numbers.
+  **Why:** Recorded on the stories that carry them.
+  **Issue:** #121–#126
+- **Decision:** Gate defaults approved with "go": after launch testers are thanked and released and the closed track stays; the production release publishes on approval (managed publishing off); countries exclude only those Play says need a local licence or legal representative, each listed with Play's reason. M8's audit emphases are now final (every feature milestone is planned).
+  **Why:** Product-facing guesses from the pass-2 re-simulation, listed at the gate.
+  **Issue:** #122, #127, M8
