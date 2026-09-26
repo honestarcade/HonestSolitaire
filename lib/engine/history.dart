@@ -78,3 +78,40 @@ bool _canUndo(Game game, {required bool unlimited}) {
   if (unlimited) return true;
   return !game._lastUndone && _limitedUndoAllows(entry.move);
 }
+
+/// Applies [moves] in order and records the whole sequence as ONE history
+/// entry (a `MoveGroup`), so an auto-finish sweep undoes in one step (#67).
+/// A refusal part-way returns it and leaves [game] untouched.
+ApplyResult<Game> _applyAll(Game game, List<Move> moves) {
+  var current = game;
+  var effects = const Effects();
+  final steps = <Effects>[];
+  for (final move in moves) {
+    final result = current.apply(move);
+    switch (result) {
+      case Refused(:final reason):
+        return Refused(reason);
+      case Applied(:final game, effects: final stepEffects):
+        current = game;
+        steps.add(stepEffects);
+        effects = effects.merge(stepEffects);
+    }
+  }
+  if (moves.isEmpty) return Applied(game, effects);
+  final grouped = Effects(
+    from: effects.from,
+    to: effects.to,
+    cardsMoved: effects.cardsMoved,
+    cardsFlipped: effects.cardsFlipped,
+    cardsDrawn: effects.cardsDrawn,
+    recycled: effects.recycled,
+    rowDealt: effects.rowDealt,
+    runsCompleted: effects.runsCompleted,
+    steps: steps,
+  );
+  final entry = HistoryEntry(game, MoveGroup(moves), grouped);
+  return switch (current) {
+    KlondikeGame k => Applied(k._copy(previous: entry), grouped),
+    SpiderGame s => Applied(s._copy(previous: entry), grouped),
+  };
+}

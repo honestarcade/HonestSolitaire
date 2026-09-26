@@ -211,3 +211,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Gate defaults approved with "go": after launch testers are thanked and released and the closed track stays; the production release publishes on approval (managed publishing off); countries exclude only those Play says need a local licence or legal representative, each listed with Play's reason. M8's audit emphases are now final (every feature milestone is planned).
   **Why:** Product-facing guesses from the pass-2 re-simulation, listed at the gate.
   **Issue:** #122, #127, M8
+
+## /n8-exec M2 -- 2026-09-26
+
+- **Decision:** `lib/engine/game.dart` is one library with `klondike.dart`, `spider.dart`, `history.dart`, `serialization.dart` and `winnable_dealer.dart` as `part`s; `card.dart`, `rng.dart`, `deck.dart`, `deal_number.dart` and `scoring.dart` stay separate libraries.
+  **Why:** The plan asks for sealed `Game` and `Move` supertypes (pass-2 notes on #60) and Dart allows a sealed type's subtypes only in the same library; the parts also share the library-private constructor that is the only way to mark a game `winnable` (#68's discretion).
+  **Issue:** #60, #61
+- **Decision:** `Flip` is a shared `Move`, not a `KlondikeMove` or `SpiderMove`, so `legalMoves()` returns `List<Move>` on both games.
+  **Why:** Both games have the same flip rule and #64's limited-undo test treats them alike; two `Flip` classes would double every switch.
+  **Issue:** #60, #61
+- **Decision:** History is a chain (each game holds only its last `HistoryEntry`, whose `before` holds the one before), not a list stored on every snapshot; each entry also keeps the move's `Effects` so undo can animate the reversal.
+  **Why:** O(1) per move and no list copying; the plan's "list of prior snapshots" was about behaviour, not storage.
+  **Issue:** #64
+- **Decision:** #60 and #61 share one commit (b8042fd).
+  **Why:** Both write parts of `game.dart`, which does not compile with either part missing.
+  **Issue:** #60, #61

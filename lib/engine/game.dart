@@ -200,6 +200,10 @@ sealed class Game {
 
   ApplyResult<Game> apply(Move move);
 
+  /// Applies [moves] in order as one undo step; a refusal part-way leaves
+  /// this game untouched.
+  ApplyResult<Game> applyAll(List<Move> moves) => _applyAll(this, moves);
+
   /// The same game with [duration] added to [elapsed]; ignored once won.
   Game tick(Duration duration);
 
