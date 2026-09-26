@@ -1,0 +1,350 @@
+{
+  "klondike": {
+    "format": 1,
+    "game": "klondike",
+    "deal": 1,
+    "options": {
+      "draw": 3,
+      "scoring": "standard",
+      "autoFlip": true,
+      "timed": true
+    },
+    "tableau": [
+      [
+        "3H",
+        "2C",
+        "AD"
+      ],
+      [
+        "7C",
+        "6H"
+      ],
+      [
+        "QD*",
+        "4H*",
+        "4D"
+      ],
+      [
+        "JD*",
+        "JC*",
+        "3S*",
+        "8S"
+      ],
+      [
+        "2D*",
+        "7S*",
+        "9H*",
+        "10C*",
+        "5H"
+      ],
+      [
+        "AC*",
+        "7D*",
+        "5D*",
+        "QS*",
+        "QC"
+      ],
+      [
+        "KS*",
+        "4C*",
+        "3C*",
+        "8C*",
+        "KH*",
+        "2H*",
+        "9C"
+      ]
+    ],
+    "stock": [
+      "9S*",
+      "AS*",
+      "10S*",
+      "4S*",
+      "8D*",
+      "10H*"
+    ],
+    "waste": [
+      "3D",
+      "8H",
+      "7H",
+      "JS",
+      "KD",
+      "6C",
+      "10D",
+      "JH",
+      "9D",
+      "6S",
+      "6D",
+      "QH",
+      "5S",
+      "KC",
+      "5C",
+      "2S"
+    ],
+    "foundations": [
+      [],
+      [
+        "AH"
+      ],
+      [],
+      []
+    ],
+    "moveScore": 20,
+    "timeBonus": 0,
+    "moves": 12,
+    "elapsedMs": 61000,
+    "lastDrawCount": 3,
+    "history": [
+      {
+        "kind": "draw"
+      },
+      {
+        "kind": "wasteToTableau",
+        "to": 1
+      },
+      {
+        "kind": "draw"
+      },
+      {
+        "kind": "draw"
+      },
+      {
+        "kind": "run",
+        "from": 1,
+        "start": 1,
+        "to": 0
+      },
+      {
+        "kind": "draw"
+      },
+      {
+        "kind": "wasteToFoundation"
+      },
+      {
+        "kind": "run",
+        "from": 5,
+        "start": 5,
+        "to": 1
+      },
+      {
+        "kind": "tableauToFoundation",
+        "from": 0
+      },
+      {
+        "kind": "draw"
+      },
+      {
+        "kind": "foundationToTableau",
+        "foundation": 2,
+        "to": 0
+      },
+      {
+        "kind": "draw"
+      }
+    ],
+    "winnable": false
+  },
+  "spider": {
+    "format": 1,
+    "game": "spider",
+    "deal": 1,
+    "options": {
+      "suits": 2,
+      "relaxed": false,
+      "autoFlip": true,
+      "timed": true
+    },
+    "tableau": [
+      [
+        "3H*",
+        "6S*",
+        "2S*",
+        "6S*",
+        "AS*",
+        "3S"
+      ],
+      [
+        "6S*",
+        "JH*",
+        "8S*",
+        "AS"
+      ],
+      [
+        "QS*",
+        "5H*",
+        "8H*",
+        "AS*",
+        "JS*",
+        "QS",
+        "JS",
+        "10S"
+      ],
+      [
+        "KH*",
+        "6H*",
+        "9H*",
+        "4H*",
+        "10H*",
+        "3S"
+      ],
+      [
+        "4S*",
+        "2S*",
+        "10H*",
+        "2H*",
+        "3H",
+        "2S"
+      ],
+      [
+        "9S*",
+        "3H*",
+        "6H*",
+        "6H"
+      ],
+      [
+        "5H*",
+        "9S*",
+        "7H*",
+        "KH*",
+        "QH"
+      ],
+      [
+        "4S*",
+        "9H*",
+        "KS*",
+        "8H*",
+        "JH"
+      ],
+      [
+        "4S*",
+        "AH*",
+        "QS*",
+        "AH*",
+        "6S"
+      ],
+      [
+        "9S*",
+        "2S*",
+        "10H*",
+        "4H",
+        "3H"
+      ]
+    ],
+    "stock": [
+      [
+        "4H*",
+        "2H*",
+        "AS*",
+        "AH*",
+        "JH*",
+        "7H*",
+        "AH*",
+        "4S*",
+        "3S*",
+        "JH*"
+      ],
+      [
+        "QH*",
+        "KS*",
+        "QH*",
+        "5S*",
+        "KS*",
+        "7S*",
+        "QS*",
+        "QH*",
+        "6H*",
+        "7S*"
+      ],
+      [
+        "4H*",
+        "8S*",
+        "7H*",
+        "KH*",
+        "3S*",
+        "10S*",
+        "JS*",
+        "2H*",
+        "8H*",
+        "5S*"
+      ],
+      [
+        "5H*",
+        "KS*",
+        "7S*",
+        "9H*",
+        "7S*",
+        "7H*",
+        "JS*",
+        "5S*",
+        "10S*",
+        "8H*"
+      ],
+      [
+        "2H*",
+        "8S*",
+        "5S*",
+        "10H*",
+        "5H*",
+        "10S*",
+        "9S*",
+        "8S*",
+        "9H*",
+        "KH*"
+      ]
+    ],
+    "completed": [],
+    "moveScore": 492,
+    "timeBonus": 0,
+    "moves": 8,
+    "elapsedMs": 61000,
+    "history": [
+      {
+        "kind": "move",
+        "from": 9,
+        "start": 4,
+        "to": 6
+      },
+      {
+        "kind": "move",
+        "from": 5,
+        "start": 4,
+        "to": 9
+      },
+      {
+        "kind": "move",
+        "from": 6,
+        "start": 5,
+        "to": 2
+      },
+      {
+        "kind": "move",
+        "from": 1,
+        "start": 5,
+        "to": 3
+      },
+      {
+        "kind": "move",
+        "from": 3,
+        "start": 6,
+        "to": 0
+      },
+      {
+        "kind": "move",
+        "from": 0,
+        "start": 6,
+        "to": 3
+      },
+      {
+        "kind": "move",
+        "from": 1,
+        "start": 4,
+        "to": 2
+      },
+      {
+        "kind": "move",
+        "from": 3,
+        "start": 6,
+        "to": 4
+      }
+    ]
+  }
+}
