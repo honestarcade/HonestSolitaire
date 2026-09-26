@@ -238,3 +238,15 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `canFinish` is memoised with an `Expando<bool>` in `finish.dart` rather than a field on `KlondikeGame`.
   **Why:** `finish.dart` is its own library and the game class needs no knowledge of the finish; the effect — one computation per immutable game object — is the same.
   **Issue:** #67
+- **Decision:** The winnable worker sends its solution as move JSON and the main isolate re-deals and replays it before emitting `Found`; `Move.fromJson`, `KlondikeOptions.fromJson` and `SpiderOptions.fromJson` were written in #68 rather than #69 to carry that transport.
+  **Why:** The plan's "second honesty check" needs a decoder before the serialization story lands; #69 reuses the same decoders.
+  **Issue:** #68, #69
+- **Decision:** Loading a saved game ticks the saved clock onto the fresh deal before replaying the history.
+  **Why:** A won game's time bonus is computed by the winning `apply` from `elapsed`; replaying at zero would give a different bonus and fail the piles-follow-from-history check for every saved win. The clock stops at a win, so the saved elapsed is the winning one.
+  **Issue:** #69
+- **Decision:** The winnable guard starts its forty searches concurrently (one isolate each) instead of one after another.
+  **Why:** Sequentially the guard would cost minutes on every slow mutation run; in parallel it finishes in seconds on a multi-core runner, with the same 60 s ceiling per search.
+  **Issue:** #70
+- **Decision:** The determinism guard's fresh-isolate check runs one `Isolate.run` per mode computing all 300 deals, not one per deal.
+  **Why:** The plan's "fresh process state" is a fresh isolate; five spawns prove the same thing as fifteen hundred in a fraction of the time.
+  **Issue:** #70
