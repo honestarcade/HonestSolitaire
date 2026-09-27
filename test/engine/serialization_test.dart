@@ -96,33 +96,30 @@ void main() {
       expect(kBack.canUndo(unlimited: false), k.canUndo(unlimited: false));
     });
 
-    test(
-      'lastUndone survives the trip: limited mode still refuses right after reload (#135)',
-      () {
-        final k = walk(KlondikeGame.deal(DealNumber(7)), 7, 40);
-        final undone = (k.undo(unlimited: true) as Applied<KlondikeGame>).game;
-        expect(undone.lastUndone, isTrue);
-        expect(undone.canUndo(unlimited: false), isFalse);
-        final reloaded = KlondikeGame.fromJson(viaText(undone.toJson()));
-        expect(reloaded.lastUndone, isTrue);
-        expect(
-          reloaded.canUndo(unlimited: false),
-          isFalse,
-          reason: 'a reload must not let the same move be undone twice',
-        );
+    test('lastUndone survives the trip: limited mode still refuses right after reload (#135)', () {
+      final k = walk(KlondikeGame.deal(DealNumber(7)), 7, 40);
+      final undone = (k.undo(unlimited: true) as Applied<KlondikeGame>).game;
+      expect(undone.lastUndone, isTrue);
+      expect(undone.canUndo(unlimited: false), isFalse);
+      final reloaded = KlondikeGame.fromJson(viaText(undone.toJson()));
+      expect(reloaded.lastUndone, isTrue);
+      expect(
+        reloaded.canUndo(unlimited: false),
+        isFalse,
+        reason: 'a reload must not let the same move be undone twice',
+      );
 
-        final s = walk(SpiderGame.deal(DealNumber(7)), 7, 40);
-        final sUndone = (s.undo(unlimited: true) as Applied<SpiderGame>).game;
-        expect(sUndone.lastUndone, isTrue);
-        final sReloaded = SpiderGame.fromJson(viaText(sUndone.toJson()));
-        expect(sReloaded.lastUndone, isTrue);
-        expect(sReloaded.canUndo(unlimited: false), isFalse);
+      final s = walk(SpiderGame.deal(DealNumber(7)), 7, 40);
+      final sUndone = (s.undo(unlimited: true) as Applied<SpiderGame>).game;
+      expect(sUndone.lastUndone, isTrue);
+      final sReloaded = SpiderGame.fromJson(viaText(sUndone.toJson()));
+      expect(sReloaded.lastUndone, isTrue);
+      expect(sReloaded.canUndo(unlimited: false), isFalse);
 
-        // A save with no lastUndone field (an older save) loads as false.
-        final noField = viaText(k.toJson())..remove('lastUndone');
-        expect(KlondikeGame.fromJson(noField).lastUndone, isFalse);
-      },
-    );
+      // A save with no lastUndone field (an older save) loads as false.
+      final noField = viaText(k.toJson())..remove('lastUndone');
+      expect(KlondikeGame.fromJson(noField).lastUndone, isFalse);
+    });
 
     test('a grouped finish and a won game survive the trip', () {
       final g = klondike(
