@@ -96,6 +96,34 @@ void main() {
       expect(kBack.canUndo(unlimited: false), k.canUndo(unlimited: false));
     });
 
+    test(
+      'lastUndone survives the trip: limited mode still refuses right after reload (#135)',
+      () {
+        final k = walk(KlondikeGame.deal(DealNumber(7)), 7, 40);
+        final undone = (k.undo(unlimited: true) as Applied<KlondikeGame>).game;
+        expect(undone.lastUndone, isTrue);
+        expect(undone.canUndo(unlimited: false), isFalse);
+        final reloaded = KlondikeGame.fromJson(viaText(undone.toJson()));
+        expect(reloaded.lastUndone, isTrue);
+        expect(
+          reloaded.canUndo(unlimited: false),
+          isFalse,
+          reason: 'a reload must not let the same move be undone twice',
+        );
+
+        final s = walk(SpiderGame.deal(DealNumber(7)), 7, 40);
+        final sUndone = (s.undo(unlimited: true) as Applied<SpiderGame>).game;
+        expect(sUndone.lastUndone, isTrue);
+        final sReloaded = SpiderGame.fromJson(viaText(sUndone.toJson()));
+        expect(sReloaded.lastUndone, isTrue);
+        expect(sReloaded.canUndo(unlimited: false), isFalse);
+
+        // A save with no lastUndone field (an older save) loads as false.
+        final noField = viaText(k.toJson())..remove('lastUndone');
+        expect(KlondikeGame.fromJson(noField).lastUndone, isFalse);
+      },
+    );
+
     test('a grouped finish and a won game survive the trip', () {
       final g = klondike(
         tableau: [
@@ -280,6 +308,38 @@ void main() {
         () => SpiderGame.fromJson(k()),
         throwsA(isA<InvalidValueError>()),
         reason: 'a Klondike save is not a Spider game',
+      );
+    });
+
+    test(
+      'an out-of-range elapsedMs is refused, not a Duration overflow (#135)',
+      () {
+        // Comfortably past int64 microseconds ÷ 1000 — the value the repro
+        // in #135 used, which overflows Duration's internal microseconds
+        // before this bound existed.
+        const huge = 9223372036854775807;
+        expect(
+          () => KlondikeGame.fromJson(k()..['elapsedMs'] = huge),
+          throwsA(isA<InvalidValueError>()),
+        );
+        expect(
+          () => SpiderGame.fromJson(s()..['elapsedMs'] = huge),
+          throwsA(isA<InvalidValueError>()),
+        );
+        // Just over the documented ceiling, not just an absurd one.
+        expect(
+          () => KlondikeGame.fromJson(
+            k()..['elapsedMs'] = 365 * 24 * 3600 * 1000 + 1,
+          ),
+          throwsA(isA<InvalidValueError>()),
+        );
+      },
+    );
+
+    test('a present but non-bool lastUndone is refused (#135)', () {
+      expect(
+        () => KlondikeGame.fromJson(k()..['lastUndone'] = 'yes'),
+        throwsA(isA<InvalidValueError>()),
       );
     });
 
