@@ -274,3 +274,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The finish sweep commits `applyFinish` at once and shows per-step states through `shown`/`displayGame`; every input is blocked meanwhile; back, pause and backgrounding complete it instantly and show the win card.
   **Why:** #80's discretion: one undo step, the clock stops when the sweep starts so the time bonus uses that moment.
   **Issue:** #80
+- **Decision:** The board's safe area is `MediaQuery.viewPadding` (the system bars), and both Android theme files inherit one `HonestDark` parent with a navy window background.
+  **Why:** #81's discretion; one parent keeps light and dark mode identical, which the design is.
+  **Issue:** #81
