@@ -6,13 +6,18 @@ import 'package:flutter/material.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/scoring.dart';
 
+import '../app.dart';
 import '../format.dart';
+import '../navigation.dart';
+import '../screens/stats_screen.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
+import 'game_event.dart';
 import 'pause_card.dart';
 
-/// The cells the card shows, in order.
-List<(String, String)> winCells(Game game) {
+/// The cells the card shows, in order: TIME, MOVES, SCORE, STREAK (when
+/// the statistics are at hand, #93), TIME BONUS.
+List<(String, String)> winCells(Game game, {int? streak}) {
   final cells = <(String, String)>[];
   if (isTimed(game)) {
     cells.add(('TIME', formatClock(game.elapsed)));
@@ -26,6 +31,9 @@ List<(String, String)> winCells(Game game) {
     default:
       cells.add(('SCORE', formatCount(game.score)));
   }
+  if (streak != null) {
+    cells.add(('STREAK', formatCount(streak)));
+  }
   if (game.timeBonus > 0) {
     cells.add(('TIME BONUS', '+${formatCount(game.timeBonus)}'));
   }
@@ -33,20 +41,34 @@ List<(String, String)> winCells(Game game) {
 }
 
 class WinCard extends StatelessWidget {
-  const WinCard({super.key, required this.controller, required this.scale});
+  const WinCard({
+    super.key,
+    required this.controller,
+    required this.scale,
+    this.vScale = 1,
+  });
 
   final GameController controller;
   final double scale;
+  final double vScale;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
+    final v = vScale;
     final game = controller.game;
+    final type = GameType.of(game);
+    final scope = GameScope.maybeOf(context);
     final title = switch (game) {
       KlondikeGame() => 'Foundations complete',
       SpiderGame() => 'All eight runs home',
     };
-    final cells = winCells(game);
+    // The win was recorded before the card appeared (#85's listener runs
+    // on the Won event, the card after winCardDelay), so this includes it.
+    final cells = winCells(
+      game,
+      streak: scope?.stats.document[type].total.streak,
+    );
     return Semantics(
       scopesRoute: true,
       namesRoute: true,
@@ -54,7 +76,7 @@ class WinCard extends StatelessWidget {
       label: 'Game complete',
       child: Container(
         key: const Key('win-card'),
-        padding: EdgeInsets.all(24 * s),
+        padding: EdgeInsets.symmetric(horizontal: 24 * s, vertical: 24 * s * v),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -85,7 +107,7 @@ class WinCard extends StatelessWidget {
                 height: 1,
               ),
             ),
-            SizedBox(height: 11 * s),
+            SizedBox(height: 11 * s * v),
             Text(
               title,
               style: TextStyle(
@@ -96,13 +118,29 @@ class WinCard extends StatelessWidget {
                 height: 1,
               ),
             ),
-            SizedBox(height: 18 * s),
+            SizedBox(height: 18 * s * v),
             _Grid(cells: cells, scale: s),
-            SizedBox(height: 18 * s),
+            SizedBox(height: 18 * s * v),
             CardButton.primary(
               'New deal',
               key: const Key('win-new'),
-              onPressed: controller.newDeal,
+              onPressed: scope == null
+                  ? controller.newDeal
+                  : () => openSetup(context, type),
+              scale: s,
+            ),
+            SizedBox(height: 9 * s * v),
+            CardButton.secondary(
+              'See statistics',
+              key: const Key('win-stats'),
+              onPressed: () => openScreen(context, StatsScreen(game: type)),
+              scale: s,
+            ),
+            SizedBox(height: 4 * s * v),
+            CardButton.quiet(
+              'Main menu',
+              key: const Key('win-menu'),
+              onPressed: () => goToMenu(context),
               scale: s,
             ),
           ],
@@ -205,27 +243,48 @@ class GameOverlays extends StatelessWidget {
     if (!showWin && !showPause) return const SizedBox.shrink();
     return Positioned.fill(
       child: MediaQuery.withNoTextScaling(
-        child: Semantics(
-          container: true,
-          child: GestureDetector(
-            // The scrim swallows taps and does nothing.
-            key: const Key('scrim'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () {},
-            child: Container(
-              color: showWin
-                  ? const Color(0xD9030E20)
-                  : const Color(0xD1030E20),
-              padding: EdgeInsets.all(26 * scale),
-              alignment: Alignment.center,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Short phones (320×568): gaps and padding shrink by
+            // height/844, never below 0.7, and the card scrolls if it still
+            // does not fit (#93).
+            final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
+            return Semantics(
+              container: true,
               child: GestureDetector(
+                // The scrim swallows taps and does nothing.
+                key: const Key('scrim'),
+                behavior: HitTestBehavior.opaque,
                 onTap: () {},
-                child: showWin
-                    ? WinCard(controller: controller, scale: scale)
-                    : PauseCard(controller: controller, scale: scale),
+                child: Container(
+                  color: showWin
+                      ? const Color(0xD9030E20)
+                      : const Color(0xD1030E20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 26 * scale,
+                    vertical: 26 * scale * v,
+                  ),
+                  alignment: Alignment.center,
+                  child: SingleChildScrollView(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: showWin
+                          ? WinCard(
+                              controller: controller,
+                              scale: scale,
+                              vScale: v,
+                            )
+                          : PauseCard(
+                              controller: controller,
+                              scale: scale,
+                              vScale: v,
+                            ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

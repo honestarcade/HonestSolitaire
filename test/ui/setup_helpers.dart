@@ -4,6 +4,7 @@ import 'package:honest_solitaire/data/app_store.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/ui/app.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
+import 'package:honest_solitaire/ui/navigation.dart';
 
 /// Two pumps flush the setState microtasks and draw; [transition] covers
 /// Android's 800 ms route animation.
@@ -23,6 +24,7 @@ Future<GameScope> openScreen(
   Widget screen, {
   AppStore? store,
   List<int> numbers = const [5, 42, 43, 44, 45],
+  bool overBoard = false,
 }) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
@@ -40,6 +42,10 @@ Future<GameScope> openScreen(
   );
   await settle(tester);
   final scope = tester.widget<GameScope>(find.byType(GameScope));
+  if (overBoard) {
+    tester.state<NavigatorState>(find.byType(Navigator)).push(boardRoute());
+    await settle(tester, transition: true);
+  }
   tester
       .state<NavigatorState>(find.byType(Navigator))
       .push(MaterialPageRoute<void>(builder: (_) => screen));

@@ -314,3 +314,27 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Until #94 puts the menu at the root, `openBoard` pushes the board above the launch board (`pushAndRemoveUntil(isFirst)`), so a found deal briefly stacks two boards.
   **Why:** The navigation stack's shape is #94's; building the menu early would fork it.
   **Issue:** #87
+- **Decision:** The setup screens' Deal, Keep playing and reroll live in `lib/ui/navigation.dart` (`startNewGame`, `keepPlaying`, `keepPlayingTarget`, `freshDealNumber`) and both screens share `OptionPanel` / `ChoiceButton` / `DealButton` with a per-game `SetupAccent`; Spider's first-run defaults are the `firstRunSpider` constant #86 already put beside the settings store, not a new `SpiderOptions.firstRun`.
+  **Why:** One home for the deal flow keeps #88 and #89 identical in behaviour; a second constant with the same value would be a fork.
+  **Issue:** #88, #89
+- **Decision:** `ScreenScaffold` bounds its pinned column with `IntrinsicHeight`, and card pairs in a scroll view (`Statistics`, the menu) sit in one too. *(Rule 1)*
+  **Why:** A `Spacer` or a stretched `Row` inside an unbounded scroll view has no height to take; the first setup screen hit it.
+  **Issue:** #88, #92, #94
+- **Decision:** The deal-number `TextField` sits in a transparent `Material`; the About screens sit in a transparent `Scaffold`.
+  **Why:** `TextField` and `SnackBar` need those ancestors and the plain `ScreenScaffold` has neither.
+  **Issue:** #58, #91
+- **Decision:** THE DEALS states the empty-column rule the engine plays (Strict: every column must hold a card before a deal; Relaxed lets you deal with one empty), not the pass-2 note's "a column can only take a run of one suit", which describes no rule the engine has.
+  **Why:** The AC ask for the built rules; the guard holds only the numbers, so the wording is a judgement call, logged.
+  **Issue:** #90
+- **Decision:** `PauseCard` and `WinCard` read `GameScope.maybeOf`: with a scope, New deal opens the setup screen and the win card shows STREAK; without one (the board-only widget tests of #80) New deal deals directly and STREAK is absent. `ToolRow` takes an optional `onNew` the same way.
+  **Why:** #80's tests pump `BoardView` alone with hand-built positions; rewriting them around the whole app would lose their precision for no behavioural gain.
+  **Issue:** #93
+- **Decision:** #93 and #94 share one commit.
+  **Why:** Main menu on the cards pops to the first route, which only means the menu once #94 makes it the root; #93's tests cannot pass on the board-as-root stack.
+  **Issue:** #93, #94
+- **Decision:** The controller still starts with a random Klondike (never saved until it changes) rather than "no game"; the menu's Continue reuses it when it is the saved game and installs the slot otherwise. The corruption banner reads `AppStore.corruptionNotices` straight from the scope.
+  **Why:** `GameController` requires a game and the board is only pushed with one; a nullable game would touch every board widget for a state that never shows.
+  **Issue:** #94
+- **Decision:** Screen tests settle route transitions with an explicit 900 ms pump (`settle(tester, transition: true)`) and `openScreen` tears the previous app down before pumping a new one.
+  **Why:** This Flutter's Android page transition runs 800 ms, and `pumpAndSettle` never settles while the search screen's bar loops; a second `HonestSolitaireApp` in one test otherwise reuses the first `GameRoot` state and store.
+  **Issue:** #87, #91

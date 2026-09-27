@@ -9,6 +9,7 @@ import 'package:honest_solitaire/engine/scoring.dart';
 import 'package:honest_solitaire/ui/app.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/screens/loading_screen.dart';
+import 'package:honest_solitaire/ui/screens/menu_screen.dart';
 
 /// A dealer the test drives by hand.
 class FakeDealer implements DealerHandle {
@@ -192,7 +193,7 @@ void main() {
         );
         expect(find.byKey(const Key('launch-splash')), findsOneWidget);
         expect(
-          find.byType(BoardView),
+          find.byType(MenuScreen),
           findsOneWidget,
           reason: 'built underneath from the start',
         );
@@ -351,7 +352,6 @@ void main() {
         await settle(tester);
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.byType(LoadingScreen), findsOneWidget);
-        expect(find.byType(BoardView), findsOneWidget, reason: 'the old board');
         expect(scope.controller.game.dealNumber.value, 5);
         await tester.binding.handlePopRoute();
         await settle(tester, transition: true);

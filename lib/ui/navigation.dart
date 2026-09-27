@@ -9,6 +9,8 @@ import 'package:honest_solitaire/engine/game.dart';
 
 import 'app.dart';
 import 'game/game_event.dart';
+import 'screens/new_klondike_screen.dart';
+import 'screens/new_spider_screen.dart';
 
 /// Starts a winnable-deal search; `GameScope.search` holds the app's.
 typedef WinnableSearch = DealerHandle Function(
@@ -20,6 +22,9 @@ DealerHandle defaultWinnableSearch(DealNumber base, KlondikeOptions options) =>
     WinnableDealer.search(base, options);
 
 const boardRouteName = '/board';
+
+/// The menu is the app's home route (#94).
+const menuRouteName = '/';
 
 /// Ignores navigation while a route transition runs; the flag clears when
 /// the transition's animation settles (#87, common conventions).
@@ -77,16 +82,19 @@ class NavigationGuard {
   }
 }
 
+/// The board route; pushed only with a game on the controller.
+Route<void> boardRoute() => MaterialPageRoute<void>(
+  settings: const RouteSettings(name: boardRouteName),
+  builder: (_) => const BoardScreen(),
+);
+
 /// Opens the board on the controller's current game, replacing any board
 /// already on the stack.
 Future<void>? openBoard(BuildContext context) {
   final scope = GameScope.of(context);
   return scope.navigating.push(
     Navigator.of(context),
-    MaterialPageRoute<void>(
-      settings: const RouteSettings(name: boardRouteName),
-      builder: (_) => const BoardScreen(),
-    ),
+    boardRoute(),
     toRoot: true,
   );
 }
@@ -161,4 +169,54 @@ DealNumber freshDealNumber(GameScope scope, DealNumber? current) {
   var number = scope.controller.dealNumberSource();
   if (number == current) number = scope.controller.dealNumberSource();
   return number;
+}
+
+/// Opens [screen] above the current route. From the board the game is
+/// paused first, so returning shows the pause card (common conventions).
+Future<void>? openScreen(BuildContext context, Widget screen) {
+  final scope = GameScope.of(context);
+  if (scope.navigating.busy) return null;
+  final onBoard = ModalRoute.of(context)?.settings.name == boardRouteName;
+  if (onBoard) scope.controller.pause();
+  return scope.navigating.push(
+    Navigator.of(context),
+    MaterialPageRoute<void>(builder: (_) => screen),
+  );
+}
+
+/// NEW, a card's New deal: the setup screen for [type] (owner, round one).
+Future<void>? openSetup(BuildContext context, GameType type) => openScreen(
+  context,
+  type == GameType.klondike
+      ? const NewKlondikeScreen()
+      : const NewSpiderScreen(),
+);
+
+/// Main menu from the pause or win card: the save is flushed and the stack
+/// pops to the menu; the controller keeps its game (paused, or won), so
+/// nothing is recorded and Continue can offer it.
+void goToMenu(BuildContext context) {
+  final scope = GameScope.of(context);
+  if (scope.navigating.busy) return;
+  scope.persistence.flush();
+  final route = ModalRoute.of(context);
+  Navigator.of(context).popUntil((r) => r.isFirst);
+  if (route != null) scope.navigating.lockOn(route);
+}
+
+/// The menu's Continue: the controller's live game when it is the saved
+/// one (unpaused), else the saved game installed with `resumeGame`; then
+/// the board.
+void continueGame(BuildContext context) {
+  final scope = GameScope.of(context);
+  if (scope.navigating.busy) return;
+  final slot = scope.saves.value.resumeTarget;
+  if (slot == null) return;
+  final live = scope.controller.game;
+  if (live == slot.game) {
+    scope.controller.resume();
+  } else {
+    scope.controller.resumeGame(slot.game, hasMove: slot.start);
+  }
+  openBoard(context);
 }

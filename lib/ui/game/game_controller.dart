@@ -12,7 +12,6 @@ import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
-import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
@@ -179,13 +178,8 @@ class GameController extends ChangeNotifier {
 
   /// The other game, kept while the player is on this one (owner, /n8-plan
   /// M3 round two: switching back resumes it).
-  Game? _kept;
-  Game? get keptGame => _kept;
 
   /// The last Klondike options seen, for "Switch to Klondike".
-  KlondikeOptions _lastKlondikeOptions = const KlondikeOptions(
-    draw: DrawMode.three,
-  );
 
   /// Whether a finish sweep is stepping: every input is blocked meanwhile.
   bool get finishing => _sweep != null;
@@ -246,33 +240,6 @@ class GameController extends ChangeNotifier {
       pause();
     }
     _syncClock();
-  }
-
-  /// Puts the other game on the board, keeping this one in memory; a kept
-  /// game that is already won is replaced by a fresh deal of its type.
-  void switchGame() {
-    final current = _game;
-    if (current is KlondikeGame) _lastKlondikeOptions = current.options;
-    final other = _kept;
-    _kept = current;
-    Game next;
-    if (other != null && !other.isWon) {
-      next = other;
-    } else {
-      switch (current) {
-        case KlondikeGame():
-          next = SpiderGame.deal(
-            dealNumberSource(),
-            SpiderOptions(suits: SpiderSuits.two, autoFlip: settings.autoFlip),
-          );
-        case SpiderGame():
-          next = KlondikeGame.deal(
-            dealNumberSource(),
-            _lastKlondikeOptions.copyWith(autoFlip: settings.autoFlip),
-          );
-      }
-    }
-    replaceGame(next);
   }
 
   /// Starts the finish sweep over [game] (already checked with canFinish).

@@ -15,8 +15,10 @@ import '../data/game_saves.dart';
 import '../data/settings_store.dart';
 import '../data/stats.dart';
 import '../platform/platform_channel.dart';
+import 'game/game_event.dart';
 import 'navigation.dart';
 import 'screens/loading_screen.dart';
+import 'screens/menu_screen.dart';
 
 import 'board/board_layout.dart';
 import 'board/board_view.dart';
@@ -106,7 +108,7 @@ class HonestSolitaireApp extends StatelessWidget {
         showSplash: showSplash,
         child: child!,
       ),
-      home: const BoardScreen(),
+      home: const MenuScreen(),
     );
   }
 }
@@ -224,6 +226,7 @@ class _GameRootState extends State<GameRoot> {
     platform: platform,
     search: search,
     navigating: navigating,
+    persistence: persistence,
     child: Stack(
       children: [
         widget.child,
@@ -254,6 +257,7 @@ class GameScope extends InheritedWidget {
     required this.platform,
     required this.search,
     required this.navigating,
+    required this.persistence,
     required super.child,
   });
 
@@ -268,6 +272,11 @@ class GameScope extends InheritedWidget {
   final PlatformChannel platform;
   final WinnableSearch search;
   final NavigationGuard navigating;
+  final GamePersistence persistence;
+
+  /// Null outside the app (the board-only widget tests).
+  static GameScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GameScope>();
 
   static GameScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<GameScope>();
@@ -302,7 +311,11 @@ class BoardScreen extends StatelessWidget {
               controller: controller,
               padding: padding,
               topBar: (_) => TopBar(controller: controller, scale: scale),
-              toolRow: (_) => ToolRow(controller: controller, scale: scale),
+              toolRow: (_) => ToolRow(
+                controller: controller,
+                scale: scale,
+                onNew: () => openSetup(context, GameType.of(controller.game)),
+              ),
             );
           },
         ),

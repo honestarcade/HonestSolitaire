@@ -9,6 +9,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/scoring.dart';
 import 'package:honest_solitaire/ui/app.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
+import 'package:honest_solitaire/ui/navigation.dart';
 import 'package:honest_solitaire/ui/card/card_style.dart';
 import 'package:honest_solitaire/ui/screens/settings_screen.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
@@ -29,6 +30,9 @@ Future<GameScope> openSettings(WidgetTester tester, AppStore store) async {
   await tester.pump();
   final scope = tester.widget<GameScope>(find.byType(GameScope));
   final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+  // A board under Settings, as the pause card opens it (#93).
+  navigator.push(boardRoute());
+  await tester.pumpAndSettle();
   navigator.push(
     MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
   );

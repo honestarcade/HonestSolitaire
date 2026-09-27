@@ -10,10 +10,19 @@ import '../theme/palette.dart';
 import 'game_controller.dart';
 
 class ToolRow extends StatelessWidget {
-  const ToolRow({super.key, required this.controller, required this.scale});
+  const ToolRow({
+    super.key,
+    required this.controller,
+    required this.scale,
+    this.onNew,
+  });
 
   final GameController controller;
   final double scale;
+
+  /// NEW opens the setup screen (#93); null deals directly (board-only
+  /// tests).
+  final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context) => MediaQuery.withNoTextScaling(
@@ -80,7 +89,7 @@ class ToolRow extends StatelessWidget {
             label: 'NEW',
             semantics: 'New deal',
             enabled: !blocked,
-            onPressed: controller.newDeal,
+            onPressed: onNew ?? controller.newDeal,
           ),
         ];
         final ordered = controller.display.leftHanded

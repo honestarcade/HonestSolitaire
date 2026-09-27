@@ -1,15 +1,20 @@
-/// The pause card (#80): over the dimmed board, the game's mode line with
-/// the deal number, then Resume, Restart this deal, New deal and — until
-/// M4's menu — a switch to the other game.
+/// The pause card (#80, completed by #93): over the dimmed board, the
+/// game's mode line with the deal number, then Resume, Restart this deal,
+/// New deal, Rules and Settings side by side, and Main menu.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/scoring.dart';
 
+import '../app.dart';
 import '../format.dart';
+import '../navigation.dart';
+import '../screens/how_to_play_screen.dart';
+import '../screens/settings_screen.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
+import 'game_event.dart';
 
 /// "KLONDIKE · DRAW 3 · VEGAS · 2:14 · DEAL #48213".
 String pauseMeta(Game game) {
@@ -32,19 +37,26 @@ String pauseMeta(Game game) {
 }
 
 class PauseCard extends StatelessWidget {
-  const PauseCard({super.key, required this.controller, required this.scale});
+  const PauseCard({
+    super.key,
+    required this.controller,
+    required this.scale,
+    this.vScale = 1,
+  });
 
   final GameController controller;
   final double scale;
 
+  /// Tightens the vertical spacing on short phones (#93).
+  final double vScale;
+
   @override
   Widget build(BuildContext context) {
     final s = scale;
+    final v = vScale;
     final game = controller.game;
-    final otherLabel = switch (game) {
-      KlondikeGame() => 'Switch to Spider (2 suits)',
-      SpiderGame() => 'Switch to Klondike',
-    };
+    final type = GameType.of(game);
+    final scope = GameScope.maybeOf(context);
     return Semantics(
       scopesRoute: true,
       namesRoute: true,
@@ -52,7 +64,7 @@ class PauseCard extends StatelessWidget {
       label: 'Paused',
       child: Container(
         key: const Key('pause-card'),
-        padding: EdgeInsets.all(22 * s),
+        padding: EdgeInsets.symmetric(horizontal: 22 * s, vertical: 22 * s * v),
         decoration: BoxDecoration(
           color: Palette.card,
           borderRadius: BorderRadius.circular(20 * s),
@@ -78,7 +90,7 @@ class PauseCard extends StatelessWidget {
                 height: 1,
               ),
             ),
-            SizedBox(height: 8 * s),
+            SizedBox(height: 8 * s * v),
             Text(
               pauseMeta(game),
               key: const Key('pause-meta'),
@@ -90,32 +102,59 @@ class PauseCard extends StatelessWidget {
                 height: 1,
               ),
             ),
-            SizedBox(height: 18 * s),
+            SizedBox(height: 18 * s * v),
             CardButton.primary(
               'Resume',
               key: const Key('pause-resume'),
               onPressed: controller.resume,
               scale: s,
             ),
-            SizedBox(height: 9 * s),
+            SizedBox(height: 9 * s * v),
             CardButton.secondary(
               'Restart this deal',
               key: const Key('pause-restart'),
               onPressed: controller.restart,
               scale: s,
             ),
-            SizedBox(height: 9 * s),
+            SizedBox(height: 9 * s * v),
             CardButton.secondary(
               'New deal',
               key: const Key('pause-new'),
-              onPressed: controller.newDeal,
+              // Without a scope (board-only tests) the deal is direct.
+              onPressed: scope == null
+                  ? controller.newDeal
+                  : () => openSetup(context, type),
               scale: s,
             ),
-            SizedBox(height: 9 * s),
-            CardButton.secondary(
-              otherLabel,
-              key: const Key('pause-switch'),
-              onPressed: controller.switchGame,
+            SizedBox(height: 9 * s * v),
+            Row(
+              children: [
+                Expanded(
+                  child: CardButton.secondary(
+                    'Rules',
+                    key: const Key('pause-rules'),
+                    onPressed: () =>
+                        openScreen(context, HowToPlayScreen(game: type)),
+                    scale: s,
+                  ),
+                ),
+                SizedBox(width: 9 * s),
+                Expanded(
+                  child: CardButton.secondary(
+                    'Settings',
+                    key: const Key('pause-settings'),
+                    onPressed: () =>
+                        openScreen(context, const SettingsScreen()),
+                    scale: s,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4 * s * v),
+            CardButton.quiet(
+              'Main menu',
+              key: const Key('pause-menu'),
+              onPressed: () => goToMenu(context),
               scale: s,
             ),
           ],
