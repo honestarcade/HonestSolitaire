@@ -37,10 +37,12 @@ class _StatsScreenState extends State<StatsScreen> {
   GameType? _tab;
   bool _confirming = false;
   final _scroll = ScrollController();
+  final _resetFocus = FocusNode(debugLabel: 'stats-reset');
 
   @override
   void dispose() {
     _scroll.dispose();
+    _resetFocus.dispose();
     super.dispose();
   }
 
@@ -60,11 +62,15 @@ class _StatsScreenState extends State<StatsScreen> {
     GameScope.of(context).announcer.announce(context, 'Reset all statistics?');
   }
 
-  void _cancel() => setState(() => _confirming = false);
+  void _cancel() {
+    setState(() => _confirming = false);
+    _resetFocus.requestFocus();
+  }
 
   void _reset() {
     setState(() => _confirming = false);
     GameScope.of(context).stats.resetAll();
+    _resetFocus.requestFocus();
   }
 
   @override
@@ -93,6 +99,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   enabled: !empty,
                   scale: s,
                   onPressed: _askReset,
+                  focusNode: _resetFocus,
                 ),
                 children: [
                   ScreenHeader(
@@ -452,11 +459,16 @@ class _ResetButton extends StatelessWidget {
     required this.enabled,
     required this.scale,
     required this.onPressed,
+    required this.focusNode,
   });
 
   final bool enabled;
   final double scale;
   final VoidCallback onPressed;
+
+  /// Focus returns here after Cancel or Reset dismiss the confirmation
+  /// (#142).
+  final FocusNode focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -469,26 +481,29 @@ class _ResetButton extends StatelessWidget {
       excludeSemantics: true,
       child: Opacity(
         opacity: enabled ? 1 : Palette.disabledOpacity,
-        child: GestureDetector(
-          key: const Key('stats-reset'),
-          behavior: HitTestBehavior.opaque,
-          onTap: enabled ? onPressed : null,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            alignment: Alignment.center,
-            padding: EdgeInsets.all(14 * s),
-            decoration: BoxDecoration(
-              color: _red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(13 * s),
-              border: Border.all(color: _red.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              'Reset statistics',
-              style: TextStyle(
-                fontSize: 13 * s,
-                fontWeight: FontWeight.w500,
-                height: 1,
-                color: Palette.errorText,
+        child: Focus(
+          focusNode: focusNode,
+          child: GestureDetector(
+            key: const Key('stats-reset'),
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled ? onPressed : null,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.center,
+              padding: EdgeInsets.all(14 * s),
+              decoration: BoxDecoration(
+                color: _red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(13 * s),
+                border: Border.all(color: _red.withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                'Reset statistics',
+                style: TextStyle(
+                  fontSize: 13 * s,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                  color: Palette.errorText,
+                ),
               ),
             ),
           ),
