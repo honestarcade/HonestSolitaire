@@ -26,6 +26,10 @@ const boardRouteName = '/board';
 /// The menu is the app's home route (#94).
 const menuRouteName = '/';
 
+/// Tells the board when it is the visible route (#101's music gate).
+final RouteObserver<ModalRoute<void>> boardRouteObserver =
+    RouteObserver<ModalRoute<void>>();
+
 /// Ignores navigation while a route transition runs; the flag clears when
 /// the transition's animation settles (#87, common conventions).
 class NavigationGuard {

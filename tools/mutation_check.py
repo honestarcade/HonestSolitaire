@@ -451,6 +451,27 @@ MUTATIONS: list[Mutation] = [
                  "Text('\u21ba', style: TextStyle(fontSize: 15 * s, color: fg))"),
              "a phone without that glyph in its fonts would show a box",
              'glyph-scan: 1 offender'),
+    # ---- #101: the sound bridge --------------------------------------------
+    Mutation("#101a", "the sound channel grows a seventh method",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r'(\n(\s*)"release" -> \{)', r'\n\2"upload" -> result.success(true)\1'),
+             "a new platform capability would ship unreviewed",
+             'platform-surface: the sound channel handles'),
+    Mutation("#101b", "the volume keys stop controlling the media stream",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/MainActivity.kt",
+             sub(r"\n\s*volumeControlStream = AudioManager\.STREAM_MUSIC", ""),
+             "the volume keys would change the ringer while a game plays",
+             'MainActivity.kt: volumeControlStream is not STREAM_MUSIC'),
+    Mutation("#101c", "the bridge starts taking audio focus",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r"(private fun musicStart\(\): Boolean \{\n)", r"\1        // manager?.requestAudioFocus(null, 3, 1)\n"),
+             "the loop would duck or stop the player's own music",
+             'SoundBridge.kt: requests audio focus'),
+    Mutation("#101d", "the bridge stops checking for another app's audio",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r"if \(manager != null && manager\.isMusicActive\) return false", "if (manager == null) return false"),
+             "the loop would play over the player's podcast",
+             'SoundBridge.kt: no isMusicActive check'),
 ]
 
 

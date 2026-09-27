@@ -14,6 +14,10 @@ import '../data/app_store.dart';
 import '../data/game_saves.dart';
 import '../data/settings_store.dart';
 import '../data/stats.dart';
+import '../feedback/clips.dart';
+import '../feedback/game_feedback.dart';
+import '../feedback/music_controller.dart';
+import '../feedback/sound_player.dart';
 import '../platform/platform_channel.dart';
 import 'game/game_event.dart';
 import 'navigation.dart';
@@ -29,6 +33,8 @@ import 'settings/display_options.dart';
 import 'settings/play_settings.dart';
 import 'theme/palette.dart';
 import 'fonts.dart';
+
+import 'dart:async';
 
 /// The design's defaults for the launch deal and for NEW: draw 3, standard
 /// scoring, timed. Auto-flip follows the setting at deal time.
@@ -55,6 +61,7 @@ class HonestSolitaireApp extends StatelessWidget {
     this.store,
     this.platform,
     this.search,
+    this.sound,
     this.showSplash = true,
   });
 
@@ -62,11 +69,13 @@ class HonestSolitaireApp extends StatelessWidget {
   final DisplayOptions initialDisplayOptions;
 
   /// Production defaults when null: the platform channel, a store over its
-  /// files directory and `WinnableDealer.search`. Tests pass
-  /// `AppStore.memory()`, a mock channel and a fake search.
+  /// files directory, `WinnableDealer.search` and the sound bridge. Tests
+  /// pass `AppStore.memory()`, a mock channel, a fake search and a fake
+  /// player.
   final AppStore? store;
   final PlatformChannel? platform;
   final WinnableSearch? search;
+  final SoundPlayer? sound;
 
   /// False skips the launch splash (tests of other screens).
   final bool showSplash;
@@ -107,9 +116,11 @@ class HonestSolitaireApp extends StatelessWidget {
         store: store,
         platform: platform,
         search: search,
+        sound: sound,
         showSplash: showSplash,
         child: child!,
       ),
+      navigatorObservers: [boardRouteObserver],
       home: const MenuScreen(),
     );
   }
@@ -125,6 +136,7 @@ class GameRoot extends StatefulWidget {
     this.store,
     this.platform,
     this.search,
+    this.sound,
     this.showSplash = true,
     required this.child,
   });
@@ -135,6 +147,7 @@ class GameRoot extends StatefulWidget {
   final AppStore? store;
   final PlatformChannel? platform;
   final WinnableSearch? search;
+  final SoundPlayer? sound;
   final bool showSplash;
   final Widget child;
 
@@ -177,13 +190,36 @@ class _GameRootState extends State<GameRoot> {
 
   final navigating = NavigationGuard();
   late final WinnableSearch search = widget.search ?? defaultWinnableSearch;
+  late final SoundPlayer sound = widget.sound ?? ChannelSoundPlayer();
+  late final GameFeedback feedback = GameFeedback(
+    controller,
+    playSettings,
+    sound,
+  );
+  final boardVisible = ValueNotifier<bool>(false);
+  late final MusicController music = MusicController(
+    controller,
+    playSettings,
+    boardVisible,
+    sound,
+  );
+  late final SettingsSamples samples = SettingsSamples(
+    playSettings,
+    settingsStore,
+    onSoundOn: () => sound.play(Clip.snap),
+    onHapticsOn: () {},
+  );
   late bool _loading = widget.showSplash;
 
   /// The launch order (#87): settings, statistics, saved games — each label
   /// naming the step in progress. Without the splash the loads still run,
   /// concurrently.
   late final List<LaunchStep> launchSteps = [
-    LaunchStep('SHUFFLING', settingsStore.load),
+    LaunchStep('SHUFFLING', () {
+      // The clips load alongside the settings; never awaited, never a step.
+      unawaited(sound.load(clips));
+      return settingsStore.load();
+    }),
     LaunchStep('DEALING', stats.load),
     LaunchStep('READY', () async {
       await saves.load();
@@ -197,6 +233,9 @@ class _GameRootState extends State<GameRoot> {
     // Touch the listeners so they attach from the first frame.
     persistence;
     statsListener;
+    feedback;
+    music;
+    samples;
     if (!_loading) {
       for (final step in launchSteps) {
         step.run();
@@ -206,6 +245,11 @@ class _GameRootState extends State<GameRoot> {
 
   @override
   void dispose() {
+    feedback.dispose();
+    music.dispose();
+    samples.dispose();
+    boardVisible.dispose();
+    unawaited(sound.dispose());
     persistence.dispose();
     statsListener.dispose();
     settingsStore.dispose();
@@ -229,6 +273,8 @@ class _GameRootState extends State<GameRoot> {
     search: search,
     navigating: navigating,
     persistence: persistence,
+    boardVisible: boardVisible,
+    sound: sound,
     // One transparent Material above the Navigator: every route's text
     // takes the theme's DefaultTextStyle (Outfit, #96) instead of the
     // yellow-underlined fallback a Material-less screen would show.
@@ -266,6 +312,8 @@ class GameScope extends InheritedWidget {
     required this.search,
     required this.navigating,
     required this.persistence,
+    required this.boardVisible,
+    required this.sound,
     required super.child,
   });
 
@@ -281,6 +329,10 @@ class GameScope extends InheritedWidget {
   final WinnableSearch search;
   final NavigationGuard navigating;
   final GamePersistence persistence;
+
+  /// True while a board route is the visible one (#101's music gate).
+  final ValueNotifier<bool> boardVisible;
+  final SoundPlayer sound;
 
   /// Null outside the app (the board-only widget tests).
   static GameScope? maybeOf(BuildContext context) =>
@@ -301,8 +353,44 @@ class GameScope extends InheritedWidget {
 
 /// The board, edge to edge behind the system bars, laid out inside the
 /// safe area, scaled from the 390-point design and capped at 480.
-class BoardScreen extends StatelessWidget {
+class BoardScreen extends StatefulWidget {
   const BoardScreen({super.key});
+
+  @override
+  State<BoardScreen> createState() => _BoardScreenState();
+}
+
+/// Reports whether the board is the visible route (#101): pushed or
+/// returned to → visible; covered or popped → not.
+class _BoardScreenState extends State<BoardScreen> with RouteAware {
+  ValueNotifier<bool>? _visible;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _visible = GameScope.of(context).boardVisible;
+    final route = ModalRoute.of(context);
+    if (route != null) boardRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void didPush() => _visible?.value = true;
+
+  @override
+  void didPopNext() => _visible?.value = true;
+
+  @override
+  void didPushNext() => _visible?.value = false;
+
+  @override
+  void didPop() => _visible?.value = false;
+
+  @override
+  void dispose() {
+    boardRouteObserver.unsubscribe(this);
+    _visible?.value = false;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

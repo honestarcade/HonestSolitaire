@@ -383,3 +383,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The engine's and the hint's `toString` debug strings write `->` instead of `→`.
   **Why:** They are string literals under `lib/`, so the glyph scan reads them; ASCII loses nothing in a debug string, and an exemption for them would be a second prose list to keep.
   **Issue:** #100
+- **Decision:** The controller publishes one `FeedbackStep` per action, derived from the committed states (flips by card id in the tableau, runs and foundations completed, wins, a Spider row dealt) and stated explicitly for undo, restart, new deal, refusal and peek; `clipFor` reduces it to one clip (chime > deal > flip > snap; Kings inside the sweep do not chime, the win does). The music gate serialises its bridge calls and keeps one start in flight.
+  **Why:** #101's discretion; deriving from states needs no move type and covers taps, drops, hints and undos alike. A settings change notifies the controller too, which queued a second `musicStart` until the in-flight flag.
+  **Issue:** #101
+- **Decision:** The platform-surface guard's `when`-block parser is brace-balanced (it used to stop at the first 16-space `}`, which the sound bridge's nested `if` has) and now also holds the sound channel's six methods, both channel names, the two registrations, and the bridge's and activity's audio facts.
+  **Why:** #101's AC; the old parser was written against MainActivity's indentation and read one method from SoundBridge.kt.
+  **Issue:** #101

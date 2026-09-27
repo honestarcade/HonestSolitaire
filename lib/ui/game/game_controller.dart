@@ -24,6 +24,7 @@ import 'game_clock.dart';
 import 'game_event.dart';
 import 'ui_hint.dart';
 import '../board/card_motion.dart';
+import '../../feedback/feedback_event.dart';
 
 /// A run to shake sideways: the pile, the first card of the run, and a
 /// sequence number so a repeat restarts the animation.
@@ -252,8 +253,15 @@ class GameController extends ChangeNotifier {
     _flushClock();
     final sweep = FinishSweep(
       show: (step) {
+        final before = _shownStep ?? _game;
         _shownStep = step;
         displayGame.value = step;
+        // Each step lands a card; the Kings do not chime inside the sweep
+        // (the win chimes at the end).
+        _emit({
+          ...deriveFeedback(before, step),
+          FeedbackEvent.snap,
+        }, sweep: true);
         notifyListeners();
       },
       onDone: () {
@@ -315,8 +323,10 @@ class GameController extends ChangeNotifier {
   /// Records a new game state from a move: the display copy, the first-move
   /// gate and the clock.
   void _commit(Game game) {
+    final before = _game;
     _game = game;
     displayGame.value = game;
+    _emit(deriveFeedback(before, game));
     if (!_moved) _moved = true;
     _hasMove = true;
     _syncClock();
@@ -371,6 +381,20 @@ class GameController extends ChangeNotifier {
   AppMotion motion = AppMotion.full;
 
   int _installSequence = 0;
+  int _newGameSequence = 0;
+
+  /// Bumped on a new game only (new deal, restart, a setup Deal, a found
+  /// deal) — not on resume — so the music restarts from the top (#101).
+  int get newGameSequence => _newGameSequence;
+
+  /// One step per action: what it did, for sounds (#101) and ticks (#107).
+  /// Notifies on every assignment, even of an equal step.
+  final feedback = _StepNotifier();
+
+  void _emit(Set<FeedbackEvent> events, {bool sweep = false}) {
+    if (events.isEmpty) return;
+    feedback.value = FeedbackStep(events, sweep: sweep);
+  }
 
   /// Bumped whenever a different game is installed (new deal, restart,
   /// resume), so the board snaps instead of animating between two deals.
@@ -410,7 +434,9 @@ class GameController extends ChangeNotifier {
   /// notifies; the clock waits for a first move.
   void replaceGame(Game game) {
     _abandonIf(GameType.of(game) == GameType.of(_game), AbandonReason.newDeal);
+    _newGameSequence++;
     _install(game, hasMove: false);
+    _emit({FeedbackEvent.newDeal});
   }
 
   /// The same game again after a restart or the app closing: nothing is
@@ -461,7 +487,10 @@ class GameController extends ChangeNotifier {
   void undo() {
     if (!canUndo || _sweep != null) return;
     final result = _game.undo(unlimited: settings.unlimitedUndo);
-    if (result is Applied<Game>) replaceGameKeepingClock(result.game);
+    if (result is Applied<Game>) {
+      replaceGameKeepingClock(result.game);
+      _emit({FeedbackEvent.snap}); // an undo snaps, never flips or chimes
+    }
   }
 
   /// FINISH is offered only when the sweep really completes (#67).
@@ -499,7 +528,9 @@ class GameController extends ChangeNotifier {
   /// move is abandoned first (#85).
   void restart() {
     _abandonIf(true, AbandonReason.restart);
+    _newGameSequence++;
     _install(_game.restart(), hasMove: false);
+    _emit({FeedbackEvent.newDeal});
   }
 
   /// Adds the clock's unflushed part to the game (before a save or a stats
@@ -781,6 +812,7 @@ class GameController extends ChangeNotifier {
   }
 
   void startPeek(int column) {
+    _emit({FeedbackEvent.peek});
     if (!canPeek(column)) return;
     _peekColumn = column;
     HapticFeedback.selectionClick();
@@ -796,6 +828,7 @@ class GameController extends ChangeNotifier {
   /// Shakes [pile] from [start] for [shakeDuration]; the target clears
   /// itself afterwards with a second notification.
   void startShake(BoardPile pile, int? start) {
+    _emit({FeedbackEvent.refused});
     _shakeTimer?.cancel();
     _shakeSequence++;
     _shake = ShakeTarget(pile, start, _shakeSequence);
@@ -1139,6 +1172,7 @@ class GameController extends ChangeNotifier {
 
   @override
   void dispose() {
+    feedback.dispose();
     playSettings.removeListener(_onSettings);
     _shakeTimer?.cancel();
     _springTimer?.cancel();
@@ -1168,4 +1202,73 @@ class GameNotifier extends ChangeNotifier implements ValueListenable<Game> {
     _value = game;
     notifyListeners();
   }
+}
+
+/// A notifier that fires on every assignment: two equal steps in a row
+/// are two actions.
+class _StepNotifier extends ChangeNotifier
+    implements ValueListenable<FeedbackStep?> {
+  FeedbackStep? _value;
+
+  @override
+  FeedbackStep? get value => _value;
+
+  set value(FeedbackStep? step) {
+    _value = step;
+    if (step != null) notifyListeners();
+  }
+}
+
+/// What a committed change from [before] to [after] did, from the states
+/// alone: a Spider row dealt, tableau cards turned up, runs and foundations
+/// completed, a win — and otherwise a snap.
+Set<FeedbackEvent> deriveFeedback(Game before, Game after) {
+  final events = <FeedbackEvent>{};
+  switch ((before, after)) {
+    case (SpiderGame b, SpiderGame a):
+      if (a.stock.length < b.stock.length) events.add(FeedbackEvent.dealRow);
+      if (a.completed.length > b.completed.length) {
+        events.add(FeedbackEvent.runCompleted);
+      }
+      if (_tableauTurnedUp(b.tableau, a.tableau)) {
+        events.add(FeedbackEvent.flip);
+      }
+    case (KlondikeGame b, KlondikeGame a):
+      for (var i = 0; i < 4; i++) {
+        if (a.foundations[i].length == kingRank &&
+            b.foundations[i].length < kingRank) {
+          events.add(FeedbackEvent.foundationCompleted);
+        }
+      }
+      if (_tableauTurnedUp(b.tableau, a.tableau)) {
+        events.add(FeedbackEvent.flip);
+      }
+    default:
+      break;
+  }
+  if (after.isWon && !before.isWon) events.add(FeedbackEvent.win);
+  if (events.isEmpty ||
+      events.every(
+        (e) =>
+            e == FeedbackEvent.flip || e == FeedbackEvent.foundationCompleted,
+      )) {
+    events.add(FeedbackEvent.snap);
+  }
+  return events;
+}
+
+/// A face-down tableau card of [before] is face up in [after], by id.
+bool _tableauTurnedUp(List<List<Card>> before, List<List<Card>> after) {
+  final down = <int>{
+    for (final column in before)
+      for (final c in column)
+        if (!c.faceUp && c.id >= 0) c.id,
+  };
+  if (down.isEmpty) return false;
+  for (final column in after) {
+    for (final c in column) {
+      if (c.faceUp && down.contains(c.id)) return true;
+    }
+  }
+  return false;
 }
