@@ -164,6 +164,14 @@ class _ToolButtonState extends State<_ToolButton> {
       button: true,
       enabled: t.enabled,
       label: t.semantics,
+      onTap: t.enabled
+          ? () {
+              t.onPressed();
+              Future<void>.delayed(const Duration(milliseconds: 120), () {
+                if (mounted) setState(() => _pressed = false);
+              });
+            }
+          : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: t.enabled ? 1 : Palette.disabledOpacity,

@@ -73,7 +73,7 @@ class Palette {
 
   /// The design's #7FA6D8, lightened one step to pass on the felt's
   /// brightest stop (#102).
-  static const mist = Color(0xFF87ABDA);
+  static const mist = Color(0xFF96B6DF);
   static const readout = Color(0xFF9FC3EE);
   static const card = Color(0xFF0B3670);
   static const cardDeep = Color(0xFF04213F);
@@ -149,13 +149,20 @@ class Palette {
     card,
   ];
 
+  /// A 5 % white panel over the felt's brightest stop: the About tile on
+  /// its gradient (#109 found mist at 4.48:1 there).
+  static const panelOnFeltTop = Color(0xFF164486);
+
+  /// Where mist sits: the navy surfaces and the About tile's panel.
+  static const List<Color> mistSurfaces = [...navySurfaces, panelOnFeltTop];
+
   /// Nudged tokens with their design values (#102).
   static const List<NudgedToken> nudges = [
     NudgedToken('textMuted', textMuted, Color(0xFF5C7FB0), navySurfaces),
     NudgedToken('textFaint', textFaint, Color(0xFF4E739F), navySurfaces),
     NudgedToken('textKicker', textKicker, Color(0xFF6E93C4), navySurfaces),
     NudgedToken('textBody', textBody, Color(0xFF87A9D0), navySurfaces),
-    NudgedToken('mist', mist, Color(0xFF7FA6D8), navySurfaces),
+    NudgedToken('mist', mist, Color(0xFF7FA6D8), mistSurfaces),
     NudgedToken('textViolet', textViolet, Color(0xFFB48CFF), navySurfaces),
     NudgedToken('textBlue', textBlue, Color(0xFF6FB4FF), navySurfaces),
     NudgedToken('textSoft', textSoft, Color(0xFFBBD2EC), navySurfaces),
@@ -178,7 +185,7 @@ class Palette {
     TextPair('body on navy', textBody, navySurfaces),
     TextPair('soft body', textSoft, navySurfaces),
     TextPair('bright body', textBright, navySurfaces),
-    TextPair('mist meta', mist, navySurfaces),
+    TextPair('mist meta', mist, mistSurfaces),
     TextPair('readouts', readout, navySurfaces),
     TextPair('pale text', paleText, navySurfaces),
     TextPair('white text', Color(0xFFFFFFFF), [...navySurfaces, violet]),

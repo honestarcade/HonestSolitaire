@@ -76,6 +76,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
             link: true,
             label:
                 'Support Honest Arcade. $supportText ${contributeLink.display}, opens in browser',
+            onTap: () => _opener.open(context, contributeLink),
             excludeSemantics: true,
             child: GestureDetector(
               key: const Key('about-support'),
@@ -214,9 +215,12 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                 opener: _opener,
                 scale: s,
               ),
-              Text(
-                '·',
-                style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
+              // A separator, not a word (#109): TalkBack skips it.
+              ExcludeSemantics(
+                child: Text(
+                  '·',
+                  style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
+                ),
               ),
               LinkText(
                 label: 'SOURCE ON GITHUB',

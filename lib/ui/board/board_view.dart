@@ -7,10 +7,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/semantics.dart'
-    show OrdinalSortKey, CustomSemanticsAction;
+    show OrdinalSortKey, CustomSemanticsAction, SemanticsTag;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
+import '../a11y/tap_target.dart';
 import '../card/card_style.dart';
 import '../card/playing_card.dart';
 import '../game/game_controller.dart';
@@ -64,6 +65,10 @@ const _spiderEmptyEdge = Color(0x29FFFFFF); // .16
 const _completedEdge = Color(0x24FFFFFF); // .14
 const _slotFill = Color(0x0AFFFFFF); // .04
 const _hintEdge = Palette.hintRing;
+
+/// Marks a board node the tap-target guideline may not hold to 48 dp: a
+/// card as wide as its card (#109, owner). The guard reads it.
+const SemanticsTag a11yExemptCard = SemanticsTag('a11y-exempt-card');
 
 class BoardView extends StatefulWidget {
   const BoardView({
@@ -670,9 +675,16 @@ class _Board extends StatelessWidget {
     _semanticsLayer(children, game);
     // Traversal (#108): top bar, the board's nodes, tool row.
     if (topBar != null) {
+      // The bar's hit boxes may reach below its drawn height (#109).
+      final bar = layout.topBar;
       children.add(
         Positioned.fromRect(
-          rect: layout.topBar,
+          rect: Rect.fromLTWH(
+            bar.left,
+            bar.top,
+            bar.width,
+            math.max(bar.height, kMinTapTarget),
+          ),
           // explicitChildNodes keeps the bar's own nodes; a plain Semantics
           // would merge them into one.
           child: Semantics(
@@ -727,7 +739,17 @@ class _Board extends StatelessWidget {
         hint.source == pile &&
         hint.start != null &&
         i >= hint.start!;
-    Rect hit(BoardPile pile) => layout.hitAreas[pile] ?? layout.slots[pile]!;
+    // The layout widens the top row's hit rects (#73); an empty column's
+    // is widened here the same way, so its node meets 48 dp (#109).
+    Rect hit(BoardPile pile) {
+      final r = layout.hitAreas[pile] ?? layout.slots[pile]!;
+      return Rect.fromCenter(
+        center: r.center,
+        width: math.max(r.width, kMinTapTarget),
+        height: math.max(r.height, kMinTapTarget),
+      );
+    }
+
     VoidCallback? tap(BoardPile pile, int? index) =>
         live ? () => controller.tapPile(pile, index) : null;
     List<CardAction> actions(List<CardAction> Function() f) =>
@@ -742,9 +764,9 @@ class _Board extends StatelessWidget {
       String? tapHint,
       bool selected = false,
       List<CardAction> actions = const [],
-    }) => Positioned.fromRect(
-      rect: rect,
-      child: Semantics(
+      bool card = false,
+    }) {
+      final semantics = Semantics(
         key: key,
         container: true,
         sortKey: OrdinalSortKey((++order).toDouble()),
@@ -759,8 +781,21 @@ class _Board extends StatelessWidget {
                 controller.applyMove(a.move),
         },
         child: const SizedBox.expand(),
-      ),
-    );
+      );
+      return Positioned.fromRect(
+        rect: rect,
+        // A card node is as wide as its card (#109's one tap-target
+        // exception, owner): the tag tells the guideline guard so, and its
+        // custom actions are the other way to act.
+        child: card
+            ? Semantics(
+                tagForChildren: a11yExemptCard,
+                explicitChildNodes: true,
+                child: semantics,
+              )
+            : semantics,
+      );
+    }
 
     // The top row, in on-screen order (the left-handed mirror included).
     final top = <(double, List<Widget> Function())>[];
@@ -799,6 +834,7 @@ class _Board extends StatelessWidget {
               node(
                 layout.cards[waste]!.last,
                 key: Key('sem-card-${k.waste.last.id}'),
+                card: true,
                 label: cardLabel(
                   k.waste.last,
                   waste,
@@ -834,7 +870,7 @@ class _Board extends StatelessWidget {
               ),
               if (cards.isNotEmpty)
                 node(
-                  layout.slots[pile]!,
+                  hit(pile),
                   key: Key('sem-card-${cards.last.id}'),
                   label: cardLabel(
                     cards.last,
@@ -929,6 +965,7 @@ class _Board extends StatelessWidget {
           node(
             strip(0, down),
             key: Key('sem-down-$c'),
+            card: true,
             label: faceDownColumnLabel(c, cards.sublist(0, down)),
             onTap: tap(pile, down - 1),
             tapHint: sel != null
@@ -950,6 +987,7 @@ class _Board extends StatelessWidget {
             key: Key(
               card.id >= 0 ? 'sem-card-${card.id}' : 'sem-${pile.token}-$i',
             ),
+            card: true,
             label: cardLabel(
               card,
               pile,

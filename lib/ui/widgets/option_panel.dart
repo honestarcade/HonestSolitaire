@@ -176,6 +176,7 @@ class _ChoiceButtonState extends State<ChoiceButton> {
       button: true,
       label: '${widget.group}, ${widget.label}',
       hint: widget.hint,
+      onTap: widget.enabled ? widget.onTap : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: widget.enabled ? 1 : Palette.disabledOpacity,
@@ -245,6 +246,7 @@ class _DealButtonState extends State<DealButton> {
       button: true,
       enabled: widget.enabled,
       label: widget.label,
+      onTap: widget.enabled ? widget.onPressed : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: widget.enabled ? 1 : Palette.disabledOpacity,
@@ -299,6 +301,7 @@ class KeepPlayingButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Keep playing the current game',
+      onTap: onPressed,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

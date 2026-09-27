@@ -8,6 +8,7 @@ import 'package:honest_solitaire/engine/game.dart';
 
 import '../../data/app_store.dart';
 import '../../data/game_saves.dart';
+import '../a11y/tap_target.dart';
 import '../app.dart';
 import '../brand/honest_mark.dart';
 import '../card/playing_card.dart';
@@ -172,6 +173,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-stats'),
                           s,
                           () => _open(context, const StatsScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                       SizedBox(width: 10 * s),
@@ -181,6 +183,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-howto'),
                           s,
                           () => _open(context, const HowToPlayScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                     ],
@@ -194,6 +197,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-settings'),
                           s,
                           () => _open(context, const SettingsScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                       SizedBox(width: 10 * s),
@@ -203,6 +207,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-about-app'),
                           s,
                           () => _open(context, const AboutAppScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                     ],
@@ -346,14 +351,15 @@ class _CorruptionBanner extends StatelessWidget {
           Semantics(
             button: true,
             label: 'Dismiss',
+            onTap: onDismiss,
             excludeSemantics: true,
             child: GestureDetector(
               key: const Key('menu-corruption-dismiss'),
               behavior: HitTestBehavior.opaque,
               onTap: onDismiss,
               child: SizedBox(
-                width: 44,
-                height: 44,
+                width: kMinTapTarget,
+                height: kMinTapTarget,
                 child: Center(
                   child: GlyphIcon(
                     Glyph.close,
@@ -404,6 +410,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
     return Semantics(
       button: true,
       label: spoken,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         key: const Key('menu-resume'),
@@ -488,6 +495,7 @@ class _GameCardState extends State<_GameCard> {
     return Semantics(
       button: true,
       label: '${widget.title}, ${widget.subtitle}',
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -659,12 +667,20 @@ class _SpiderArt extends StatelessWidget {
 }
 
 class _Secondary extends StatefulWidget {
-  const _Secondary(this.label, Key key, this.scale, this.onTap)
-    : super(key: key);
+  const _Secondary(
+    this.label,
+    Key key,
+    this.scale,
+    this.onTap, {
+    required this.minHeight,
+  }) : super(key: key);
 
   final String label;
   final double scale;
   final VoidCallback onTap;
+
+  /// The hit height: the guideline's 48 dp (#109).
+  final double minHeight;
 
   @override
   State<_Secondary> createState() => _SecondaryState();
@@ -679,6 +695,7 @@ class _SecondaryState extends State<_Secondary> {
     return Semantics(
       button: true,
       label: widget.label,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -687,7 +704,7 @@ class _SecondaryState extends State<_Secondary> {
         onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: BoxConstraints(minHeight: widget.minHeight),
           alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 15 * s),
           decoration: BoxDecoration(
@@ -731,6 +748,7 @@ class _AboutRowState extends State<_AboutRow> {
     return Semantics(
       button: true,
       label: 'About Honest Arcade, no ads, no tracking, open source',
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         key: const Key('menu-about-studio'),

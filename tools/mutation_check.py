@@ -516,6 +516,12 @@ MUTATIONS: list[Mutation] = [
                  r"'${capital(columnName(column))}, ${plural(down.length, 'face-down card')}, ${down.last.spokenName}'"),
              "TalkBack would read the hidden card's rank and suit",
              'face-down: '),
+    # ---- #109: tap targets -------------------------------------------------------
+    Mutation("#109", "a menu button's hit area shrinks below 48 dp",
+             "lib/ui/screens/menu_screen.dart",
+             sub(r"(const Key\('menu-stats'\),\n(?:.*\n){1,3}?\s*minHeight: )kMinTapTarget", r"\g<1>40"),
+             "Statistics would be a 40 dp target on the menu",
+             'expected tap target size of at least', slow=True),
 ]
 
 

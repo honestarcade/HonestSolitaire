@@ -44,6 +44,7 @@ class ScreenHeader extends StatelessWidget {
         Semantics(
           button: true,
           label: 'Back',
+          onTap: onBack,
           excludeSemantics: true,
           child: GestureDetector(
             key: Key('$keyPrefix-back'),

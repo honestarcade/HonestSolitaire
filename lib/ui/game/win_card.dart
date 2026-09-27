@@ -264,9 +264,11 @@ class GameOverlays extends StatelessWidget {
             child: Semantics(
               container: true,
               child: GestureDetector(
-                // The scrim swallows taps and does nothing.
+                // The scrim swallows taps and does nothing; it is no
+                // control, so it has no semantic tap (#109).
                 key: const Key('scrim'),
                 behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
                 onTap: () {},
                 child: Container(
                   color: showWin
@@ -279,6 +281,7 @@ class GameOverlays extends StatelessWidget {
                   alignment: Alignment.center,
                   child: SingleChildScrollView(
                     child: GestureDetector(
+                      excludeFromSemantics: true,
                       onTap: () {},
                       child: Risen(
                         child: showWin

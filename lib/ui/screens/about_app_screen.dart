@@ -191,6 +191,12 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                 Semantics(
                   button: true,
                   label: 'Honest Arcade Promises',
+                  onTap: () => scope.navigating.push(
+                    Navigator.of(context),
+                    FadePageRoute<void>(
+                      builder: (_) => const AboutStudioScreen(),
+                    ),
+                  ),
                   excludeSemantics: true,
                   child: GestureDetector(
                     key: const Key('aboutapp-studio'),
@@ -244,9 +250,12 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                 opener: _opener,
                 scale: s,
               ),
-              Text(
-                '·',
-                style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
+              // A separator, not a word (#109): TalkBack skips it.
+              ExcludeSemantics(
+                child: Text(
+                  '·',
+                  style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
+                ),
               ),
               LinkText(
                 label: 'SOURCE ON GITHUB',

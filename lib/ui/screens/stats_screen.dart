@@ -19,7 +19,9 @@ const resetConfirmText =
     'Klondike and Spider. Nothing was ever uploaded by this app, so it has no '
     'other copy.';
 
-const _red = Color(0xFFE05A4E);
+// #109: white on the design's lighter red measured 3.66:1; Palette.red
+// (#102's red) carries white at 4.5:1 and over.
+const _red = Palette.red;
 const dash = '—';
 
 class StatsScreen extends StatefulWidget {
@@ -463,6 +465,7 @@ class _ResetButton extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: 'Reset statistics',
+      onTap: enabled ? onPressed : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: enabled ? 1 : Palette.disabledOpacity,
@@ -609,6 +612,7 @@ class _ConfirmCard extends StatelessWidget {
   ) => Semantics(
     button: true,
     label: label,
+    onTap: onTap,
     excludeSemantics: true,
     child: GestureDetector(
       key: key,

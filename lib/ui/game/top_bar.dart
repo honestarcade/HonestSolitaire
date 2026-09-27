@@ -5,6 +5,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
+import 'dart:math' as math;
+
+import '../a11y/tap_target.dart';
+import '../board/board_layout.dart';
 import '../format.dart';
 import '../motion.dart';
 import '../theme/palette.dart';
@@ -71,19 +75,29 @@ class TopBar extends StatelessWidget {
           );
         }
       }
+      // The bar draws in its layout height; its hit boxes may be taller
+      // (#109: 48 dp on a small phone), so the row aligns to the top and
+      // every child is centred on the drawn band by hand.
+      final barHeight = topBarHeight * scale;
+      Widget banded(Widget child) => SizedBox(
+        height: barHeight,
+        child: Align(alignment: Alignment.centerLeft, child: child),
+      );
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: 14 * scale),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // The pill takes what the readouts leave and ellipsizes; it
             // never pushes them off a narrow phone.
             Expanded(
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.topLeft,
                 child: _PausePill(
                   controller: controller,
                   game: game,
                   scale: scale,
+                  barHeight: barHeight,
                 ),
               ),
             ),
@@ -98,6 +112,7 @@ class TopBar extends StatelessWidget {
                     key: const Key('no-moves-banner'),
                     message: 'No moves left',
                     scale: scale,
+                    barHeight: barHeight,
                     actions: [
                       NoticeAction(
                         'Undo',
@@ -110,7 +125,10 @@ class TopBar extends StatelessWidget {
                 ),
               ),
             ] else
-              for (final r in readouts) ...[SizedBox(width: 6 * scale), r],
+              for (final r in readouts) ...[
+                SizedBox(width: 6 * scale),
+                banded(r),
+              ],
           ],
         ),
       );
@@ -123,20 +141,28 @@ class _PausePill extends StatelessWidget {
     required this.controller,
     required this.game,
     required this.scale,
+    required this.barHeight,
   });
 
   final GameController controller;
   final Game game;
   final double scale;
 
+  /// The drawn bar's height: the pill is centred on it while its hit box
+  /// is at least [kMinTapTarget] tall.
+  final double barHeight;
+
   @override
   Widget build(BuildContext context) {
     final enabled = !controller.isPaused && !game.isWon;
     final title = gameTitle(game);
+    final pillHeight = (11.5 + 16) * scale + 2; // text, padding, border
+    final hitHeight = math.max(barHeight, kMinTapTarget);
     return Semantics(
       button: true,
       enabled: enabled,
       label: 'Pause, ${title.replaceAll(' · ', ' ')}',
+      onTap: enabled ? controller.pause : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: enabled ? 1 : Palette.disabledOpacity,
@@ -145,9 +171,16 @@ class _PausePill extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: enabled ? controller.pause : null,
           child: Container(
-            constraints: BoxConstraints(minHeight: 44 * scale, minWidth: 48),
-            padding: EdgeInsets.symmetric(horizontal: 11 * scale),
-            alignment: Alignment.centerLeft,
+            constraints: BoxConstraints(
+              minHeight: hitHeight,
+              minWidth: kMinTapTarget,
+            ),
+            padding: EdgeInsets.only(
+              left: 11 * scale,
+              right: 11 * scale,
+              top: math.max(0, (barHeight - pillHeight) / 2),
+            ),
+            alignment: Alignment.topLeft,
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: 11 * scale,

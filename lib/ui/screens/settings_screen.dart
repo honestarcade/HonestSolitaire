@@ -221,6 +221,7 @@ class _CardBackPanel extends StatelessWidget {
                     selected: display.cardBack == back,
                     button: true,
                     label: '${back.label} card back',
+                    onTap: () => onPick(back),
                     excludeSemantics: true,
                     child: GestureDetector(
                       key: Key('settings-swatch-back-${back.name}'),
@@ -406,6 +407,7 @@ class _SwitchRow extends StatelessWidget {
       toggled: value,
       label: row.label,
       hint: row.description,
+      onTap: () => onChanged(!value),
       excludeSemantics: true,
       child: GestureDetector(
         key: Key('settings-row-${row.field}'),

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 
+import '../a11y/tap_target.dart';
 import '../app.dart';
 import '../theme/palette.dart';
 import '../widgets/option_panel.dart';
@@ -157,7 +158,8 @@ class _DealNumberFieldState extends State<DealNumberField> {
           ),
           SizedBox(height: 12 * s),
           Container(
-            height: 48,
+            // 48 dp inside the border: the field's tap target (#109).
+            height: kMinTapTarget + 2,
             padding: EdgeInsets.symmetric(horizontal: 12 * s),
             decoration: BoxDecoration(
               color: const Color(0x0AFFFFFF),
@@ -181,6 +183,12 @@ class _DealNumberFieldState extends State<DealNumberField> {
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.done,
                         inputFormatters: const [_DigitsOnly()],
+                        // The field fills its 48 dp box, so its node is
+                        // a full tap target (#109), not the text line.
+                        expands: true,
+                        maxLines: null,
+                        minLines: null,
+                        textAlignVertical: TextAlignVertical.center,
                         style: TextStyle(
                           fontSize: 15 * s,
                           fontFamily: kFontMono,
@@ -203,14 +211,15 @@ class _DealNumberFieldState extends State<DealNumberField> {
                   Semantics(
                     button: true,
                     label: 'Clear deal number',
+                    onTap: _clear,
                     excludeSemantics: true,
                     child: GestureDetector(
                       key: const Key('deal-number-clear'),
                       behavior: HitTestBehavior.opaque,
                       onTap: _clear,
                       child: SizedBox(
-                        width: 44,
-                        height: 44,
+                        width: kMinTapTarget,
+                        height: kMinTapTarget,
                         child: Center(
                           child: GlyphIcon(
                             Glyph.close,

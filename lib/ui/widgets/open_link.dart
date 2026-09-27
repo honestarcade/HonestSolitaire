@@ -83,6 +83,7 @@ class LinkText extends StatelessWidget {
     return Semantics(
       link: true,
       label: '$label, opens in browser',
+      onTap: () => opener.open(context, link),
       excludeSemantics: true,
       child: GestureDetector(
         key: Key('about-link-${link.name}'),
