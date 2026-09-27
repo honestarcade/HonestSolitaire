@@ -340,7 +340,12 @@ const ellipsisAllowed = {'board-title'};
 /// (loading_screen.dart), `aboutapp-tile` (about_app_screen.dart),
 /// `menu-wordmark` (menu_screen.dart), `settings-swatch-back-*`
 /// (settings_screen.dart).
-const _fixedKeys = {'stock-empty', 'splash-title', 'aboutapp-tile', 'menu-wordmark'};
+const _fixedKeys = {
+  'stock-empty',
+  'splash-title',
+  'aboutapp-tile',
+  'menu-wordmark',
+};
 
 List<
   ({
