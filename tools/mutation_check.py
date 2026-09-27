@@ -424,8 +424,13 @@ MUTATIONS: list[Mutation] = [
              'launcher-rasters: 1 offender',
              deletes="android/app/src/main/res/drawable-xhdpi/launch_mark.png"),
     # ---- #98: the audio assets ---------------------------------------------
-    Mutation("#98a", "a clip the app plays goes missing",
-             "", None,
+    # The file alone cannot go: a declared asset that is missing stops
+    # `flutter test` at the asset bundle, which is the wrong reason. The
+    # honest shape is the file gone AND its pubspec line tidied away, which
+    # is exactly what a "clean-up" commit would do (#98).
+    Mutation("#98a", "a clip the app plays goes missing, and its pubspec line with it",
+             "pubspec.yaml",
+             sub(r"\n    - assets/audio/chime\.wav", ""),
              "the player would hear nothing where the chime belongs",
              'audio-assets: 1 offender',
              deletes="assets/audio/chime.wav"),
