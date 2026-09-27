@@ -318,18 +318,24 @@ class _Board extends StatelessWidget {
       out.add(
         Positioned.fromRect(
           rect: layout.slots[const StockPile()]!,
-          child: CustomPaint(
-            key: const Key('stock-empty'),
-            painter: SlotPainter(radius: tr, edgeColor: _spiderEmptyEdge),
-            child: Center(
-              child: Text(
-                'EMPTY',
-                style: TextStyle(
-                  fontSize: 9 * layout.scale,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.06 * 9 * layout.scale,
-                  color: const Color(0x4DFFFFFF),
-                  height: 1,
+          child: Semantics(
+            button: true,
+            label: 'Stock, no deals left',
+            excludeSemantics: true,
+            onTap: () => controller.tapPile(const StockPile(), null),
+            child: CustomPaint(
+              key: const Key('stock-empty'),
+              painter: SlotPainter(radius: tr, edgeColor: _spiderEmptyEdge),
+              child: Center(
+                child: Text(
+                  'EMPTY',
+                  style: TextStyle(
+                    fontSize: 9 * layout.scale,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.06 * 9 * layout.scale,
+                    color: const Color(0x4DFFFFFF),
+                    height: 1,
+                  ),
                 ),
               ),
             ),
@@ -338,16 +344,30 @@ class _Board extends StatelessWidget {
       );
     } else {
       final slivers = layout.cards[const StockPile()]!;
-      for (var i = slivers.length - 1; i >= 0; i--) {
+      final rows = slivers.length;
+      out.add(
+        Positioned.fromRect(
+          rect: layout.slots[const StockPile()]!,
+          child: Semantics(
+            button: true,
+            label: 'Stock, $rows deal${rows == 1 ? '' : 's'} left',
+            onTap: () => controller.tapPile(const StockPile(), null),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      );
+      for (var i = rows - 1; i >= 0; i--) {
         out.add(
           Positioned.fromRect(
             rect: slivers[i],
-            child: PlayingCard.back(
-              slivers[i].size,
-              controller.display.cardBack,
-              key: Key('stock-sliver-$i'),
-              edge: false,
-              radius: tr,
+            child: ExcludeSemantics(
+              child: PlayingCard.back(
+                slivers[i].size,
+                controller.display.cardBack,
+                key: Key('stock-sliver-$i'),
+                edge: false,
+                radius: tr,
+              ),
             ),
           ),
         );
@@ -359,13 +379,17 @@ class _Board extends StatelessWidget {
         out.add(
           Positioned.fromRect(
             rect: rect,
-            child: PlayingCard(
-              key: Key('completed-$i'),
-              card: Card(kingRank, game.completed[i], faceUp: true),
-              size: rect.size,
-              back: controller.display.cardBack,
-              narrow: true,
-              radius: tr,
+            child: Semantics(
+              label: 'Completed run, ${game.completed[i].name}',
+              excludeSemantics: true,
+              child: PlayingCard(
+                key: Key('completed-$i'),
+                card: Card(kingRank, game.completed[i], faceUp: true),
+                size: rect.size,
+                back: controller.display.cardBack,
+                narrow: true,
+                radius: tr,
+              ),
             ),
           ),
         );

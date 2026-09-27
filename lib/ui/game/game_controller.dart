@@ -44,6 +44,10 @@ const Duration shakeDuration = Duration(milliseconds: 300);
 /// Two taps on the same card within this window are a double-tap.
 const Duration doubleTapWindow = Duration(milliseconds: 300);
 
+/// A Spider stock tap this soon after a deal is ignored, so two rows are
+/// never dealt by accident (owner, /n8-plan M3 gate default).
+const Duration dealDebounce = Duration(milliseconds: 300);
+
 class GameController extends ChangeNotifier {
   GameController(
     Game game,
@@ -80,6 +84,10 @@ class GameController extends ChangeNotifier {
   /// it touched (followed to wherever it now is).
   (BoardPile, int?, Duration, Card?)? _lastTap;
 
+  /// The timestamp of the tap being handled, and of the last Spider deal.
+  Duration _tapAt = Duration.zero;
+  Duration? _lastDealAt;
+
   PlaySettings get settings => playSettings.value;
   DisplayOptions get display => displayOptions.value;
 
@@ -89,6 +97,7 @@ class GameController extends ChangeNotifier {
     _selection = null;
     _hint = null;
     _lastTap = null;
+    _lastDealAt = null;
     _clearShake();
     notifyListeners();
   }
@@ -119,6 +128,7 @@ class GameController extends ChangeNotifier {
   void tapPile(BoardPile? pile, int? index, {Duration at = Duration.zero}) {
     if (_game.isWon) return;
     _hint = null; // any tap clears a showing hint
+    _tapAt = at;
     final last = _lastTap;
     final isDouble =
         last != null &&
@@ -195,7 +205,8 @@ class GameController extends ChangeNotifier {
           final column = s.tableau[c];
           final i = column.indexOf(touched.up);
           if (i < 0) continue;
-          final start = _spiderRunStart(s, c, i);
+          // The whole same-suit run goes, whichever of its cards was tapped.
+          final start = SpiderGame.runBase(column);
           final dest = engine.bestDestination(
             s,
             engine.PileRef.tableau(c, start),
@@ -284,7 +295,17 @@ class GameController extends ChangeNotifier {
           startShake(const StockPile(), null);
         }
       case SpiderGame _:
-        _apply(const DealRow(), shake: (const StockPile(), null));
+        final lastDeal = _lastDealAt;
+        if (lastDeal != null &&
+            _tapAt - lastDeal < dealDebounce &&
+            _tapAt >= lastDeal) {
+          break; // too soon after the last deal: ignored, nothing shakes
+        }
+        final result = _apply(
+          const DealRow(),
+          shake: (const StockPile(), null),
+        );
+        if (result is Applied) _lastDealAt = _tapAt;
     }
     _selection = null;
   }
