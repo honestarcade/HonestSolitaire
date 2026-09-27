@@ -38,10 +38,14 @@ Future<void> pumpBoard(
   WidgetTester tester,
   GameController controller, {
   bool reduced = false,
+  bool talkBack = false,
   Future<void>? Function()? winRecord,
 }) async {
   tester.platformDispatcher.accessibilityFeaturesTestValue =
-      FakeAccessibilityFeatures(disableAnimations: reduced);
+      FakeAccessibilityFeatures(
+        disableAnimations: reduced,
+        accessibleNavigation: talkBack,
+      );
   tester.view.physicalSize = phone * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -262,6 +266,25 @@ void main() {
         }
       },
     );
+
+    testWidgets('with TalkBack there is no cascade frame either', (
+      tester,
+    ) async {
+      final controller = controllerFor(nearWin(const KlondikeOptions()));
+      await pumpBoard(tester, controller, talkBack: true);
+      controller.move(
+        const TableauPile(0),
+        0,
+        const FoundationPile(Suit.clubs),
+      );
+      await tester.pump();
+      expect(rects(tester), isEmpty, reason: 'no cascade frame under TalkBack');
+      await tester.pump(winCardDelay);
+      expect(rects(tester), isEmpty);
+      expect(controller.winShown, isTrue);
+      await tester.pump();
+      expect(find.byKey(const Key('win-card')), findsOneWidget);
+    });
 
     testWidgets(
       'the win is recorded before the first cascade frame; a record that never completes starts it at 2 s',
