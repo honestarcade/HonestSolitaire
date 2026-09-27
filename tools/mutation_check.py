@@ -351,6 +351,12 @@ MUTATIONS: list[Mutation] = [
              sub(r'\n\s*--dart-define=APP_BUILD="\$\{\{ steps\.version\.outputs\.code \}\}"', ''),
              "a store build would show BUILD dev in Settings",
              'release-version: APP_BUILD is not passed'),
+    Mutation("#90", "the rules text drifts from the engine's -15",
+             "lib/ui/content/rules_text.dart",
+             sub(r"\('KlondikeScoring\.standard\.foundationToTableau', -15\)",
+                 "('KlondikeScoring.standard.foundationToTableau', -10)"),
+             "How to play would state a scoring rule the engine does not play",
+             'rules-text: KlondikeScoring.standard.foundationToTableau drifted from the engine'),
 ]
 
 
