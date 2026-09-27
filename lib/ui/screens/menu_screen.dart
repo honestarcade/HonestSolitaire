@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
@@ -95,11 +94,7 @@ class _MenuScreenState extends State<MenuScreen> {
             _announcedBanner = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                SemanticsService.sendAnnouncement(
-                  View.of(context),
-                  corruptionMessage(notices),
-                  TextDirection.ltr,
-                );
+                scope.announcer.announce(context, corruptionMessage(notices));
               }
             });
           }

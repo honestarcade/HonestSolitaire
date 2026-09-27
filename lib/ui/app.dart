@@ -20,6 +20,7 @@ import '../feedback/haptics.dart';
 import '../feedback/music_controller.dart';
 import '../feedback/sound_player.dart';
 import '../platform/platform_channel.dart';
+import 'a11y/announcer.dart';
 import 'game/game_event.dart';
 import 'motion.dart';
 import 'navigation.dart';
@@ -65,6 +66,7 @@ class HonestSolitaireApp extends StatelessWidget {
     this.search,
     this.sound,
     this.haptics,
+    this.announcer,
     this.showSplash = true,
   });
 
@@ -80,6 +82,7 @@ class HonestSolitaireApp extends StatelessWidget {
   final WinnableSearch? search;
   final SoundPlayer? sound;
   final HapticsPort? haptics;
+  final Announcer? announcer;
 
   /// False skips the launch splash (tests of other screens).
   final bool showSplash;
@@ -135,6 +138,7 @@ class HonestSolitaireApp extends StatelessWidget {
           search: search,
           sound: sound,
           haptics: haptics,
+          announcer: announcer,
           showSplash: showSplash,
           child: child!,
         ),
@@ -163,6 +167,7 @@ class GameRoot extends StatefulWidget {
     this.search,
     this.sound,
     this.haptics,
+    this.announcer,
     this.showSplash = true,
     required this.child,
   });
@@ -175,6 +180,7 @@ class GameRoot extends StatefulWidget {
   final WinnableSearch? search;
   final SoundPlayer? sound;
   final HapticsPort? haptics;
+  final Announcer? announcer;
   final bool showSplash;
   final Widget child;
 
@@ -219,6 +225,12 @@ class _GameRootState extends State<GameRoot> {
   late final WinnableSearch search = widget.search ?? defaultWinnableSearch;
   late final SoundPlayer sound = widget.sound ?? ChannelSoundPlayer();
   late final HapticsPort haptics = widget.haptics ?? FlutterHaptics();
+  late final Announcer announcer = widget.announcer ?? const FlutterAnnouncer();
+  late final BoardAnnouncements announcements = BoardAnnouncements(
+    controller,
+    announcer,
+    () => context,
+  );
   late final GameFeedback feedback = GameFeedback(
     controller,
     playSettings,
@@ -262,6 +274,7 @@ class _GameRootState extends State<GameRoot> {
     // Touch the listeners so they attach from the first frame.
     persistence;
     statsListener;
+    announcements;
     feedback;
     music;
     samples;
@@ -281,6 +294,7 @@ class _GameRootState extends State<GameRoot> {
     unawaited(sound.dispose());
     persistence.dispose();
     statsListener.dispose();
+    announcements.dispose();
     settingsStore.dispose();
     controller.dispose();
     playSettings.dispose();
@@ -305,6 +319,7 @@ class _GameRootState extends State<GameRoot> {
     boardVisible: boardVisible,
     sound: sound,
     haptics: haptics,
+    announcer: announcer,
     // One transparent Material above the Navigator: every route's text
     // takes the theme's DefaultTextStyle (Outfit, #96) instead of the
     // yellow-underlined fallback a Material-less screen would show.
@@ -346,6 +361,7 @@ class GameScope extends InheritedWidget {
     required this.boardVisible,
     required this.sound,
     required this.haptics,
+    required this.announcer,
     required super.child,
   });
 
@@ -366,6 +382,7 @@ class GameScope extends InheritedWidget {
   final ValueNotifier<bool> boardVisible;
   final SoundPlayer sound;
   final HapticsPort haptics;
+  final Announcer announcer;
 
   /// Null outside the app (the board-only widget tests).
   static GameScope? maybeOf(BuildContext context) =>

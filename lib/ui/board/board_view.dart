@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Card;
+import 'package:flutter/semantics.dart'
+    show OrdinalSortKey, CustomSemanticsAction;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
@@ -17,6 +19,7 @@ import '../settings/display_options.dart';
 import '../theme/palette.dart';
 import 'board_layout.dart';
 import 'board_pointer.dart';
+import 'board_semantics.dart';
 import 'card_motion.dart';
 import 'deal_animation.dart';
 import 'win_cascade.dart';
@@ -456,6 +459,10 @@ class BoardViewState extends State<BoardView> with TickerProviderStateMixin {
                 final layout = _layout(game, size, options);
                 final motion = AppMotion.of(context, controller.settings);
                 controller.motion = motion;
+                // A screen reader on: every tap selects (#108).
+                controller.alwaysSelect = MediaQuery.accessibleNavigationOf(
+                  context,
+                );
                 _reconcile(game, size, options, layout, motion);
                 final shake = controller.shake;
                 if (shake != null && shake.sequence != _shakeSequence) {
@@ -660,11 +667,33 @@ class _Board extends StatelessWidget {
     children.addAll(peekLayer);
     _movingLayer(children);
     _cascadeLayer(children);
+    _semanticsLayer(children, game);
+    // Traversal (#108): top bar, the board's nodes, tool row.
     if (topBar != null) {
-      children.add(Positioned.fromRect(rect: layout.topBar, child: topBar!));
+      children.add(
+        Positioned.fromRect(
+          rect: layout.topBar,
+          // explicitChildNodes keeps the bar's own nodes; a plain Semantics
+          // would merge them into one.
+          child: Semantics(
+            sortKey: const OrdinalSortKey(0),
+            explicitChildNodes: true,
+            child: topBar!,
+          ),
+        ),
+      );
     }
     if (toolRow != null) {
-      children.add(Positioned.fromRect(rect: layout.toolRow, child: toolRow!));
+      children.add(
+        Positioned.fromRect(
+          rect: layout.toolRow,
+          child: Semantics(
+            sortKey: const OrdinalSortKey(1e6),
+            explicitChildNodes: true,
+            child: toolRow!,
+          ),
+        ),
+      );
     }
     _dragLayer(children);
     children.add(GameOverlays(controller: controller, scale: layout.scale));
@@ -677,26 +706,273 @@ class _Board extends StatelessWidget {
     );
   }
 
-  Widget _slot(
-    Rect rect,
-    SlotPainter painter, {
-    Key? key,
-    String? label,
-    BoardPile? pile,
-  }) {
-    Widget paint = CustomPaint(key: key, painter: painter, size: rect.size);
-    if (label != null) {
-      paint = Semantics(
-        button: true,
+  /// TalkBack's board (#108): one node per pile and per visible face-up
+  /// card at the layout's rects, one per column for its face-down cards;
+  /// taps go to the controller like a finger's, custom actions are the
+  /// engine's legal moves in words. Withdrawn under the pause and win cards;
+  /// read-only during a sweep, a drag or a peek.
+  void _semanticsLayer(List<Widget> out, Game game) {
+    if (controller.isPaused || controller.winShown) return;
+    final live =
+        !controller.finishing &&
+        controller.dragging == null &&
+        controller.peekColumn == null &&
+        !game.isWon;
+    final sel = controller.selection;
+    final hint = controller.currentHint;
+    bool isSelected(BoardPile pile, int i) =>
+        sel != null && sel.$1 == pile && i >= sel.$2;
+    bool isHinted(BoardPile pile, int i) =>
+        hint != null &&
+        hint.source == pile &&
+        hint.start != null &&
+        i >= hint.start!;
+    Rect hit(BoardPile pile) => layout.hitAreas[pile] ?? layout.slots[pile]!;
+    VoidCallback? tap(BoardPile pile, int? index) =>
+        live ? () => controller.tapPile(pile, index) : null;
+    List<CardAction> actions(List<CardAction> Function() f) =>
+        live ? f() : const [];
+
+    var order = 0;
+    Widget node(
+      Rect rect, {
+      required Key key,
+      required String label,
+      VoidCallback? onTap,
+      String? tapHint,
+      bool selected = false,
+      List<CardAction> actions = const [],
+    }) => Positioned.fromRect(
+      rect: rect,
+      child: Semantics(
+        key: key,
+        container: true,
+        sortKey: OrdinalSortKey((++order).toDouble()),
         label: label,
-        onTap: pile == null ? null : () => controller.tapPile(pile, null),
-        child: paint,
-      );
+        button: onTap != null,
+        selected: selected,
+        onTap: onTap,
+        onTapHint: onTap == null ? null : tapHint,
+        customSemanticsActions: {
+          for (final a in actions)
+            CustomSemanticsAction(label: a.label): () =>
+                controller.applyMove(a.move),
+        },
+        child: const SizedBox.expand(),
+      ),
+    );
+
+    // The top row, in on-screen order (the left-handed mirror included).
+    final top = <(double, List<Widget> Function())>[];
+    switch (game) {
+      case KlondikeGame k:
+        const stock = StockPile();
+        top.add((
+          layout.slots[stock]!.left,
+          () => [
+            node(
+              hit(stock),
+              key: const Key('sem-stock'),
+              label: stockLabel(k, hinted: hint?.stock ?? false),
+              onTap: tap(stock, null),
+              tapHint: k.stock.isNotEmpty
+                  ? 'draw'
+                  : k.waste.isNotEmpty
+                  ? 'recycle'
+                  : null,
+              actions: actions(() => stockActions(k)),
+            ),
+          ],
+        ));
+        const waste = WastePile();
+        top.add((
+          layout.slots[waste]!.left,
+          () => [
+            node(
+              hit(waste),
+              key: const Key('sem-waste'),
+              label: wasteLabel(k),
+              onTap: tap(waste, null),
+              tapHint: k.waste.isEmpty ? null : 'select',
+            ),
+            if (k.waste.isNotEmpty)
+              node(
+                layout.cards[waste]!.last,
+                key: Key('sem-card-${k.waste.last.id}'),
+                label: cardLabel(
+                  k.waste.last,
+                  waste,
+                  fromTop: 0,
+                  selected: isSelected(waste, k.waste.length - 1),
+                  hinted: isHinted(waste, k.waste.length - 1),
+                ),
+                onTap: tap(waste, k.waste.length - 1),
+                tapHint: 'select',
+                selected: isSelected(waste, k.waste.length - 1),
+                actions: actions(
+                  () => actionsFor(k, waste, k.waste.length - 1),
+                ),
+              ),
+          ],
+        ));
+        for (final suit in Suit.values) {
+          final pile = FoundationPile(suit);
+          final cards = k.foundations[suit.index];
+          top.add((
+            layout.slots[pile]!.left,
+            () => [
+              node(
+                hit(pile),
+                key: Key('sem-${pile.token}'),
+                label: foundationLabel(suit, cards),
+                onTap: tap(pile, null),
+                tapHint: sel != null
+                    ? 'move here'
+                    : cards.isEmpty
+                    ? null
+                    : 'select',
+              ),
+              if (cards.isNotEmpty)
+                node(
+                  layout.slots[pile]!,
+                  key: Key('sem-card-${cards.last.id}'),
+                  label: cardLabel(
+                    cards.last,
+                    pile,
+                    fromTop: 0,
+                    selected: isSelected(pile, cards.length - 1),
+                    hinted: isHinted(pile, cards.length - 1),
+                  ),
+                  onTap: tap(pile, cards.length - 1),
+                  tapHint: sel != null ? 'move here' : 'select',
+                  selected: isSelected(pile, cards.length - 1),
+                  actions: actions(() => actionsFor(k, pile, cards.length - 1)),
+                ),
+            ],
+          ));
+        }
+      case SpiderGame s:
+        const stock = StockPile();
+        top.add((
+          layout.slots[stock]!.left,
+          () => [
+            node(
+              hit(stock),
+              key: const Key('sem-stock'),
+              label: spiderStockLabel(s, hinted: hint?.stock ?? false),
+              onTap: tap(stock, null),
+              tapHint: s.rowsLeft > 0 ? 'deal a row' : null,
+              actions: actions(() => stockActions(s)),
+            ),
+          ],
+        ));
+        var done = layout.slots[const CompletedPile(0)]!;
+        for (var i = 1; i < spiderRunsToWin; i++) {
+          done = done.expandToInclude(layout.slots[CompletedPile(i)]!);
+        }
+        top.add((
+          done.left,
+          () => [
+            node(
+              done,
+              key: const Key('sem-completed'),
+              label: completedLabel(s),
+            ),
+          ],
+        ));
     }
-    return Positioned.fromRect(rect: rect, child: paint);
+    top.sort((a, b) => a.$1.compareTo(b.$1));
+    for (final (_, build) in top) {
+      out.addAll(build());
+    }
+
+    // The columns, left to right, each top to bottom.
+    final tableau = switch (game) {
+      KlondikeGame k => k.tableau,
+      SpiderGame s => s.tableau,
+    };
+    final columns = List.generate(tableau.length, (c) => c)
+      ..sort(
+        (a, b) => layout.slots[TableauPile(a)]!.left.compareTo(
+          layout.slots[TableauPile(b)]!.left,
+        ),
+      );
+    for (final c in columns) {
+      final pile = TableauPile(c);
+      final cards = tableau[c];
+      if (cards.isEmpty) {
+        out.add(
+          node(
+            hit(pile),
+            key: Key('sem-${pile.token}'),
+            label: emptyColumnLabel(c),
+            onTap: tap(pile, null),
+            tapHint: sel != null ? 'move here' : null,
+          ),
+        );
+        continue;
+      }
+      final rects = layout.cards[pile]!;
+      Rect strip(int from, int to) => Rect.fromLTRB(
+        rects[from].left,
+        rects[from].top,
+        rects[from].right,
+        to < rects.length
+            ? math.max(rects[to].top, rects[from].top + 4)
+            : rects[to - 1].bottom,
+      );
+      final downCount = cards.indexWhere((card) => card.faceUp);
+      final down = downCount < 0 ? cards.length : downCount;
+      if (down > 0) {
+        final allDown = down == cards.length;
+        out.add(
+          node(
+            strip(0, down),
+            key: Key('sem-down-$c'),
+            label: faceDownColumnLabel(c, cards.sublist(0, down)),
+            onTap: tap(pile, down - 1),
+            tapHint: sel != null
+                ? 'move here'
+                : allDown
+                ? 'turn over'
+                : null,
+            actions: allDown
+                ? actions(() => actionsFor(game, pile, cards.length - 1))
+                : const [],
+          ),
+        );
+      }
+      for (var i = down; i < cards.length; i++) {
+        final card = cards[i];
+        out.add(
+          node(
+            strip(i, i + 1),
+            key: Key(
+              card.id >= 0 ? 'sem-card-${card.id}' : 'sem-${pile.token}-$i',
+            ),
+            label: cardLabel(
+              card,
+              pile,
+              fromTop: cards.length - 1 - i,
+              selected: isSelected(pile, i),
+              hinted: isHinted(pile, i),
+            ),
+            onTap: tap(pile, i),
+            tapHint: sel != null && sel.$1 != pile ? 'move here' : 'select',
+            selected: isSelected(pile, i),
+            actions: actions(() => actionsFor(game, pile, i)),
+          ),
+        );
+      }
+    }
   }
 
-  static String _capital(String s) => s[0].toUpperCase() + s.substring(1);
+  Widget _slot(Rect rect, SlotPainter painter, {Key? key}) {
+    // The slot is paint only: TalkBack's nodes are the semantics layer's
+    // (#108, board_semantics.dart).
+    final paint = CustomPaint(key: key, painter: painter, size: rect.size);
+    return Positioned.fromRect(rect: rect, child: paint);
+  }
 
   void _klondikeSlots(List<Widget> out, KlondikeGame game) {
     final r = layout.radius;
@@ -711,12 +987,6 @@ class _Board extends StatelessWidget {
           recycleSize: 14 * layout.scale,
         ),
         key: const Key('slot-stock'),
-        pile: const StockPile(),
-        label: game.stock.isNotEmpty
-            ? 'Stock, ${game.stock.length} cards'
-            : game.waste.isNotEmpty
-            ? 'Recycle'
-            : 'Stock, empty',
       ),
     );
     out.add(
@@ -724,10 +994,6 @@ class _Board extends StatelessWidget {
         layout.slots[const WastePile()]!,
         SlotPainter(radius: r, edgeColor: _wasteEdge),
         key: const Key('slot-waste'),
-        pile: const WastePile(),
-        label: game.waste.isEmpty
-            ? 'Waste, empty'
-            : 'Waste, ${game.waste.length} cards',
       ),
     );
     for (final suit in Suit.values) {
@@ -742,11 +1008,6 @@ class _Board extends StatelessWidget {
             placeholderSuit: empty ? suit : null,
           ),
           key: Key('slot-f-${suit.name}'),
-          pile: FoundationPile(suit),
-          label: empty
-              ? '${_capital(suit.name)} foundation, empty'
-              : '${_capital(suit.name)} foundation, up to '
-                    '${game.foundations[suit.index].last.rankName}',
         ),
       );
     }
@@ -760,8 +1021,6 @@ class _Board extends StatelessWidget {
             edgeColor: _slotEdge(TableauPile(c), _columnEdge, selectable: true),
           ),
           key: Key('slot-t$c'),
-          pile: TableauPile(c),
-          label: 'Empty column ${c + 1}',
         ),
       );
     }
@@ -774,11 +1033,7 @@ class _Board extends StatelessWidget {
       out.add(
         Positioned.fromRect(
           rect: layout.slots[const StockPile()]!,
-          child: Semantics(
-            button: true,
-            label: 'Stock, no deals left',
-            excludeSemantics: true,
-            onTap: () => controller.tapPile(const StockPile(), null),
+          child: ExcludeSemantics(
             child: CustomPaint(
               key: const Key('stock-empty'),
               painter: SlotPainter(
@@ -808,12 +1063,7 @@ class _Board extends StatelessWidget {
       out.add(
         Positioned.fromRect(
           rect: layout.slots[const StockPile()]!,
-          child: Semantics(
-            button: true,
-            label: 'Stock, $rows deal${rows == 1 ? '' : 's'} left',
-            onTap: () => controller.tapPile(const StockPile(), null),
-            child: const SizedBox.expand(),
-          ),
+          child: const SizedBox.expand(),
         ),
       );
       if (controller.currentHint?.stock ?? false) {
@@ -859,9 +1109,7 @@ class _Board extends StatelessWidget {
         out.add(
           Positioned.fromRect(
             rect: rect,
-            child: Semantics(
-              label: 'Completed run, ${game.completed[i].name}',
-              excludeSemantics: true,
+            child: ExcludeSemantics(
               child: PlayingCard(
                 key: Key('completed-$i'),
                 card: Card(kingRank, game.completed[i], faceUp: true),
@@ -893,8 +1141,6 @@ class _Board extends StatelessWidget {
             edgeColor: _slotEdge(TableauPile(c), _columnEdge, selectable: true),
           ),
           key: Key('slot-t$c'),
-          pile: TableauPile(c),
-          label: 'Empty column ${c + 1}',
         ),
       );
     }
@@ -1095,14 +1341,16 @@ class _Board extends StatelessWidget {
       final top = (rect.top * dpr).roundToDouble() / dpr;
       final covered = i + 1 < cards.length && rects[i + 1] == rect;
       final ring = _ring(pile, i);
-      Widget card = PlayingCard(
-        key: Key('card-${pile.token}-$i'),
-        card: cards[i],
-        size: layout.cardSize,
-        back: controller.display.cardBack,
-        ring: ring,
-        narrow: layout.narrow,
-        radius: layout.radius,
+      Widget card = ExcludeSemantics(
+        child: PlayingCard(
+          key: Key('card-${pile.token}-$i'),
+          card: cards[i],
+          size: layout.cardSize,
+          back: controller.display.cardBack,
+          ring: ring,
+          narrow: layout.narrow,
+          radius: layout.radius,
+        ),
       );
       if (covered) {
         card = Visibility(visible: false, maintainState: true, child: card);

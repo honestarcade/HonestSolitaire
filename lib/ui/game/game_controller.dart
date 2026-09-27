@@ -16,6 +16,7 @@ import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
 
+import '../board/board_semantics.dart';
 import '../board/pile_ref.dart';
 import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
@@ -269,6 +270,7 @@ class GameController extends ChangeNotifier {
     _selection = null;
     _dragging = null;
     _peekColumn = null;
+    _say('Finishing');
     _flushClock();
     final sweep = FinishSweep(
       show: (step) {
@@ -358,11 +360,12 @@ class GameController extends ChangeNotifier {
 
   /// Records a new game state from a move: the display copy, the first-move
   /// gate and the clock.
-  void _commit(Game game) {
+  void _commit(Game game, {Move? move}) {
     final before = _game;
     _game = game;
     displayGame.value = game;
     _emit(deriveFeedback(before, game));
+    if (move != null) _say(describeStep(before, move, game));
     if (!_moved) _moved = true;
     _hasMove = true;
     _syncClock();
@@ -432,7 +435,23 @@ class GameController extends ChangeNotifier {
 
   /// One step per action: what it did, for sounds (#101) and ticks (#107).
   /// Notifies on every assignment, even of an equal step.
-  final feedback = _StepNotifier();
+  final feedback = _StepNotifier<FeedbackStep>();
+
+  /// What TalkBack says for the last step (#108): a move, a refusal, a hint,
+  /// a selection, an undo. Spoken by `BoardAnnouncements` while a screen
+  /// reader is on.
+  final spoken = _StepNotifier<String>();
+  int _said = 0;
+
+  void _say(String? text) {
+    if (text == null || text.isEmpty) return;
+    _said++;
+    spoken.value = text;
+  }
+
+  /// A screen reader is on (#108): every tap selects, One-tap or not, so
+  /// the destination is always chosen by the player. The board sets it.
+  bool alwaysSelect = false;
 
   void _emit(Set<FeedbackEvent> events, {bool sweep = false}) {
     if (events.isEmpty) return;
@@ -481,6 +500,7 @@ class GameController extends ChangeNotifier {
     _install(game, hasMove: false);
     if (dealAnimation) _pendingDeal++;
     _emit({FeedbackEvent.newDeal});
+    if (dealAnimation) _say('New deal');
   }
 
   /// The same game again after a restart or the app closing: nothing is
@@ -535,6 +555,7 @@ class GameController extends ChangeNotifier {
     if (result is Applied<Game>) {
       replaceGameKeepingClock(result.game);
       _emit({FeedbackEvent.snap}); // an undo snaps, never flips or chimes
+      _say('Undone');
     }
   }
 
@@ -577,6 +598,7 @@ class GameController extends ChangeNotifier {
     _install(_game.restart(), hasMove: false);
     _pendingDeal++;
     _emit({FeedbackEvent.newDeal});
+    _say('Restarted');
   }
 
   /// Adds the clock's unflushed part to the game (before a save or a stats
@@ -608,7 +630,9 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _hint = _translate(engine.hint(_game));
+    final h = engine.hint(_game);
+    _hint = _translate(h);
+    _say(describeHint(_game, h)); // the no-moves case is the banner's
     notifyListeners();
   }
 
@@ -896,6 +920,23 @@ class GameController extends ChangeNotifier {
   /// strip) at [at] (a pointer timestamp, for the double-tap window).
   void tapPile(BoardPile? pile, int? index, {Duration at = Duration.zero}) {
     if (_game.isWon || _sweep != null || _paused) return;
+    final said = _said;
+    final was = _selection;
+    _tap(pile, index, at);
+    // A tap that said nothing else announces what it did to the selection.
+    if (_said != said) return;
+    final now = _selection;
+    if (now != null && now != was) {
+      final cards = _pileCards(now.$1);
+      if (cards != null && now.$2 < cards.length) {
+        _say('${runWords(cards.sublist(now.$2))} selected');
+      }
+    } else if (now == null && was != null) {
+      _say('Selection cleared');
+    }
+  }
+
+  void _tap(BoardPile? pile, int? index, Duration at) {
     _hint = null; // any tap clears a showing hint
     _tapAt = at;
     final last = _lastTap;
@@ -1041,7 +1082,7 @@ class GameController extends ChangeNotifier {
   };
 
   void _selectOrOneTap(BoardPile pile, int start, engine.PileRef source) {
-    if (settings.oneTap) {
+    if (settings.oneTap && !alwaysSelect) {
       final dest = engine.bestDestination(_game, source);
       if (dest != null) {
         _apply(dest, shake: null);
@@ -1062,6 +1103,7 @@ class GameController extends ChangeNotifier {
           _apply(const Recycle(), shake: (const StockPile(), null));
         } else {
           startShake(const StockPile(), null);
+          _say('Stock empty');
         }
       case SpiderGame _:
         final lastDeal = _lastDealAt;
@@ -1153,6 +1195,7 @@ class GameController extends ChangeNotifier {
     final m = _moveFor(from, start, to);
     if (m == null) {
       startShake(from, start); // publishes the refusal
+      _say(describeRefusal(_game, null));
       notifyListeners();
       return const Refused(RefusalReason.invalidMove);
     }
@@ -1193,7 +1236,7 @@ class GameController extends ChangeNotifier {
     final result = _game.apply(m);
     switch (result) {
       case Applied(:final game):
-        _commit(game);
+        _commit(game, move: m);
         _clearShake();
         onApplied(result);
       case Refused():
@@ -1204,8 +1247,20 @@ class GameController extends ChangeNotifier {
         } else {
           _emit({FeedbackEvent.refused});
         }
+        _say(describeRefusal(_game, m));
     }
     return result;
+  }
+
+  /// Applies [m] from a TalkBack custom action (#108): the same path as a
+  /// tap-move, the selection and hint cleared, a refusal shaking its source.
+  void applyMove(Move m) {
+    if (_game.isWon || _sweep != null || _paused || _dragging != null) return;
+    _hint = null;
+    _selection = null;
+    _peekColumn = null;
+    _apply(m, shake: sourceOf(m));
+    notifyListeners();
   }
 
   /// A hook for the stories that react to every applied move (the clock,
@@ -1252,14 +1307,15 @@ class GameNotifier extends ChangeNotifier implements ValueListenable<Game> {
 
 /// A notifier that fires on every assignment: two equal steps in a row
 /// are two actions.
-class _StepNotifier extends ChangeNotifier
-    implements ValueListenable<FeedbackStep?> {
-  FeedbackStep? _value;
+/// Notifies on every non-null set, equal values included: two refusals in
+/// a row are two steps and two announcements.
+class _StepNotifier<T> extends ChangeNotifier implements ValueListenable<T?> {
+  T? _value;
 
   @override
-  FeedbackStep? get value => _value;
+  T? get value => _value;
 
-  set value(FeedbackStep? step) {
+  set value(T? step) {
     _value = step;
     if (step != null) notifyListeners();
   }

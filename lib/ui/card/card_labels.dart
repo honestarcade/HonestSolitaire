@@ -24,6 +24,9 @@ const _rankWords = [
 extension CardLabels on Card {
   /// "Seven of hearts", "Ace of spades".
   String get spokenName => '${_rankWords[rank]} of ${suit.name}';
+
+  /// "Seven", "Ace".
+  String get spokenRank => _rankWords[rank];
 }
 
 const faceDownLabel = 'face-down card';

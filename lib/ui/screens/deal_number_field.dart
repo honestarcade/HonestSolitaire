@@ -3,10 +3,10 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 
+import '../app.dart';
 import '../theme/palette.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
@@ -101,11 +101,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
     final wasInvalid = _input is Invalid;
     setState(() => _input = input);
     if (input is Invalid && !wasInvalid) {
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        dealNumberError,
-        TextDirection.ltr,
-      );
+      GameScope.of(context).announcer.announce(context, dealNumberError);
     }
     widget.onChanged(input);
   }

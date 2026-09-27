@@ -320,7 +320,7 @@ void main() {
       expect(find.byKey(const Key('completed-0')), findsOneWidget);
       expect(find.byKey(const Key('completed-slot-0')), findsNothing);
       expect(find.byKey(const Key('card-t0-1')), findsNothing);
-      expect(find.bySemanticsLabel('Completed run, spades'), findsOneWidget);
+      expect(find.bySemanticsLabel('Completed runs, 1 of 8'), findsOneWidget);
       final king = tester.widget<PlayingCard>(
         find.byKey(const Key('completed-0')),
       );

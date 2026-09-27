@@ -502,6 +502,20 @@ MUTATIONS: list[Mutation] = [
                    sub(r"(  void undo\(\) \{\n)", r"\1    HapticFeedback.lightImpact();\n")),
              "undo would tick with Haptics off",
              'haptics-scan: HapticFeedback. in lib/ui/game/game_controller.dart'),
+    # ---- #108: TalkBack ------------------------------------------------------------
+    Mutation("#108a", "an announcement spoken outside the announcer",
+             "lib/ui/board/board_view.dart",
+             chain(sub(r"(import 'dart:async';\n)", r"\1import 'package:flutter/semantics.dart';\n"),
+                   sub(r"(  void finishDeal\(\) \{\n)",
+                       r"\1    SemanticsService.sendAnnouncement(View.of(context), 'Dealt', TextDirection.ltr);\n")),
+             "the deal would be announced to everyone, screen reader or not",
+             'announcer-scan: SemanticsService. in lib/ui/board/board_view.dart'),
+    Mutation("#108b", "the face-down column label names its top card",
+             "lib/ui/board/board_semantics.dart",
+             sub(r"'\$\{capital\(columnName\(column\)\)\}, \$\{plural\(down\.length, 'face-down card'\)\}'",
+                 r"'${capital(columnName(column))}, ${plural(down.length, 'face-down card')}, ${down.last.spokenName}'"),
+             "TalkBack would read the hidden card's rank and suit",
+             'face-down: '),
 ]
 
 

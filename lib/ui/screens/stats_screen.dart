@@ -3,7 +3,6 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 
 import '../../data/stats.dart';
 import '../app.dart';
@@ -56,11 +55,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
   void _askReset() {
     setState(() => _confirming = true);
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      'Reset all statistics?',
-      TextDirection.ltr,
-    );
+    GameScope.of(context).announcer.announce(context, 'Reset all statistics?');
   }
 
   void _cancel() => setState(() => _confirming = false);

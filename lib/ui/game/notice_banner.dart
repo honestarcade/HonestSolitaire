@@ -3,8 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
+import '../a11y/announcer.dart';
+import '../app.dart';
 import '../theme/palette.dart';
 
 class NoticeAction {
@@ -39,11 +40,8 @@ class _NoticeBannerState extends State<NoticeBanner> {
     super.didChangeDependencies();
     if (_announced) return;
     _announced = true;
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      widget.message,
-      TextDirection.ltr,
-    );
+    (GameScope.maybeOf(context)?.announcer ?? const FlutterAnnouncer())
+        .announce(context, widget.message);
   }
 
   @override

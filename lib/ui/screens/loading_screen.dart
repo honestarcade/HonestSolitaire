@@ -6,7 +6,6 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
@@ -173,11 +172,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void _announce(int dealsTried) {
     if (_announceCooldown?.isActive ?? false) return;
     _announceCooldown = Timer(countAnnounceInterval, () {});
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      _countText(dealsTried),
-      TextDirection.ltr,
-    );
+    GameScope.of(context).announcer.announce(context, _countText(dealsTried));
   }
 
   void _fail() {
