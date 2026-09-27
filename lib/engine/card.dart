@@ -53,15 +53,22 @@ const int aceRank = 1;
 const int kingRank = 13;
 
 /// An immutable playing card. Equality covers rank, suit and face state; a
-/// card has no identity of its own, so two aces of spades are equal.
+/// card has no identity of its own, so two aces of spades are equal. [id]
+/// is presentation identity only (#99): the card's index in its unshuffled
+/// deck, carried through shuffles and flips so the board can follow one
+/// card between two positions; it is not part of equality and not saved.
 class Card {
-  const Card(this.rank, this.suit, {this.faceUp = false})
+  const Card(this.rank, this.suit, {this.faceUp = false, this.id = -1})
     : assert(rank >= aceRank && rank <= kingRank, 'rank must be 1..13');
 
   /// 1 (ace) .. 13 (king).
   final int rank;
   final Suit suit;
   final bool faceUp;
+
+  /// The deck index this card was dealt as, or -1 when unknown (a card
+  /// parsed from JSON or built by hand; `fromPiles` assigns one).
+  final int id;
 
   bool get isRed => suit.isRed;
   bool get isBlack => !suit.isRed;
@@ -72,10 +79,13 @@ class Card {
   String get rankName => rankNames[rank];
 
   /// The same card turned face up.
-  Card get up => faceUp ? this : Card(rank, suit, faceUp: true);
+  Card get up => faceUp ? this : Card(rank, suit, faceUp: true, id: id);
 
   /// The same card turned face down.
-  Card get down => faceUp ? Card(rank, suit) : this;
+  Card get down => faceUp ? Card(rank, suit, id: id) : this;
+
+  /// The same card with [id].
+  Card withId(int id) => Card(rank, suit, faceUp: faceUp, id: id);
 
   /// The compact JSON form: rank name, suit letter, and a trailing `*` when
   /// the card is face down — `"AS"`, `"10H"`, `"KC*"`.

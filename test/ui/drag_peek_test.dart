@@ -129,6 +129,9 @@ void main() {
   testWidgets(
     'an illegal drop, a felt drop and a drop on its own column spring back',
     (tester) async {
+      // The spring-back travels only with animations on (#99).
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures();
       final controller = controllerFor(position);
       await pumpBoard(tester, controller);
       final home = tester.getRect(find.byKey(const Key('card-t0-1')));

@@ -210,6 +210,15 @@ void main() {
   });
 
   group('auto-finish', () {
+    // The stepping is what these assert: animations on (#99 turns them
+    // off for every test by default).
+    setUp(() {
+      TestWidgetsFlutterBinding
+              .instance
+              .platformDispatcher
+              .accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures();
+    });
     testWidgets(
       'on: a move that solves the board sweeps it step by step to the win card',
       (tester) async {

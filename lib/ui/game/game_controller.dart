@@ -23,6 +23,7 @@ import 'finish_sweep.dart';
 import 'game_clock.dart';
 import 'game_event.dart';
 import 'ui_hint.dart';
+import '../board/card_motion.dart';
 
 /// A run to shake sideways: the pile, the first card of the run, and a
 /// sequence number so a repeat restarts the animation.
@@ -276,6 +277,8 @@ class GameController extends ChangeNotifier {
     _syncClock();
     displayGame.value = game;
     notifyListeners();
+    // No animations: the steps are not shown one by one (#99).
+    if (motion == AppMotion.none) sweep.completeNow();
   }
 
   void _showWin() {
@@ -362,6 +365,17 @@ class GameController extends ChangeNotifier {
   DragState? _dragging;
   DragState? get dragging => _dragging;
 
+  /// Whether the board animates (#99); the board sets it each build. Under
+  /// [AppMotion.none] the finish sweep completes at once and a refused drop
+  /// springs home instantly.
+  AppMotion motion = AppMotion.full;
+
+  int _installSequence = 0;
+
+  /// Bumped whenever a different game is installed (new deal, restart,
+  /// resume), so the board snaps instead of animating between two deals.
+  int get installSequence => _installSequence;
+
   SpringBack? _springBack;
   SpringBack? get springBack => _springBack;
   int _springSequence = 0;
@@ -411,6 +425,7 @@ class GameController extends ChangeNotifier {
   }
 
   void _install(Game game, {required bool hasMove}) {
+    _installSequence++;
     _sweep?.dispose();
     _sweep = null;
     _shownStep = null;
@@ -590,9 +605,7 @@ class GameController extends ChangeNotifier {
   /// Whether a drag may start from card [index] of [pile]: a Klondike valid
   /// run start, waste top or foundation top; a Spider same-suit run start.
   bool canDrag(BoardPile pile, int? index) {
-    if (_game.isWon || _springBack != null || _sweep != null || _paused) {
-      return false;
-    }
+    if (_game.isWon || _sweep != null || _paused) return false;
     final cards = _pileCards(pile);
     if (cards == null || cards.isEmpty) return false;
     switch (pile) {
@@ -625,6 +638,8 @@ class GameController extends ChangeNotifier {
     List<Rect> homeRects,
     Offset grab,
   ) {
+    // A running spring-back no longer blocks input: it lands now (#99).
+    _clearSpring();
     if (!canDrag(pile, index)) return false;
     final cards = _pileCards(pile)!;
     final start = pile is TableauPile ? index! : cards.length - 1;
@@ -728,6 +743,11 @@ class GameController extends ChangeNotifier {
 
   void _springHome(DragState d) {
     _springTimer?.cancel();
+    if (motion == AppMotion.none) {
+      // Instant: the cards are already drawn at home.
+      _springBack = null;
+      return;
+    }
     _springSequence++;
     _springBack = SpringBack(
       pile: d.pile,
@@ -756,7 +776,6 @@ class GameController extends ChangeNotifier {
     return cards != null &&
         cards.any((c) => c.faceUp) &&
         _dragging == null &&
-        _springBack == null &&
         _sweep == null &&
         !_paused;
   }

@@ -368,3 +368,12 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `tools/gate.sh` runs the tools' Python unit tests as step 2 through a shell function (`run_python_tests`, discovery finding nothing is not a failure) and finds the build step by its label; the six-step wording in CLAUDE.md and the README becomes seven.
   **Why:** #98's discretion; `run_step` executes an array of words, and a function name is one.
   **Issue:** #98
+- **Decision:** `Card.id` is presentation identity only — the unshuffled deck index, carried through shuffles and flips, outside `==`/`hashCode`, never saved; both `fromPiles` assign it by rank and suit through `identifyPiles` (Spider duplicates by occurrence order); the board falls back to a rank/suit/occurrence id when a card has none.
+  **Why:** #99's pass-2 discretion; a restored game is re-dealt and replayed (#69), so its cards get ids from `deal` and the save format is untouched.
+  **Issue:** #99
+- **Decision:** Every test runs with `MediaQuery.disableAnimations` on (`test/flutter_test_config.dart`); the motion tests opt back in.
+  **Why:** The M3/M4 suites read a card's rect right after a move and tap it, which is only true when the board snaps; the setting is the phone's own switch, so the suites exercise the reduced-motion path the story requires.
+  **Issue:** #99
+- **Decision:** A card that only flips (the one a move uncovered) starts its flip when the slides land; a card that slides and flips (a stock draw) flips as it lands; a released drag settles from its last drawn rect; a running spring-back is finished by the next drag rather than blocking it; under `AppMotion.none` the controller skips the spring-back and completes the finish sweep at once.
+  **Why:** #99's discretion, made concrete where the story left the order to the implementation.
+  **Issue:** #99

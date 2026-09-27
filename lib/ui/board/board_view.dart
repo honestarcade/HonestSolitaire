@@ -16,8 +16,10 @@ import '../settings/display_options.dart';
 import '../theme/palette.dart';
 import 'board_layout.dart';
 import 'board_pointer.dart';
+import 'card_motion.dart';
 import 'pile_ref.dart';
 import 'slot_painter.dart';
+import '../game/finish_sweep.dart';
 
 /// The design's felt: radial-gradient(120% 80% at 50% 0%, #0a3a80, #05285F
 /// 52%, #031634).
@@ -91,15 +93,89 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
     parent: _spring,
     curve: Curves.easeOutCubic,
   );
+  late final AnimationController _motion = AnimationController(vsync: this);
   int _shakeSequence = 0;
   int _springSequence = 0;
   _LayoutCache? _cache;
+
+  // The last committed frames, and what they were taken from (#99).
+  BoardFrames? _frames;
+  Game? _framesGame;
+  Size? _framesSize;
+  DisplayOptions? _framesOptions;
+  int _framesInstall = -1;
+  MotionPlan? _plan;
+
+  /// Where a drag's cards were last drawn, by id: a legal drop settles
+  /// from there rather than from the cards' old home.
+  Map<int, Rect> _dragRects = const {};
 
   @override
   void dispose() {
     _shake.dispose();
     _spring.dispose();
+    _motion.dispose();
     super.dispose();
+  }
+
+  /// Plans the motion from the last committed frames to [game]'s, or snaps.
+  void _reconcile(
+    Game game,
+    Size size,
+    DisplayOptions options,
+    BoardLayout layout,
+    AppMotion motion,
+  ) {
+    final controller = widget.controller;
+    final dropRects = _dragRects;
+    final previous = _frames;
+    final changed =
+        previous == null ||
+        !samePiles(_framesGame!, game) ||
+        _framesInstall != controller.installSequence ||
+        _framesSize != size ||
+        _framesOptions != options;
+    if (changed) {
+      final frames = snapshotFrames(game, layout);
+      final aMove =
+          previous != null &&
+          _framesInstall == controller.installSequence &&
+          _framesSize == size &&
+          _framesOptions == options;
+      MotionPlan? plan;
+      if (aMove && motion == AppMotion.full) {
+        plan = planMotion(
+          previous: previous,
+          next: frames,
+          layout: layout,
+          dropRects: dropRects,
+          slide: controller.finishing ? sweepStep : slideDuration,
+        );
+      }
+      // A new move lands the running one instantly: the old plan goes.
+      _plan = plan;
+      _motion.stop();
+      if (plan != null) {
+        _motion.duration = Duration(milliseconds: plan.totalMs);
+        _motion.forward(from: 0);
+      }
+      _frames = frames;
+      _framesGame = game;
+      _framesSize = size;
+      _framesOptions = options;
+      _framesInstall = controller.installSequence;
+    } else if (motion == AppMotion.none && _plan != null) {
+      // Animations turned off mid-flight: land now.
+      _plan = null;
+      _motion.stop();
+    }
+    final d = controller.dragging;
+    _dragRects = d == null
+        ? const {}
+        : {
+            for (var i = 0; i < d.cards.length; i++)
+              if (d.cards[i].id >= 0) d.cards[i].id: d.rects[i],
+          };
   }
 
   BoardLayout _layout(Game game, Size size, DisplayOptions options) {
@@ -135,23 +211,41 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
                 final game = controller.shown;
                 final options = controller.display;
                 final layout = _layout(game, size, options);
+                final motion = AppMotion.of(context, controller.settings);
+                controller.motion = motion;
+                _reconcile(game, size, options, layout, motion);
                 final shake = controller.shake;
                 if (shake != null && shake.sequence != _shakeSequence) {
                   _shakeSequence = shake.sequence;
-                  _shake.forward(from: 0);
+                  if (motion == AppMotion.full) _shake.forward(from: 0);
                 }
                 final spring = controller.springBack;
                 if (spring != null && spring.sequence != _springSequence) {
                   _springSequence = spring.sequence;
-                  _spring.forward(from: 0);
+                  if (motion == AppMotion.full) _spring.forward(from: 0);
                 }
-                return _Board(
-                  controller: controller,
-                  layout: layout,
-                  shakeAnimation: _shake,
-                  springAnimation: _springCurve,
-                  topBar: widget.topBar?.call(context),
-                  toolRow: widget.toolRow?.call(context),
+                final topBar = widget.topBar?.call(context);
+                final toolRow = widget.toolRow?.call(context);
+                return AnimatedBuilder(
+                  animation: _motion,
+                  builder: (context, _) {
+                    final plan = _plan;
+                    final ms = plan == null
+                        ? 0
+                        : (_motion.value * plan.totalMs).round();
+                    return _Board(
+                      controller: controller,
+                      layout: layout,
+                      frames: _frames!,
+                      plan: plan,
+                      ms: ms,
+                      motion: motion,
+                      shakeAnimation: _shake,
+                      springAnimation: _springCurve,
+                      topBar: topBar,
+                      toolRow: toolRow,
+                    );
+                  },
                 );
               },
             ),
@@ -194,6 +288,10 @@ class _Board extends StatelessWidget {
   const _Board({
     required this.controller,
     required this.layout,
+    required this.frames,
+    required this.plan,
+    required this.ms,
+    required this.motion,
     required this.shakeAnimation,
     required this.springAnimation,
     this.topBar,
@@ -202,8 +300,24 @@ class _Board extends StatelessWidget {
 
   final GameController controller;
   final BoardLayout layout;
+  final BoardFrames frames;
+
+  /// The running motion plan and the time into it (#99).
+  final MotionPlan? plan;
+  final int ms;
+  final AppMotion motion;
   final Animation<double> shakeAnimation;
   final Animation<double> springAnimation;
+
+  /// The motion of the card at [pile]/[index] still in flight, if any.
+  CardMotion? _motionAt(BoardPile pile, int index) {
+    final plan = this.plan;
+    if (plan == null) return null;
+    final id = frames.idAt(pile, index);
+    if (id == null) return null;
+    final m = plan.byId[id];
+    return m != null && !m.doneAt(ms) ? m : null;
+  }
 
   /// The run lifted out of its pile by a drag or a spring-back: (pile,
   /// first index), painted in the top layer instead.
@@ -269,6 +383,7 @@ class _Board extends StatelessWidget {
     }
     _dragTargets(children);
     children.addAll(peekLayer);
+    _movingLayer(children);
     if (topBar != null) {
       children.add(Positioned.fromRect(rect: layout.topBar, child: topBar!));
     }
@@ -445,7 +560,11 @@ class _Board extends StatelessWidget {
     }
     for (var i = 0; i < 8; i++) {
       final rect = layout.slots[CompletedPile(i)]!;
-      if (i < game.completed.length) {
+      final arriving =
+          plan != null &&
+          plan!.completedSlot == i &&
+          plan!.motions.any((m) => m.toPile == null && !m.doneAt(ms));
+      if (i < game.completed.length && !arriving) {
         out.add(
           Positioned.fromRect(
             rect: rect,
@@ -561,7 +680,7 @@ class _Board extends StatelessWidget {
               final rect = Rect.lerp(
                 s.from[i],
                 s.to[i],
-                springAnimation.value,
+                motion == AppMotion.none ? 1.0 : springAnimation.value,
               )!;
               return Positioned(left: rect.left, top: rect.top, child: child!);
             },
@@ -576,6 +695,41 @@ class _Board extends StatelessWidget {
           ),
         );
       }
+    }
+  }
+
+  /// The cards in flight (#99), above the board and below the bars: each at
+  /// its interpolated rect, keyed by its destination like any card, its
+  /// face swapped half-way through a flip, no ring.
+  void _movingLayer(List<Widget> out) {
+    final plan = this.plan;
+    if (plan == null) return;
+    final active = plan.activeAt(ms).toList()
+      ..sort((a, b) => a.toIndex.compareTo(b.toIndex));
+    for (final m in active) {
+      final rect = m.rectAt(ms);
+      final card = m.cardAt(ms);
+      final scaleX = m.scaleXAt(ms);
+      final key = m.toPile == null
+          ? const Key('completed-arriving')
+          : Key('card-${m.toPile!.token}-${m.toIndex}');
+      Widget child = PlayingCard(
+        key: key,
+        card: card,
+        size: rect.size,
+        back: controller.display.cardBack,
+        narrow: m.narrow || layout.narrow,
+        radius: m.toPile == null ? layout.topRowRadius : layout.radius,
+      );
+      if (m.flipAt(ms) >= 0) {
+        child = Transform(
+          key: Key('flip-${key is ValueKey<String> ? key.value : 'king'}'),
+          alignment: Alignment.center,
+          transform: Matrix4.diagonal3Values(math.max(scaleX, 0.001), 1, 1),
+          child: child,
+        );
+      }
+      out.add(Positioned.fromRect(rect: rect, child: child));
     }
   }
 
@@ -617,6 +771,7 @@ class _Board extends StatelessWidget {
     final raised = <Widget>[];
     for (var i = 0; i < cards.length; i++) {
       if (i >= liftedFrom) break; // painted by the drag layer
+      if (_motionAt(pile, i) != null) continue; // painted by the moving layer
       final rect = rects[i];
       // Snap the origin to a device pixel; sizes stay fractional.
       final left = (rect.left * dpr).roundToDouble() / dpr;

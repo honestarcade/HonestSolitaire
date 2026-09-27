@@ -32,16 +32,52 @@ enum SpiderSuits {
   }
 }
 
-/// The 52 cards of one deck, face down.
+/// The 52 cards of one deck, face down, each carrying its index as its id.
 List<Card> standardDeck() => [
   for (final suit in Suit.values)
-    for (var rank = aceRank; rank <= kingRank; rank++) Card(rank, suit),
+    for (var rank = aceRank; rank <= kingRank; rank++)
+      Card(rank, suit, id: suit.index * kingRank + rank - 1),
 ];
 
 /// The 104 cards of a Spider deal in [suits] suits, face down: 8×13 spades;
-/// 4×13 each of spades and hearts; or 2×13 of every suit.
-List<Card> spiderDeck(SpiderSuits suits) => [
-  for (final suit in suits.suits)
-    for (var copy = 0; copy < suits.copies; copy++)
-      for (var rank = aceRank; rank <= kingRank; rank++) Card(rank, suit),
-];
+/// 4×13 each of spades and hearts; or 2×13 of every suit. Ids are indices.
+List<Card> spiderDeck(SpiderSuits suits) {
+  final out = <Card>[];
+  for (final suit in suits.suits) {
+    for (var copy = 0; copy < suits.copies; copy++) {
+      for (var rank = aceRank; rank <= kingRank; rank++) {
+        out.add(Card(rank, suit, id: out.length));
+      }
+    }
+  }
+  return out;
+}
+
+/// Gives every card in [piles] the id of a matching card of [deck] (#99):
+/// pile by pile, card by card, the first unused deck card of that rank and
+/// suit, so Spider's duplicates are told apart by occurrence order.
+/// [reserved] cards (a completed run) take their ids first. A card with no
+/// match keeps its own id.
+List<List<Card>> identifyPiles(
+  List<Card> deck,
+  List<List<Card>> piles, {
+  Iterable<Card> reserved = const [],
+}) {
+  final used = List<bool>.filled(deck.length, false);
+  Card take(Card card) {
+    for (var i = 0; i < deck.length; i++) {
+      if (!used[i] && deck[i].rank == card.rank && deck[i].suit == card.suit) {
+        used[i] = true;
+        return card.withId(i);
+      }
+    }
+    return card;
+  }
+
+  for (final card in reserved) {
+    take(card);
+  }
+  return [
+    for (final pile in piles) [for (final card in pile) take(card)],
+  ];
+}
