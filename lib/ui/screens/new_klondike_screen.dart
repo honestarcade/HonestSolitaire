@@ -11,6 +11,7 @@ import '../game/game_event.dart';
 import '../navigation.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
+import 'deal_number_field.dart';
 import 'loading_screen.dart';
 
 class NewKlondikeScreen extends StatefulWidget {
@@ -26,6 +27,27 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
   late bool _timed;
   late bool _winnable;
   bool _initialised = false;
+  DealNumberInput _number = const Blank();
+
+  /// The Deal choice before a typed number forced Random; restored when
+  /// the number is cleared.
+  bool? _winnableBeforeNumber;
+
+  static const chosenDealReason = "A chosen deal can't be promised winnable";
+
+  void _onNumber(DealNumberInput input) {
+    setState(() {
+      final wasForced = _number is Valid;
+      _number = input;
+      if (input is Valid && !wasForced) {
+        _winnableBeforeNumber = _winnable;
+        _winnable = false;
+      } else if (input is! Valid && wasForced) {
+        _winnable = _winnableBeforeNumber ?? _winnable;
+        _winnableBeforeNumber = null;
+      }
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -50,8 +72,13 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
 
   void _deal() {
     final scope = GameScope.of(context);
-    if (scope.navigating.busy) return;
+    if (scope.navigating.busy || _number is Invalid) return;
     final options = _options(scope);
+    if (_number case Valid(:final number)) {
+      // A retry of a specific deal: exact, and exempt from the reroll.
+      startNewGame(context, KlondikeGame.deal(number, options));
+      return;
+    }
     if (_winnable) {
       scope.navigating.push(
         Navigator.of(context),
@@ -86,6 +113,7 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
       listenable: Listenable.merge([scope.controller, scope.saves]),
       builder: (context, _) {
         final keep = keepPlayingTarget(scope, GameType.klondike);
+        final forced = _number is Valid;
         return ScreenScaffold(
           gap: 12,
           pinned: Column(
@@ -95,6 +123,7 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
                 key: const Key('ksetup-deal'),
                 accent: accent,
                 scale: s,
+                enabled: _number is! Invalid,
                 onPressed: _deal,
               ),
               if (keep != null) ...[
@@ -179,9 +208,12 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
             ),
             OptionPanel(
               label: 'Deal',
-              description:
-                  'Winnable deals are drawn from solvable shuffles only.',
-              descriptionKey: const Key('ksetup-deal-description'),
+              description: forced
+                  ? chosenDealReason
+                  : 'Winnable deals are drawn from solvable shuffles only.',
+              descriptionKey: Key(
+                forced ? 'deal-number-reason' : 'ksetup-deal-description',
+              ),
               scale: s,
               choices: [
                 for (final (value, label) in [
@@ -195,10 +227,13 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
                     selected: _winnable == value,
                     accent: accent,
                     scale: s,
+                    enabled: !(forced && value),
+                    hint: forced && value ? chosenDealReason : null,
                     onTap: () => setState(() => _winnable = value),
                   ),
               ],
             ),
+            DealNumberField(accent: accent, scale: s, onChanged: _onNumber),
           ],
         );
       },

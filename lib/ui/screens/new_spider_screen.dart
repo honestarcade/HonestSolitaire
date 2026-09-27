@@ -13,6 +13,7 @@ import '../game/game_event.dart';
 import '../navigation.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
+import 'deal_number_field.dart';
 
 /// The design's three rows.
 const suitRows = [
@@ -56,6 +57,7 @@ class _NewSpiderScreenState extends State<NewSpiderScreen> {
   late bool _timed;
   late bool _relaxed;
   bool _initialised = false;
+  DealNumberInput _number = const Blank();
 
   @override
   void didChangeDependencies() {
@@ -70,13 +72,18 @@ class _NewSpiderScreenState extends State<NewSpiderScreen> {
 
   void _deal() {
     final scope = GameScope.of(context);
-    if (scope.navigating.busy) return;
+    if (scope.navigating.busy || _number is Invalid) return;
     final options = SpiderOptions(
       suits: _suits,
       timed: _timed,
       relaxed: _relaxed,
       autoFlip: scope.playSettings.value.autoFlip,
     );
+    if (_number case Valid(:final number)) {
+      // A retry of a specific deal: exact, and exempt from the reroll.
+      startNewGame(context, SpiderGame.deal(number, options));
+      return;
+    }
     final current = keepPlayingTarget(scope, GameType.spider)?.dealNumber;
     startNewGame(
       context,
@@ -102,6 +109,7 @@ class _NewSpiderScreenState extends State<NewSpiderScreen> {
                 key: const Key('ssetup-deal'),
                 accent: accent,
                 scale: s,
+                enabled: _number is! Invalid,
                 onPressed: _deal,
               ),
               if (keep != null) ...[
@@ -187,6 +195,11 @@ class _NewSpiderScreenState extends State<NewSpiderScreen> {
                     onTap: () => setState(() => _relaxed = value),
                   ),
               ],
+            ),
+            DealNumberField(
+              accent: accent,
+              scale: s,
+              onChanged: (input) => setState(() => _number = input),
             ),
           ],
         );
