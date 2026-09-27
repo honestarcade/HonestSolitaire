@@ -264,7 +264,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
               _Mark(size: 132 * s),
               SizedBox(height: 30 * s),
               // The wordmark is a drawing: no text scaling (#106).
-              MediaQuery.withNoTextScaling(child: _Title(scale: s)),
+              MediaQuery.withNoTextScaling(
+                child: _Title(key: const Key('splash-title'), scale: s),
+              ),
               SizedBox(height: 30 * s),
               LoadingBar(
                 key: const Key('loading-bar'),
@@ -426,7 +428,7 @@ class _SpadePainter extends CustomPainter {
 }
 
 class _Title extends StatelessWidget {
-  const _Title({required this.scale});
+  const _Title({super.key, required this.scale});
 
   final double scale;
 
