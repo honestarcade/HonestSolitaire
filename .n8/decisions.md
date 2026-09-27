@@ -452,3 +452,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** #77's plan called for a separate `drag_layer.dart` file for `_dragLayer`/`_dragTargets`; that was never done, and unlike #73's analogous rename it was never logged. Kept inline in `board_view.dart` rather than extracted now — both are private methods on `BoardViewState` that read the same layout/controller state every other build-time method there does, with no caller outside this class; splitting them into their own file today would be a file-organization change with no behavior or test benefit, not a fix. Documenting the decision here is the fix `/n8-verify` asked for.
   **Why:** #139 flagged the missing log entry, not a functional defect; CLAUDE.md's own guidance is against introducing an abstraction (a new file/module boundary) beyond what a change requires.
   **Issue:** #139
+
+## Ad-hoc -- 2026-09-27
+
+- **Decision:** The first release after M0-M5 is `v0.2.0`, not `v1.0.0-rc.1` as the M7 plan's round-one answer named release candidates. The owner: this build hasn't been through their own testing or a bug-fixing pass yet, and `rc` is reserved for the point M7 actually opens testing to outside testers. `v0.2.0` reflects the real capability jump (infrastructure-only to a fully playable app) without claiming release-candidate readiness.
+  **Why:** owner's explicit correction during `/n8-release`, overriding the M7 planning note recorded 2026-09-26.
+  **Issue:** M7 planning may assume rc versioning starts earlier than M6 (testing and bug fixing) completes -- worth an `/n8-replan M7` pass if the rc-numbering scheme needs adjusting once M6 is scoped.
