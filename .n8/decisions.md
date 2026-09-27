@@ -277,3 +277,12 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The board's safe area is `MediaQuery.viewPadding` (the system bars), and both Android theme files inherit one `HonestDark` parent with a navy window background.
   **Why:** #81's discretion; one parent keeps light and dark mode identical, which the design is.
   **Issue:** #81
+
+## Ad-hoc -- 2026-09-26
+
+- **Change:** Invariant 1 now says the app itself sends player data nowhere, and that Android's own system backup, when the player has it on, may include the app's data in their Google account backup; the app does not set `android:allowBackup="false"`.
+  **Why:** Owner, /n8-plan M4 round two (2026-09-24): "We will allow google cloud backup. That's a user decision, not ours. We don't send the data anywhere else, but if the user has a system-level feature turned on that does we won't stop it." Applied by #83 as planned; `docs/privacy.md` says the same.
+  **Affects:** M7 (#121's Play data-safety answers must say the same); no other plan changes.
+
+## /n8-exec M4 -- 2026-09-26
+

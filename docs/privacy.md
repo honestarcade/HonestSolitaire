@@ -5,7 +5,7 @@ permalink: /privacy
 
 # Honest Solitaire — Privacy Policy
 
-**Effective date: 2026-09-23** · Last updated: 2026-09-23
+**Effective date: 2026-09-23** · Last updated: 2026-09-26
 
 Honest Solitaire (package `com.honestarcade.solitaire`), published by Honest
 Arcade, collects **no data**. None.
@@ -21,8 +21,11 @@ Arcade, collects **no data**. None.
   advertising, analytics, attribution or crash-reporting SDKs of any kind, and
   no plugin with network access.
 - Your game in progress, your statistics (games played and won, streaks, best
-  times, fewest moves, scores) and your settings are saved **only on your
-  device** and never leave it. Uninstalling the app deletes them.
+  times, fewest moves, scores) and your settings are saved **on your device**,
+  and the app itself sends them nowhere. If you have Android's own backup
+  turned on, Android may include them in your Google account backup — that is
+  your setting, not ours. Uninstalling the app deletes them from the phone; a
+  copy in your Android backup is managed by Google's backup settings.
 - The app shows no ads and contains no purchases.
 - Children's privacy: since no data is collected from anyone, no data is
   collected from children.

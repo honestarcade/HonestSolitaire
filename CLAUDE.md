@@ -67,12 +67,16 @@ design, not filed. This is what stopped the round-after-round bypass hunt
 Honest Sudoku went through.
 
 1. **No ads, no tracking, no analytics, no network.** The release build
-   declares no Android permissions at all (INTERNET included) and all player
-   data stays on the device. Fonts are bundled, never fetched. Build-time
+   declares no Android permissions at all (INTERNET included) and the app
+   itself sends player data nowhere. Android's own system backup, when the
+   player has it on, may include the app's data in their Google account
+   backup — that is the player's choice, and the app does not opt out
+   (owner, 2026-09-24). Fonts are bundled, never fetched. Build-time
    permission removal rules are forbidden: a plugin that declares a permission
    is not adopted. *(test-enforced: `test/guards/manifest_permission_example_test.dart`
-   over the source manifest and `tools/check_aab.sh` over every built bundle —
-   guard: #15)*
+   over the source manifest, `tools/check_aab.sh` over every built bundle,
+   and `test/guards/platform_surface_test.dart` over the app's own platform
+   channel, its data layer and the manifest's backup setting — guard: #15, #83)*
 2. **Lean dependencies.** A third-party package is added only when necessary,
    carries a trailing `# why: <reason>` on its key line in `pubspec.yaml`, and
    never brings ads, analytics, or network access. The SDK entries (`flutter`,
