@@ -235,7 +235,7 @@ class _Wordmark extends StatelessWidget {
             width: 52 * s,
             height: 52 * s,
             child: CustomPaint(
-              painter: const HonestMarkPainter(strokeScale: 7 / 8),
+              painter: const HonestMarkPainter(),
               foregroundPainter: _MenuSpade(),
             ),
           ),

@@ -401,7 +401,7 @@ class _Mark extends StatelessWidget {
     width: size,
     height: size,
     child: CustomPaint(
-      painter: const HonestMarkPainter(strokeScale: 0.75),
+      painter: const HonestMarkPainter(),
       foregroundPainter: _SpadePainter(),
     ),
   );

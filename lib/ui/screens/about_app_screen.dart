@@ -277,7 +277,7 @@ class IconTile extends StatelessWidget {
     child: Padding(
       padding: EdgeInsets.all(size * 7 / 62),
       child: CustomPaint(
-        painter: const HonestMarkPainter(strokeScale: 7 / 8),
+        painter: const HonestMarkPainter(),
         foregroundPainter: _TileSpade(),
       ),
     ),

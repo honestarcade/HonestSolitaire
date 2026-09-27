@@ -66,6 +66,8 @@ class Mutation:
     also: tuple = ()
     slow: bool = False
     creates: tuple = ()
+    deletes: str = ""
+    replaces_with: tuple = ()
     """A substring of the reason the RIGHT assertion prints when it fires.
 
     Without this the battery measures "the suite went red", which is not the
@@ -80,6 +82,14 @@ class Mutation:
     root, that file outlived the run, and it was then swept into a commit by
     `git add -A` -- twice. Being tracked, it went into the leak scan's skip
     set and blinded the very guard the mutation exists to exercise (#213).
+
+    `deletes` names one file removed for the run and `replaces_with` is a
+    `(target, fixture)` pair whose fixture bytes overwrite the target (#97):
+    the defects a text substitution cannot express -- a missing raster, the
+    template's icon back in place. Both are byte snapshots restored in the
+    same try/finally as the text edits; tools/test_mutation_check.py holds
+    the round trip byte-identical. A mutation of these kinds may leave
+    `path` empty.
 
     `also` carries further `(path, apply)` edits. Some defects are not
     expressible in one file: #203 is "a second parse path is added AND the
@@ -386,7 +396,47 @@ MUTATIONS: list[Mutation] = [
                  "const String kFontMono = 'IBM Plex Mono';\nconst String kFontUrl = 'https://fonts.googleapis.com/css2?family=Outfit';"),
              "a font fetched at run time is the network invariant 1 forbids",
              'fonts-hosts: 1 offender'),
+    # ---- #97: the launcher icon and the start screen -----------------------
+    Mutation("#97a", "the template's default icon is back at one density",
+             "", None,
+             "the store build would ship Flutter's placeholder icon again",
+             'launcher-template: 1 offender',
+             replaces_with=(("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+                             "test/fixtures/template_ic_launcher_xxxhdpi.png"),)),
+    Mutation("#97b", "the adaptive icon loses its themed layer",
+             "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+             sub(r"\n    <monochrome [^\n]*/>", ""),
+             "Android 13 themed icons would show a generic tile",
+             'launcher-adaptive: 1 offender'),
+    Mutation("#97c", "one source's mark drifts from the others",
+             "assets/brand/android-foreground.svg",
+             sub(r'd="M 32 14 C 30 18', 'd="M 32 15 C 30 18'),
+             "the icon's layers would stop agreeing on the mark",
+             'launcher-sources: the inline mark copies differ'),
+    Mutation("#97d", "the Android 12 splash loses the mark",
+             "android/app/src/main/res/values-v31/styles.xml",
+             sub(r'\n\s*<item name="android:windowSplashScreenAnimatedIcon">[^\n]*', ''),
+             "the system splash would show the icon Android forces, not the mark",
+             'launcher-splash: 1 offender'),
+    Mutation("#97e", "a start-screen mark raster goes missing",
+             "", None,
+             "the pre-12 start screen would fail to inflate its drawable",
+             'launcher-rasters: 1 offender',
+             deletes="android/app/src/main/res/drawable-xhdpi/launch_mark.png"),
 ]
+
+
+def snapshot_bytes(paths: list) -> dict:
+    """The current bytes of every path, so a binary mutation can be undone."""
+    return {p: p.read_bytes() for p in paths}
+
+
+def restore_bytes(snapshot: dict) -> None:
+    """Puts every snapshotted file back, byte for byte, recreating a deleted
+    one (and its directory)."""
+    for p, data in snapshot.items():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -668,9 +718,11 @@ def main() -> int:
     broken: list[tuple[Mutation, str]] = []
 
     for i, m in enumerate(selected, 1):
-        edits = [(m.path, m.apply), *m.also]
+        edits = [*([(m.path, m.apply)] if m.path else []), *m.also]
         targets = [ROOT / path for path, _ in edits]
         originals = [target.read_text() for target in targets]
+        binary = [ROOT / m.deletes] if m.deletes else []
+        binary += [ROOT / target for target, _ in m.replaces_with]
         label = f"[{i}/{len(selected)}] {m.issue} {m.name}"
         try:
             mutated = [apply(text) for (_, apply), text in zip(edits, originals)]
@@ -678,7 +730,15 @@ def main() -> int:
             broken.append((m, str(exc)))
             print(f"  BROKEN  {label}\n          {exc}")
             continue
-        if mutated == originals:
+        missing = [p for p in binary if not p.exists()]
+        if missing:
+            broken.append((m, f"binary target missing: {missing[0]}"))
+            print(f"  BROKEN  {label}\n          {missing[0]} does not exist")
+            continue
+        fixtures = {ROOT / target: (ROOT / fixture).read_bytes()
+                    for target, fixture in m.replaces_with}
+        same = [p for p, data in fixtures.items() if p.read_bytes() == data]
+        if (mutated == originals and not binary) or same:
             broken.append((m, "changed nothing"))
             print(f"  BROKEN  {label}\n          changed nothing")
             continue
@@ -706,9 +766,15 @@ def main() -> int:
         IN_FLIGHT.write_text(
             f"{m.issue} {m.name}\n"
             + "".join(f"  {path}\n" for path, _ in edits)
+            + "".join(f"  {p.relative_to(ROOT)}\n" for p in binary)
         )
+        snapshot = snapshot_bytes(binary)
         for target, text in zip(targets, mutated):
             target.write_text(text)
+        if m.deletes:
+            (ROOT / m.deletes).unlink()
+        for target, data in fixtures.items():
+            target.write_bytes(data)
         try:
             unparseable = [t for t in targets if not parses_as_yaml(t)]
             if unparseable:
@@ -758,6 +824,7 @@ def main() -> int:
         finally:
             for target, text in zip(targets, originals):
                 target.write_text(text)
+            restore_bytes(snapshot)
             for made in m.creates:
                 (ROOT / made).unlink(missing_ok=True)
             IN_FLIGHT.unlink(missing_ok=True)

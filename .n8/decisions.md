@@ -338,3 +338,27 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Screen tests settle route transitions with an explicit 900 ms pump (`settle(tester, transition: true)`) and `openScreen` tears the previous app down before pumping a new one.
   **Why:** This Flutter's Android page transition runs 800 ms, and `pumpAndSettle` never settles while the search screen's bar loops; a second `HonestSolitaireApp` in one test otherwise reuses the first `GameRoot` state and store.
   **Issue:** #87, #91
+
+## /n8-exec M5 -- 2026-09-26
+
+- **Decision:** The font files, hashes, sources and README table are Honest Sudoku's, copied byte for byte (not re-fetched); the README says whose dates they are.
+  **Why:** #96's discretion; the pins are identical and `--check` proves the bytes here.
+  **Issue:** #96
+- **Decision:** One transparent `Material` sits above the Navigator in `GameRoot`, so every route inherits the theme's `DefaultTextStyle`. *(Rule 1)*
+  **Why:** The M4 screens are plain `DecoratedBox` scaffolds; without a Material their text carried the framework's fallback style (yellow-underlined `monospace`), which the typography test exposed once real fonts were loaded.
+  **Issue:** #96
+- **Decision:** The template-placeholder guard skips `.ttf`, `.otf` and `.wav`. *(Rule 3)*
+  **Why:** It reads every tracked file as UTF-8; the first bundled font made it throw. Binary assets carry no template text.
+  **Issue:** #96
+- **Decision:** Every mark in the app — card backs, splash, menu, About tile and the launcher icon — uses Honest Frog Across's corner geometry (`M 3 21 L 3 10 A 7 7 …`, stroke 6), taken from its `android-foreground-frog-mint.svg` on GitHub (sha256 `bad1e3e0…36a6`, read 2026-09-26), not the brand sheet's heavier `A 8.5` / stroke 7 drawing; the design's per-surface stroke scales (6, 7, 8) collapse to the one stroke.
+  **Why:** Owner, /n8-plan M5 round two: "the icon uses Frog Across's exact corner geometry, stroke 6"; #97's AC5 extends it to every in-app mark, and one geometry is what `test/ui/mark_geometry_test.dart` can hold to `STUDIO-MARK.svg`.
+  **Issue:** #97
+- **Decision:** The template icon is recognised by length plus FNV-1a 64 of each density's bytes (recorded from android-studio-app-template 4f43e95), not SHA-256.
+  **Why:** `package:crypto` is not a dependency (invariant 2) and the threat is the template surviving by accident, which a 64-bit fingerprint of a known file catches; a wrong but non-default image is outside the guard, as the story says.
+  **Issue:** #97
+- **Decision:** `tools/mutation_check.py` gains `deletes=` and `replaces_with=` as byte snapshots restored in the same `try/finally`; `tools/test_mutation_check.py` holds the round trip and runs under #98's unittest gate step (until then, by hand).
+  **Why:** #97's discretion; a missing raster or the template icon back in place cannot be expressed as a text substitution.
+  **Issue:** #97
+- **Decision:** Epic #7's launcher-icon criterion stands as amended at planning ("Dark icon", 2026-09-24); the light tile is not shipped and nothing is added to the epic.
+  **Why:** #97's AC6; the amendment is quoted in the epic's comment and delivered here.
+  **Issue:** #97

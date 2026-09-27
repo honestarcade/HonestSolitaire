@@ -3,4 +3,7 @@
     <!-- The felt's navy (lib/ui/theme/palette.dart), so the window never
          flashes white before the first Flutter frame. -->
     <color name="launch_navy">#05285F</color>
+    <!-- The icon tile (lib/ui/theme/palette.dart's ink), behind the adaptive
+         icon's foreground (#97). -->
+    <color name="ic_launcher_background">#04213F</color>
 </resources>
