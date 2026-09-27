@@ -1,5 +1,6 @@
 /// The tool row (#79): UNDO, HINT, FINISH or DEAL n, RESTART, NEW — five
-/// equal buttons along the bottom, reversed for left-handed play.
+/// equal buttons along the bottom, reversed for left-handed play; the icons
+/// are #100's vector glyphs.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../format.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 class ToolRow extends StatelessWidget {
   const ToolRow({
@@ -36,8 +38,7 @@ class ToolRow extends StatelessWidget {
         final tools = <_Tool>[
           _Tool(
             key: 'undo',
-            glyph: '↺',
-            icon: Icons.undo,
+            glyph: Glyph.undo,
             label: 'UNDO',
             semantics: 'Undo',
             enabled: !blocked && controller.canUndo,
@@ -45,8 +46,7 @@ class ToolRow extends StatelessWidget {
           ),
           _Tool(
             key: 'hint',
-            glyph: '✦',
-            icon: Icons.auto_awesome,
+            glyph: Glyph.hint,
             label: 'HINT',
             semantics: 'Hint',
             enabled: !blocked,
@@ -55,8 +55,7 @@ class ToolRow extends StatelessWidget {
           if (game is KlondikeGame)
             _Tool(
               key: 'finish',
-              glyph: '⇈',
-              icon: Icons.keyboard_double_arrow_up,
+              glyph: Glyph.finish,
               label: 'FINISH',
               semantics: 'Finish',
               enabled: !blocked && controller.canFinish,
@@ -66,8 +65,7 @@ class ToolRow extends StatelessWidget {
           else
             _Tool(
               key: 'deal',
-              glyph: '▤',
-              icon: Icons.table_rows,
+              glyph: Glyph.deal,
               label: 'DEAL ${formatCount(controller.dealsLeft)}',
               semantics: 'Deal, ${controller.dealsLeft} left',
               enabled: !blocked && controller.dealsLeft > 0,
@@ -76,8 +74,7 @@ class ToolRow extends StatelessWidget {
             ),
           _Tool(
             key: 'restart',
-            glyph: '⟳',
-            icon: Icons.replay,
+            glyph: Glyph.restart,
             label: 'RESTART',
             semantics: 'Restart',
             enabled: !blocked,
@@ -85,8 +82,7 @@ class ToolRow extends StatelessWidget {
           ),
           _Tool(
             key: 'new',
-            glyph: '✚',
-            icon: Icons.add,
+            glyph: Glyph.newGame,
             label: 'NEW',
             semantics: 'New deal',
             enabled: !blocked,
@@ -121,7 +117,6 @@ class _Tool {
   const _Tool({
     required this.key,
     required this.glyph,
-    required this.icon,
     required this.label,
     required this.semantics,
     required this.enabled,
@@ -130,21 +125,13 @@ class _Tool {
   });
 
   final String key;
-  final String glyph;
-
-  /// A Material icon standing in where the platform font has no glyph.
-  final IconData icon;
+  final Glyph glyph;
   final String label;
   final String semantics;
   final bool enabled;
   final VoidCallback onPressed;
   final bool accent;
 }
-
-/// Whether the design's glyphs are drawn as text (the default) or as their
-/// Material icon fallbacks. Flutter reports no missing-glyph event at run
-/// time, so the switch is a build-time decision confirmed on the device.
-bool useGlyphFallbackIcons = false;
 
 class _ToolButton extends StatefulWidget {
   const _ToolButton({required this.tool, required this.scale});
@@ -205,23 +192,11 @@ class _ToolButtonState extends State<_ToolButton> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (useGlyphFallbackIcons)
-                  Icon(t.icon, size: 15 * s, color: fg)
-                else
-                  Text(
-                    t.glyph,
-                    key: Key('tool-${t.key}-glyph'),
-                    style: TextStyle(
-                      fontSize: 15 * s,
-                      fontWeight: FontWeight.w500,
-                      color: fg,
-                      height: 1,
-                      fontFamilyFallback: const [
-                        'Noto Sans Symbols',
-                        'Noto Sans Symbols 2',
-                      ],
-                    ),
-                  ),
+                // The icon is decorative here: the button's label names it.
+                KeyedSubtree(
+                  key: Key('tool-${t.key}-glyph'),
+                  child: GlyphIcon(t.glyph, size: 15 * s, color: fg),
+                ),
                 SizedBox(height: 5 * s),
                 Text(
                   t.label,

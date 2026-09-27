@@ -11,6 +11,7 @@ import '../theme/palette.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 /// What the field holds.
 sealed class DealNumberInput {
@@ -215,12 +216,10 @@ class _DealNumberFieldState extends State<DealNumberField> {
                         width: 44,
                         height: 44,
                         child: Center(
-                          child: Text(
-                            '✕',
-                            style: TextStyle(
-                              fontSize: 14 * s,
-                              color: Palette.mist,
-                            ),
+                          child: GlyphIcon(
+                            Glyph.close,
+                            size: 12 * s,
+                            color: Palette.mist,
                           ),
                         ),
                       ),

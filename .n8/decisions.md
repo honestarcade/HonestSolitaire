@@ -377,3 +377,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** A card that only flips (the one a move uncovered) starts its flip when the slides land; a card that slides and flips (a stock draw) flips as it lands; a released drag settles from its last drawn rect; a running spring-back is finished by the next drag rather than blocking it; under `AppMotion.none` the controller skips the spring-back and completes the finish sweep at once.
   **Why:** #99's discretion, made concrete where the story left the order to the implementation.
   **Issue:** #99
+- **Decision:** Inline glyphs (↗ in a link, → in the support panel) sit on the line's middle (`PlaceholderAlignment.middle`), not on the baseline through a `Baseline` wrapper as the pass-2 note asked.
+  **Why:** A baseline placeholder asks the painted box for a dry baseline, which `RenderCustomPaint` does not provide, and the screen scaffold's pinned layout runs under `IntrinsicHeight`; the About screens threw during layout.
+  **Issue:** #100
+- **Decision:** The engine's and the hint's `toString` debug strings write `->` instead of `→`.
+  **Why:** They are string literals under `lib/`, so the glyph scan reads them; ASCII loses nothing in a debug string, and an exemption for them would be a second prose list to keep.
+  **Issue:** #100

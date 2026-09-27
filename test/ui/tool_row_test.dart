@@ -20,6 +20,8 @@ import 'package:honest_solitaire/ui/theme/palette.dart';
 import '../engine/positions.dart';
 import 'disposing_host.dart';
 
+import 'package:honest_solitaire/ui/icons/glyphs.dart';
+
 var nextDeal = 500;
 
 GameController controllerFor(
@@ -378,8 +380,18 @@ void main() {
     final undo = tester.getCenter(find.byKey(const Key('tool-undo')));
     final fresh = tester.getCenter(find.byKey(const Key('tool-new')));
     expect(undo.dx, greaterThan(fresh.dx), reason: 'UNDO is now on the right');
-    for (final glyph in ['↺', '✦', '⇈', '⟳', '✚']) {
-      expect(find.text(glyph), findsOneWidget, reason: glyph);
+    for (final glyph in [
+      Glyph.undo,
+      Glyph.hint,
+      Glyph.finish,
+      Glyph.restart,
+      Glyph.newGame,
+    ]) {
+      expect(
+        find.byWidgetPredicate((w) => w is GlyphIcon && w.glyph == glyph),
+        findsOneWidget,
+        reason: glyph.name,
+      );
     }
     for (final label in ['UNDO', 'HINT', 'FINISH', 'RESTART', 'NEW']) {
       expect(find.text(label), findsOneWidget);

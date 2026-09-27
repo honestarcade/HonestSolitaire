@@ -10,6 +10,7 @@ import '../theme/palette.dart';
 import 'game_controller.dart';
 import 'notice_banner.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key, required this.controller, required this.scale});
@@ -156,10 +157,7 @@ class _PausePill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CustomPaint(
-                    size: Size(7 * scale, 10 * scale),
-                    painter: const _PauseBars(),
-                  ),
+                  GlyphIcon(Glyph.pause, size: 10 * scale, color: Colors.white),
                   SizedBox(width: 7 * scale),
                   Flexible(
                     child: Text(
@@ -183,34 +181,6 @@ class _PausePill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// ❚❚ as two painted bars.
-class _PauseBars extends CustomPainter {
-  const _PauseBars();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white;
-    final w = size.width * 0.36;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, w, size.height),
-        const Radius.circular(1),
-      ),
-      paint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width - w, 0, w, size.height),
-        const Radius.circular(1),
-      ),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_PauseBars oldDelegate) => false;
 }
 
 class _Readout extends StatelessWidget {

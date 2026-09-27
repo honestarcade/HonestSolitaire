@@ -1,6 +1,6 @@
 /// The empty-slot decorations the design draws: 1 px dashed outlines with
 /// per-slot alphas, a 4 % white fill, a suit placeholder at 34 % white and
-/// the ↻ recycle arrow — all painted, never glyphs.
+/// the recycle arrow — all painted, never font glyphs.
 library;
 
 import 'dart:math' as math;
@@ -10,6 +10,7 @@ import 'package:honest_solitaire/engine/card.dart';
 
 import '../card/suit_paths.dart';
 import '../theme/palette.dart';
+import '../icons/glyphs.dart';
 
 class SlotPainter extends CustomPainter {
   const SlotPainter({
@@ -90,33 +91,17 @@ class SlotPainter extends CustomPainter {
     return out;
   }
 
-  /// ↻ as an arc with an arrowhead, 14 px tall by default, in the readout
-  /// colour.
+  /// The recycle arrow (#100's glyph), [recycleSize] tall, in the readout
+  /// colour, centred.
   void _paintRecycle(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final r = recycleSize * 0.36;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.2, recycleSize / 9)
-      ..strokeCap = StrokeCap.round
-      ..color = Palette.readout;
-    final arc = Path()
-      ..addArc(
-        Rect.fromCircle(center: c, radius: r),
-        -math.pi * 0.35,
-        math.pi * 1.55,
-      );
-    canvas.drawPath(arc, paint);
-    final tip = Offset(
-      c.dx + r * math.cos(-math.pi * 0.35),
-      c.dy + r * math.sin(-math.pi * 0.35),
+    paintGlyph(
+      canvas,
+      Glyph.recycle,
+      Offset(c.dx - recycleSize / 2, c.dy - recycleSize / 2),
+      recycleSize,
+      Palette.readout,
     );
-    final head = recycleSize * 0.28;
-    final arrow = Path()
-      ..moveTo(tip.dx - head, tip.dy - head * 0.1)
-      ..lineTo(tip.dx, tip.dy)
-      ..lineTo(tip.dx - head * 0.2, tip.dy + head);
-    canvas.drawPath(arrow, paint);
   }
 
   @override

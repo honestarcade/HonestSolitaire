@@ -25,6 +25,7 @@ import 'new_spider_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const menuGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -350,9 +351,10 @@ class _CorruptionBanner extends StatelessWidget {
                 width: 44,
                 height: 44,
                 child: Center(
-                  child: Text(
-                    '✕',
-                    style: TextStyle(fontSize: 14 * s, color: Palette.mist),
+                  child: GlyphIcon(
+                    Glyph.close,
+                    size: 12 * s,
+                    color: Palette.mist,
                   ),
                 ),
               ),
@@ -769,15 +771,7 @@ class _AboutRowState extends State<_AboutRow> {
                 ),
               ),
               SizedBox(width: 12 * s),
-              Text(
-                '›',
-                style: TextStyle(
-                  fontSize: 16 * s,
-                  fontWeight: FontWeight.w500,
-                  color: Palette.teal,
-                  height: 1,
-                ),
-              ),
+              GlyphIcon(Glyph.chevron, size: 16 * s, color: Palette.teal),
             ],
           ),
         ),

@@ -111,7 +111,7 @@ class MoveCards extends SpiderMove {
   int get hashCode => Object.hash(MoveCards, from, start, to);
 
   @override
-  String toString() => 'MoveCards($from[$start] → $to)';
+  String toString() => 'MoveCards($from[$start] -> $to)';
 }
 
 /// Deal the next stock row: one face-up card on every column.

@@ -56,8 +56,8 @@ void main() {
     }
     expect(find.text('Honest Arcade Promises'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('about-link-source')));
-    expect(find.text('HONEST ARCADE ↗'), findsOneWidget);
-    expect(find.text('SOURCE ON GITHUB ↗'), findsOneWidget);
+    expect(find.textContaining('HONEST ARCADE'), findsOneWidget);
+    expect(find.textContaining('SOURCE ON GITHUB'), findsOneWidget);
     await tapKey(tester, 'aboutapp-studio');
     await settle(tester, transition: true);
     expect(find.byType(AboutStudioScreen), findsOneWidget);
@@ -73,7 +73,10 @@ void main() {
       }
       expect(find.text('SUPPORT HONEST ARCADE'), findsOneWidget);
       expect(find.text(supportText), findsOneWidget);
-      expect(find.text('honestarcade.app/contribute →'), findsOneWidget);
+      expect(
+        find.textContaining('honestarcade.app/contribute'),
+        findsOneWidget,
+      );
       await tester.ensureVisible(find.byKey(const Key('about-link-source')));
       expect(promises, hasLength(7));
       for (final p in promises) {
@@ -84,8 +87,8 @@ void main() {
       for (final chip in ['NO ADS', 'NO TRACKING', 'OPEN SOURCE']) {
         expect(find.text(chip), findsOneWidget);
       }
-      expect(find.text('HONESTARCADE.APP ↗'), findsOneWidget);
-      expect(find.text('SOURCE ON GITHUB ↗'), findsOneWidget);
+      expect(find.textContaining('HONESTARCADE.APP'), findsOneWidget);
+      expect(find.textContaining('SOURCE ON GITHUB'), findsOneWidget);
     },
   );
 

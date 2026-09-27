@@ -444,6 +444,13 @@ MUTATIONS: list[Mutation] = [
              sub(r"\n    - assets/audio/flip\.wav", ""),
              "the app would fail to load the flip at run time",
              'audio-declared: 1 offender'),
+    # ---- #100: the vector icons ------------------------------------------
+    Mutation("#100", "a tool-row icon goes back to a text glyph",
+             "lib/ui/game/tool_row.dart",
+             sub(r"GlyphIcon\(t\.glyph, size: 15 \* s, color: fg\)",
+                 "Text('\u21ba', style: TextStyle(fontSize: 15 * s, color: fg))"),
+             "a phone without that glyph in its fonts would show a box",
+             'glyph-scan: 1 offender'),
 ]
 
 

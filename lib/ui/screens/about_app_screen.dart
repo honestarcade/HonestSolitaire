@@ -15,6 +15,7 @@ import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
 import 'about_studio_screen.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const aboutAppGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -337,15 +338,7 @@ class _ChipGrid extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Text(
-          '✓',
-          style: TextStyle(
-            fontSize: 10 * s,
-            fontWeight: FontWeight.w600,
-            color: Palette.teal,
-            height: 1,
-          ),
-        ),
+        GlyphIcon(Glyph.check, size: 10 * s, color: Palette.teal),
         SizedBox(width: 6 * s),
         Expanded(
           child: Text(

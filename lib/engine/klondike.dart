@@ -122,7 +122,7 @@ class MoveRun extends KlondikeMove {
   int get hashCode => Object.hash(MoveRun, from, start, to);
 
   @override
-  String toString() => 'MoveRun($from[$start] → $to)';
+  String toString() => 'MoveRun($from[$start] -> $to)';
 }
 
 /// The waste's top card onto column [to].
@@ -209,7 +209,7 @@ class FoundationToTableau extends KlondikeMove {
   int get hashCode => Object.hash(FoundationToTableau, foundation, to);
 
   @override
-  String toString() => 'FoundationToTableau($foundation → $to)';
+  String toString() => 'FoundationToTableau($foundation -> $to)';
 }
 
 /// Turn one or three stock cards onto the waste. Refused on an empty stock:

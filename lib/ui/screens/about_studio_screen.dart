@@ -11,6 +11,7 @@ import '../theme/palette.dart';
 import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const aboutStudioGradient = RadialGradient(
   center: Alignment(0.56, -0.76),
@@ -109,14 +110,14 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                       ),
                     ),
                     SizedBox(height: 6 * s),
-                    Text(
-                      '${contributeLink.display} →',
-                      style: TextStyle(
-                        fontSize: 11.5 * s,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        height: 1,
+                    Text.rich(
+                      TextSpan(
+                        text: '${contributeLink.display} ',
+                        children: [
+                          inlineGlyph(Glyph.arrow, _supportLinkStyle(s)),
+                        ],
                       ),
+                      style: _supportLinkStyle(s),
                     ),
                   ],
                 ),
@@ -142,12 +143,11 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '✓',
-                        style: TextStyle(
-                          fontSize: 12 * s,
-                          height: 1.2,
-                          fontWeight: FontWeight.w600,
+                      Padding(
+                        padding: EdgeInsets.only(top: 1 * s),
+                        child: GlyphIcon(
+                          Glyph.check,
+                          size: 12 * s,
                           color: p.color,
                         ),
                       ),
@@ -233,6 +233,13 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
       ),
     );
   }
+
+  static TextStyle _supportLinkStyle(double s) => TextStyle(
+    fontSize: 11.5 * s,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+    height: 1,
+  );
 
   Widget _pill(String text, Color bg, Color fg, double s) => Container(
     padding: EdgeInsets.symmetric(horizontal: 12 * s, vertical: 7 * s),

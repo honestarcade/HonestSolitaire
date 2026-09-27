@@ -1,4 +1,4 @@
-/// The shared screen chrome (M4): the ‹ back button and the title, and the
+/// The shared screen chrome (M4): the back button (#100's glyph) and the title, and the
 /// scrolling scaffold every non-board screen uses.
 library;
 
@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../board/board_layout.dart';
 import '../theme/palette.dart';
 import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 /// Board width over the design's 390, capped like the board.
 double screenScale(BuildContext context) =>
@@ -61,9 +62,10 @@ class ScreenHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11 * s),
                   ),
                   alignment: Alignment.center,
-                  child: CustomPaint(
-                    size: Size(8 * s, 12 * s),
-                    painter: const _Chevron(),
+                  child: GlyphIcon(
+                    Glyph.back,
+                    size: 16 * s,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -107,29 +109,6 @@ class ScreenHeader extends StatelessWidget {
       ],
     );
   }
-}
-
-/// ‹ as a painted stroke.
-class _Chevron extends CustomPainter {
-  const _Chevron();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final path = Path()
-      ..moveTo(size.width, 0)
-      ..lineTo(0, size.height / 2)
-      ..lineTo(size.width, size.height);
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(_Chevron oldDelegate) => false;
 }
 
 /// A non-board screen: navy background (or a gradient), safe-area padding
