@@ -432,7 +432,7 @@ MUTATIONS: list[Mutation] = [
              "pubspec.yaml",
              sub(r"\n    - assets/audio/chime\.wav", ""),
              "the player would hear nothing where the chime belongs",
-             'audio-assets: 1 offender',
+             'assets/audio/chime.wav: missing',
              deletes="assets/audio/chime.wav"),
     Mutation("#98b", "a clip loses its licence row",
              "assets/audio/LICENSES.md",
