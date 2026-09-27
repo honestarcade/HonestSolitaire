@@ -7,6 +7,9 @@ import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../content/links.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
+import '../theme/palette.dart';
 
 /// Per-screen: a second tap while a call runs is ignored.
 class LinkOpener {
@@ -37,10 +40,11 @@ class LinkOpener {
           content: Text(
             "COULDN'T OPEN ${link.display.toUpperCase()} — NO BROWSER FOUND",
             style: const TextStyle(
+              fontFamily: kFontMono,
               fontSize: 10.5,
               letterSpacing: 1.2,
               fontWeight: FontWeight.w500,
-              color: Color(0xFFDCE9F8),
+              color: Palette.paleText,
             ),
           ),
         ),
@@ -49,7 +53,16 @@ class LinkOpener {
   }
 }
 
-/// A mono-caps link row: "HONEST ARCADE ↗", 48 dp hit area.
+/// A mono-caps link row with the external-link glyph, 48 dp hit area.
+TextStyle _linkStyle(double s) => TextStyle(
+  fontFamily: kFontMono,
+  fontSize: 9.5 * s,
+  height: 1.2,
+  letterSpacing: 1.1 * s,
+  fontWeight: FontWeight.w500,
+  color: Palette.mist,
+);
+
 class LinkText extends StatelessWidget {
   const LinkText({
     super.key,
@@ -70,6 +83,7 @@ class LinkText extends StatelessWidget {
     return Semantics(
       link: true,
       label: '$label, opens in browser',
+      onTap: () => opener.open(context, link),
       excludeSemantics: true,
       child: GestureDetector(
         key: Key('about-link-${link.name}'),
@@ -83,15 +97,12 @@ class LinkText extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: Color(0x667FA6D8))),
             ),
-            child: Text(
-              '$label ↗',
-              style: TextStyle(
-                fontSize: 9.5 * s,
-                height: 1.2,
-                letterSpacing: 1.1 * s,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF7FA6D8),
+            child: Text.rich(
+              TextSpan(
+                text: '$label ',
+                children: [inlineGlyph(Glyph.external, _linkStyle(s))],
               ),
+              style: _linkStyle(s),
             ),
           ),
         ),

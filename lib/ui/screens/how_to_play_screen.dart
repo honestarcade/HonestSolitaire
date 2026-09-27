@@ -5,11 +5,13 @@ library;
 import 'package:flutter/material.dart' hide Card;
 
 import '../app.dart';
+import '../motion.dart';
 import '../content/rules_text.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
 import '../widgets/game_tabs.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 class HowToPlayScreen extends StatefulWidget {
   /// [game] is the tab to open on (the pause card passes its game); null
@@ -35,7 +37,13 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
 
   void _pick(GameType type) {
     setState(() => _tab = type);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    if (!_scroll.hasClients) return;
+    final duration = GameScope.motionOf(context).ui(bannerFade);
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(0, duration: duration, curve: Curves.easeOut);
+    }
   }
 
   @override
@@ -117,7 +125,7 @@ class _RuleCardView extends StatelessWidget {
                 card.tag,
                 scale: s,
                 size: 9,
-                color: highlighted ? Palette.teal : const Color(0xFF6E93C4),
+                color: highlighted ? Palette.teal : Palette.textKicker,
               ),
             ),
             SizedBox(height: 9 * s),
@@ -161,6 +169,7 @@ class _GestureRow extends StatelessWidget {
             child: Text(
               gesture.name,
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 9.5 * s,
                 height: 1,
                 fontWeight: FontWeight.w500,
@@ -178,7 +187,7 @@ class _GestureRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11.5 * s,
                   height: 1.45,
-                  color: const Color(0xFFBBD2EC),
+                  color: Palette.textSoft,
                 ),
               ),
             ),

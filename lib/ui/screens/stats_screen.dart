@@ -3,22 +3,25 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 
 import '../../data/stats.dart';
 import '../app.dart';
+import '../motion.dart';
 import '../format.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
 import '../widgets/game_tabs.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 const resetConfirmText =
     'Clears every recorded game, streak, best time and score for both '
     'Klondike and Spider. Nothing was ever uploaded by this app, so it has no '
     'other copy.';
 
-const _red = Color(0xFFE05A4E);
+// #109: white on the design's lighter red measured 3.66:1; Palette.red
+// (#102's red) carries white at 4.5:1 and over.
+const _red = Palette.red;
 const dash = '—';
 
 class StatsScreen extends StatefulWidget {
@@ -43,16 +46,18 @@ class _StatsScreenState extends State<StatsScreen> {
 
   void _pick(GameType type) {
     setState(() => _tab = type);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    if (!_scroll.hasClients) return;
+    final duration = GameScope.motionOf(context).ui(bannerFade);
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(0, duration: duration, curve: Curves.easeOut);
+    }
   }
 
   void _askReset() {
     setState(() => _confirming = true);
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      'Reset all statistics?',
-      TextDirection.ltr,
-    );
+    GameScope.of(context).announcer.announce(context, 'Reset all statistics?');
   }
 
   void _cancel() => setState(() => _confirming = false);
@@ -211,6 +216,7 @@ class _Cards extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 9 * s,
                 height: 1,
                 letterSpacing: 1.3 * s,
@@ -240,7 +246,7 @@ class _Cards extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10.5 * s,
                 height: 1.3,
-                color: const Color(0xFF87A9D0),
+                color: Palette.textBody,
               ),
             ),
           ],
@@ -404,6 +410,7 @@ class _BarRow extends StatelessWidget {
                   fontSize: 11.5 * s,
                   fontWeight: FontWeight.w500,
                   height: 1,
+                  fontFamily: kFontMono,
                   color: Palette.readout,
                 ),
               ),
@@ -458,9 +465,10 @@ class _ResetButton extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: 'Reset statistics',
+      onTap: enabled ? onPressed : null,
       excludeSemantics: true,
       child: Opacity(
-        opacity: enabled ? 1 : 0.4,
+        opacity: enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           key: const Key('stats-reset'),
           behavior: HitTestBehavior.opaque,
@@ -480,7 +488,7 @@ class _ResetButton extends StatelessWidget {
                 fontSize: 13 * s,
                 fontWeight: FontWeight.w500,
                 height: 1,
-                color: const Color(0xFFFF9A90),
+                color: Palette.errorText,
               ),
             ),
           ),
@@ -553,7 +561,7 @@ class _ConfirmCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12.5 * s,
                       height: 1.55,
-                      color: const Color(0xFFBBD2EC),
+                      color: Palette.textSoft,
                     ),
                   ),
                   SizedBox(height: 18 * s),
@@ -604,6 +612,7 @@ class _ConfirmCard extends StatelessWidget {
   ) => Semantics(
     button: true,
     label: label,
+    onTap: onTap,
     excludeSemantics: true,
     child: GestureDetector(
       key: key,

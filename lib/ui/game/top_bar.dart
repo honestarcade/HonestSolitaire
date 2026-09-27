@@ -5,10 +5,18 @@ library;
 import 'package:flutter/material.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
+import 'dart:math' as math;
+
+import '../a11y/tap_target.dart';
+import '../board/board_layout.dart';
 import '../format.dart';
+import '../motion.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import 'game_controller.dart';
 import 'notice_banner.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key, required this.controller, required this.scale});
@@ -19,79 +27,92 @@ class TopBar extends StatelessWidget {
   final double scale;
 
   @override
-  Widget build(BuildContext context) => MediaQuery.withNoTextScaling(
-    child: ListenableBuilder(
-      listenable: Listenable.merge([
-        controller.displayGame,
-        controller.displayOptions,
-        controller,
-      ]),
-      builder: (context, _) {
-        final game = controller.displayGame.value;
-        final options = controller.display;
-        final readouts = <Widget>[];
-        final notice = controller.currentHint?.noMoves ?? false;
-        if (options.showTimer && isTimed(game)) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([
+      controller.displayGame,
+      controller.displayOptions,
+      controller,
+    ]),
+    builder: (context, _) {
+      final game = controller.displayGame.value;
+      final options = controller.display;
+      final readouts = <Widget>[];
+      final notice = controller.currentHint?.noMoves ?? false;
+      if (options.showTimer && isTimed(game)) {
+        readouts.add(
+          _Readout(
+            key: const Key('readout-time'),
+            label: '',
+            value: formatClock(game.elapsed),
+            minValue: '0:00',
+            scale: scale,
+            semantics: spokenTime(game.elapsed),
+          ),
+        );
+      }
+      if (options.showMovesAndScore) {
+        readouts.add(
+          _Readout(
+            key: const Key('readout-moves'),
+            label: 'MOV',
+            value: formatCount(game.moves),
+            minValue: '0',
+            scale: scale,
+            semantics: spokenMoves(game.moves),
+          ),
+        );
+        final score = formatScore(game);
+        if (score != null) {
           readouts.add(
             _Readout(
-              key: const Key('readout-time'),
-              label: '',
-              value: formatClock(game.elapsed),
-              minValue: '0:00',
-              scale: scale,
-              semantics: spokenTime(game.elapsed),
-            ),
-          );
-        }
-        if (options.showMovesAndScore) {
-          readouts.add(
-            _Readout(
-              key: const Key('readout-moves'),
-              label: 'MOV',
-              value: formatCount(game.moves),
+              key: const Key('readout-score'),
+              label: scoreLabel(game)!,
+              value: score,
               minValue: '0',
               scale: scale,
-              semantics: spokenMoves(game.moves),
+              semantics: spokenScore(game)!,
             ),
           );
-          final score = formatScore(game);
-          if (score != null) {
-            readouts.add(
-              _Readout(
-                key: const Key('readout-score'),
-                label: scoreLabel(game)!,
-                value: score,
-                minValue: '0',
-                scale: scale,
-                semantics: spokenScore(game)!,
-              ),
-            );
-          }
         }
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14 * scale),
-          child: Row(
-            children: [
-              // The pill takes what the readouts leave and ellipsizes; it
-              // never pushes them off a narrow phone.
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _PausePill(
-                    controller: controller,
-                    game: game,
-                    scale: scale,
-                  ),
+      }
+      // The bar draws in its layout height; its hit boxes may be taller
+      // (#109: 48 dp on a small phone), so the row aligns to the top and
+      // every child is centred on the drawn band by hand.
+      final barHeight = topBarHeight * scale;
+      Widget banded(Widget child) => SizedBox(
+        height: barHeight,
+        child: Align(alignment: Alignment.centerLeft, child: child),
+      );
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14 * scale),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The pill takes what the readouts leave and ellipsizes; it
+            // never pushes them off a narrow phone.
+            Expanded(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _PausePill(
+                  controller: controller,
+                  game: game,
+                  scale: scale,
+                  barHeight: barHeight,
                 ),
               ),
-              if (notice) ...[
-                SizedBox(width: 6 * scale),
-                Flexible(
-                  flex: 3,
+            ),
+            if (notice) ...[
+              SizedBox(width: 6 * scale),
+              Flexible(
+                flex: 3,
+                child: Appear(
+                  motion: AppMotion.of(context, controller.settings),
+                  duration: bannerFade,
                   child: NoticeBanner(
                     key: const Key('no-moves-banner'),
                     message: 'No moves left',
                     scale: scale,
+                    barHeight: barHeight,
                     actions: [
                       NoticeAction(
                         'Undo',
@@ -102,13 +123,16 @@ class TopBar extends StatelessWidget {
                     ],
                   ),
                 ),
-              ] else
-                for (final r in readouts) ...[SizedBox(width: 6 * scale), r],
-            ],
-          ),
-        );
-      },
-    ),
+              ),
+            ] else
+              for (final r in readouts) ...[
+                SizedBox(width: 6 * scale),
+                banded(r),
+              ],
+          ],
+        ),
+      );
+    },
   );
 }
 
@@ -117,31 +141,46 @@ class _PausePill extends StatelessWidget {
     required this.controller,
     required this.game,
     required this.scale,
+    required this.barHeight,
   });
 
   final GameController controller;
   final Game game;
   final double scale;
 
+  /// The drawn bar's height: the pill is centred on it while its hit box
+  /// is at least [kMinTapTarget] tall.
+  final double barHeight;
+
   @override
   Widget build(BuildContext context) {
     final enabled = !controller.isPaused && !game.isWon;
     final title = gameTitle(game);
+    final pillHeight = (11.5 + 16) * scale + 2; // text, padding, border
+    final hitHeight = math.max(barHeight, kMinTapTarget);
     return Semantics(
       button: true,
       enabled: enabled,
       label: 'Pause, ${title.replaceAll(' · ', ' ')}',
+      onTap: enabled ? controller.pause : null,
       excludeSemantics: true,
       child: Opacity(
-        opacity: enabled ? 1 : 0.4,
+        opacity: enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           key: const Key('pause-pill'),
           behavior: HitTestBehavior.opaque,
           onTap: enabled ? controller.pause : null,
           child: Container(
-            constraints: BoxConstraints(minHeight: 44 * scale, minWidth: 48),
-            padding: EdgeInsets.symmetric(horizontal: 11 * scale),
-            alignment: Alignment.centerLeft,
+            constraints: BoxConstraints(
+              minHeight: hitHeight,
+              minWidth: kMinTapTarget,
+            ),
+            padding: EdgeInsets.only(
+              left: 11 * scale,
+              right: 11 * scale,
+              top: math.max(0, (barHeight - pillHeight) / 2),
+            ),
+            alignment: Alignment.topLeft,
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: 11 * scale,
@@ -155,10 +194,7 @@ class _PausePill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CustomPaint(
-                    size: Size(7 * scale, 10 * scale),
-                    painter: const _PauseBars(),
-                  ),
+                  GlyphIcon(Glyph.pause, size: 10 * scale, color: Colors.white),
                   SizedBox(width: 7 * scale),
                   Flexible(
                     child: Text(
@@ -166,6 +202,9 @@ class _PausePill extends StatelessWidget {
                       key: const Key('board-title'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      // Large text (#106): up to 1.3× within the bar's
+                      // height; the pill ellipsizes rather than clipping.
+                      textScaler: _barScaler(context),
                       style: TextStyle(
                         fontSize: 11.5 * scale,
                         fontWeight: FontWeight.w500,
@@ -182,34 +221,6 @@ class _PausePill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// ❚❚ as two painted bars.
-class _PauseBars extends CustomPainter {
-  const _PauseBars();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white;
-    final w = size.width * 0.36;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, w, size.height),
-        const Radius.circular(1),
-      ),
-      paint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width - w, 0, w, size.height),
-        const Radius.circular(1),
-      ),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_PauseBars oldDelegate) => false;
 }
 
 class _Readout extends StatelessWidget {
@@ -231,6 +242,7 @@ class _Readout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = TextStyle(
+      fontFamily: kFontMono,
       fontSize: 10 * scale,
       fontWeight: FontWeight.w500,
       color: Palette.readout,
@@ -239,6 +251,7 @@ class _Readout extends StatelessWidget {
     );
     final text = label.isEmpty ? value : '$label $value';
     final minText = label.isEmpty ? minValue : '$label $minValue';
+    final scaler = _barScaler(context);
     return Semantics(
       label: semantics,
       excludeSemantics: true,
@@ -251,14 +264,32 @@ class _Readout extends StatelessWidget {
           color: const Color(0x12FFFFFF),
           borderRadius: BorderRadius.circular(9 * scale),
         ),
-        child: Stack(
+        // The readout keeps the bar's height: scaled text is fitted back
+        // down when the row would clip it (#106).
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          children: [
-            Opacity(opacity: 0, child: Text(minText, style: style)),
-            Text(text, key: const Key('value'), style: style),
-          ],
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Opacity(
+                opacity: 0,
+                child: Text(minText, style: style, textScaler: scaler),
+              ),
+              Text(
+                text,
+                key: const Key('value'),
+                style: style,
+                textScaler: scaler,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+/// The phone's text scale for the bars (#106): the app's clamp already caps
+/// it at 1.3×; a bar's text is then fitted down where the row is tight.
+TextScaler _barScaler(BuildContext context) => MediaQuery.textScalerOf(context);

@@ -64,12 +64,12 @@ void main() {
           const DisplayOptions(),
         );
         final row_ = find.byKey(Key('settings-row-${row.field}'));
+        final track = tester.widget<AnimatedContainer>(
+          find.descendant(of: row_, matching: find.byKey(const Key('switch'))),
+        );
         expect(
-          find.descendant(
-            of: row_,
-            matching: find.byKey(Key('switch-${expected ? 'on' : 'off'}')),
-          ),
-          findsOneWidget,
+          track.alignment,
+          expected ? Alignment.centerRight : Alignment.centerLeft,
           reason: row.field,
         );
       }

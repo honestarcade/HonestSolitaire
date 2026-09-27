@@ -14,6 +14,7 @@ import '../navigation.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
 import 'deal_number_field.dart';
+import '../theme/palette.dart';
 
 /// The design's three rows.
 const suitRows = [
@@ -251,7 +252,7 @@ class _SuitRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10.5 * s,
                     height: 1.3,
-                    color: const Color(0xFF87A9D0),
+                    color: Palette.textBody,
                   ),
                 ),
               ],
@@ -266,9 +267,7 @@ class _SuitRow extends StatelessWidget {
                   size: Size(15 * s, 15 * s),
                   painter: _SuitGlyph(
                     glyphs[i],
-                    selected
-                        ? SetupAccent.violet.text
-                        : const Color(0xFF5C7FB0),
+                    selected ? SetupAccent.violet.text : Palette.textMuted,
                   ),
                 ),
               ],

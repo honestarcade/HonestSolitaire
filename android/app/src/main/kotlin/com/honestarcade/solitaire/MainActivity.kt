@@ -2,16 +2,27 @@ package com.honestarcade.solitaire
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    // The app's whole Android surface: the private files directory (#83) and
-    // opening an https link in the browser (#91). No permission is needed for
-    // either, and test/guards/platform_surface_test.dart keeps this list to
-    // exactly these two methods.
+    private var sound: SoundBridge? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // The volume keys set the media volume the game's sounds play at (#101).
+        volumeControlStream = AudioManager.STREAM_MUSIC
+    }
+
+    // The app's whole Android surface: the private files directory (#83),
+    // opening an https link in the browser (#91), and the sounds (#101). No
+    // permission is needed for any of it, and
+    // test/guards/platform_surface_test.dart keeps both channels to exactly
+    // these methods.
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "honestsolitaire/platform")
@@ -22,6 +33,27 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        val bridge = SoundBridge(applicationContext)
+        sound = bridge
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SoundBridge.CHANNEL)
+            .setMethodCallHandler(bridge)
+    }
+
+    override fun onPause() {
+        // The loop never plays behind another app; Dart restarts it on return.
+        sound?.pauseMusic()
+        super.onPause()
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        sound?.release()
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
+    override fun onDestroy() {
+        sound?.release()
+        sound = null
+        super.onDestroy()
     }
 
     // Only https, through the system's own chooser; any failure is `false`,

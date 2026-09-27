@@ -8,12 +8,15 @@ import 'package:honest_solitaire/engine/scoring.dart';
 
 import '../app.dart';
 import '../format.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../screens/stats_screen.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import 'game_controller.dart';
 import 'game_event.dart';
 import 'pause_card.dart';
+import '../fonts.dart';
 
 /// The cells the card shows, in order: TIME, MOVES, SCORE, STREAK (when
 /// the statistics are at hand, #93), TIME BONUS.
@@ -100,6 +103,7 @@ class WinCard extends StatelessWidget {
             Text(
               'GAME COMPLETE',
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 10 * s,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 2 * s,
@@ -111,6 +115,7 @@ class WinCard extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
+                fontFamily: kFontOutfit,
                 fontSize: 27 * s,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.54 * s,
@@ -202,6 +207,7 @@ class _Cell extends StatelessWidget {
           Text(
             cell.$1,
             style: TextStyle(
+              fontFamily: kFontMono,
               fontSize: 9 * s,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.14 * 9 * s,
@@ -225,7 +231,9 @@ class _Cell extends StatelessWidget {
   }
 }
 
-/// The scrim and card layer over the board.
+/// The scrim and card layer over the board. Each time it appears the scrim
+/// fades in and the card rises 8 px with it (#105's `hs-rise`); returning
+/// from Rules or Settings keeps it in the tree, so nothing replays.
 class GameOverlays extends StatelessWidget {
   const GameOverlays({
     super.key,
@@ -242,19 +250,25 @@ class GameOverlays extends StatelessWidget {
     final showPause = controller.isPaused && !showWin;
     if (!showWin && !showPause) return const SizedBox.shrink();
     return Positioned.fill(
-      child: MediaQuery.withNoTextScaling(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Short phones (320×568): gaps and padding shrink by
-            // height/844, never below 0.7, and the card scrolls if it still
-            // does not fit (#93).
-            final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
-            return Semantics(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Short phones (320×568): gaps and padding shrink by
+          // height/844, never below 0.7, and the card scrolls if it still
+          // does not fit (#93).
+          final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
+          return Appear(
+            key: ValueKey(showWin),
+            motion: AppMotion.of(context, controller.settings),
+            duration: cardRise,
+            rise: riseFor(constraints.maxWidth),
+            child: Semantics(
               container: true,
               child: GestureDetector(
-                // The scrim swallows taps and does nothing.
+                // The scrim swallows taps and does nothing; it is no
+                // control, so it has no semantic tap (#109).
                 key: const Key('scrim'),
                 behavior: HitTestBehavior.opaque,
+                excludeFromSemantics: true,
                 onTap: () {},
                 child: Container(
                   color: showWin
@@ -267,25 +281,28 @@ class GameOverlays extends StatelessWidget {
                   alignment: Alignment.center,
                   child: SingleChildScrollView(
                     child: GestureDetector(
+                      excludeFromSemantics: true,
                       onTap: () {},
-                      child: showWin
-                          ? WinCard(
-                              controller: controller,
-                              scale: scale,
-                              vScale: v,
-                            )
-                          : PauseCard(
-                              controller: controller,
-                              scale: scale,
-                              vScale: v,
-                            ),
+                      child: Risen(
+                        child: showWin
+                            ? WinCard(
+                                controller: controller,
+                                scale: scale,
+                                vScale: v,
+                              )
+                            : PauseCard(
+                                controller: controller,
+                                scale: scale,
+                                vScale: v,
+                              ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }

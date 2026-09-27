@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart' hide Card;
 
+import '../a11y/tap_target.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
 
@@ -39,13 +40,14 @@ class GameTabs extends StatelessWidget {
                 selected: selected == type,
                 inMutuallyExclusiveGroup: true,
                 label: type == GameType.klondike ? 'Klondike' : 'Spider',
+                onTap: () => onChanged(type),
                 excludeSemantics: true,
                 child: GestureDetector(
                   key: Key('$keyPrefix-tab-${type.name}'),
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onChanged(type),
                   child: Container(
-                    constraints: const BoxConstraints(minHeight: 40),
+                    constraints: const BoxConstraints(minHeight: kMinTapTarget),
                     padding: EdgeInsets.all(10 * s),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(

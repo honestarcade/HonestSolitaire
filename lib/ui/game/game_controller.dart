@@ -5,9 +5,9 @@
 library;
 
 import 'dart:async';
+import 'dart:ui' show Offset, Rect;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
@@ -16,6 +16,7 @@ import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
 
+import '../board/board_semantics.dart';
 import '../board/pile_ref.dart';
 import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
@@ -23,6 +24,8 @@ import 'finish_sweep.dart';
 import 'game_clock.dart';
 import 'game_event.dart';
 import 'ui_hint.dart';
+import '../board/card_motion.dart';
+import '../../feedback/feedback_event.dart';
 
 /// A run to shake sideways: the pile, the first card of the run, and a
 /// sequence number so a repeat restarts the animation.
@@ -191,6 +194,18 @@ class GameController extends ChangeNotifier {
   /// step).
   bool get winShown => _winShown;
 
+  /// Runs between the win and the win card (#104's cascade): the board sets
+  /// it. The card shows once the future completes; null shows it at once.
+  Future<void> Function()? beforeWinCard;
+
+  /// Ends a running win sequence early (system back, background).
+  VoidCallback? onSkipWin;
+  bool _winPending = false;
+  bool _disposed = false;
+
+  /// The win card is on its way (the delay or the cascade).
+  bool get winPending => _winPending;
+
   /// Stops the clock and the gestures and shows the pause card (#80). A
   /// sweep in progress completes first, and the win card wins.
   void pause() {
@@ -215,8 +230,14 @@ class GameController extends ChangeNotifier {
   /// card does nothing.
   void back() {
     if (_winShown) return;
+    if (_winPending) {
+      onSkipWin?.call();
+      return;
+    }
     if (_sweep != null) {
+      // Completing at once shows the card at once: no cascade (#104).
       _sweep!.completeNow();
+      if (_winPending) onSkipWin?.call();
       return;
     }
     if (_paused) {
@@ -233,6 +254,7 @@ class GameController extends ChangeNotifier {
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
       _sweep?.completeNow();
+      if (_winPending) onSkipWin?.call();
       if (_moved && !_game.isWon) _pauseOnReturn = true;
     }
     if (_foreground && _pauseOnReturn) {
@@ -248,11 +270,19 @@ class GameController extends ChangeNotifier {
     _selection = null;
     _dragging = null;
     _peekColumn = null;
+    _say('Finishing');
     _flushClock();
     final sweep = FinishSweep(
       show: (step) {
+        final before = _shownStep ?? _game;
         _shownStep = step;
         displayGame.value = step;
+        // Each step lands a card; the Kings do not chime inside the sweep
+        // (the win chimes at the end).
+        _emit({
+          ...deriveFeedback(before, step),
+          FeedbackEvent.snap,
+        }, sweep: true);
         notifyListeners();
       },
       onDone: () {
@@ -276,11 +306,30 @@ class GameController extends ChangeNotifier {
     _syncClock();
     displayGame.value = game;
     notifyListeners();
+    // No card motion: the steps are not shown one by one (#99).
+    if (!motion.cards) sweep.completeNow();
   }
 
   void _showWin() {
     _winTimer?.cancel();
     _winTimer = null;
+    if (_winShown || _winPending) return;
+    final hook = beforeWinCard;
+    if (hook == null) {
+      _revealWin();
+      return;
+    }
+    _winPending = true;
+    final game = _game;
+    hook().catchError((Object _) {}).whenComplete(() {
+      if (_disposed || !_winPending || !identical(game, _game)) return;
+      _revealWin();
+    });
+  }
+
+  void _revealWin() {
+    _winPending = false;
+    if (!_game.isWon) return; // undone during the sequence
     _winShown = true;
     notifyListeners();
   }
@@ -311,9 +360,12 @@ class GameController extends ChangeNotifier {
 
   /// Records a new game state from a move: the display copy, the first-move
   /// gate and the clock.
-  void _commit(Game game) {
+  void _commit(Game game, {Move? move}) {
+    final before = _game;
     _game = game;
     displayGame.value = game;
+    _emit(deriveFeedback(before, game));
+    if (move != null) _say(describeStep(before, move, game));
     if (!_moved) _moved = true;
     _hasMove = true;
     _syncClock();
@@ -362,6 +414,54 @@ class GameController extends ChangeNotifier {
   DragState? _dragging;
   DragState? get dragging => _dragging;
 
+  /// Whether the board animates (#99); the board sets it each build. Without
+  /// card motion the finish sweep completes at once and a refused drop
+  /// springs home instantly.
+  AppMotion motion = AppMotion.full;
+
+  int _installSequence = 0;
+  int _newGameSequence = 0;
+  int _pendingDeal = 0;
+
+  /// A one-shot token the board consumes to deal the new game with the
+  /// animation (#103): raised by `replaceGame(…, dealAnimation: true)` and
+  /// `restart()`, never by a resume. The board compares it with the value
+  /// it last consumed.
+  int get pendingDeal => _pendingDeal;
+
+  /// Bumped on a new game only (new deal, restart, a setup Deal, a found
+  /// deal) — not on resume — so the music restarts from the top (#101).
+  int get newGameSequence => _newGameSequence;
+
+  /// One step per action: what it did, for sounds (#101) and ticks (#107).
+  /// Notifies on every assignment, even of an equal step.
+  final feedback = _StepNotifier<FeedbackStep>();
+
+  /// What TalkBack says for the last step (#108): a move, a refusal, a hint,
+  /// a selection, an undo. Spoken by `BoardAnnouncements` while a screen
+  /// reader is on.
+  final spoken = _StepNotifier<String>();
+  int _said = 0;
+
+  void _say(String? text) {
+    if (text == null || text.isEmpty) return;
+    _said++;
+    spoken.value = text;
+  }
+
+  /// A screen reader is on (#108): every tap selects, One-tap or not, so
+  /// the destination is always chosen by the player. The board sets it.
+  bool alwaysSelect = false;
+
+  void _emit(Set<FeedbackEvent> events, {bool sweep = false}) {
+    if (events.isEmpty) return;
+    feedback.value = FeedbackStep(events, sweep: sweep);
+  }
+
+  /// Bumped whenever a different game is installed (new deal, restart,
+  /// resume), so the board snaps instead of animating between two deals.
+  int get installSequence => _installSequence;
+
   SpringBack? _springBack;
   SpringBack? get springBack => _springBack;
   int _springSequence = 0;
@@ -394,9 +494,13 @@ class GameController extends ChangeNotifier {
   /// A new game: the old one, if it had a move, is not yet won and is of the
   /// same type, is abandoned (a loss, #85). Clears everything transient and
   /// notifies; the clock waits for a first move.
-  void replaceGame(Game game) {
+  void replaceGame(Game game, {bool dealAnimation = false}) {
     _abandonIf(GameType.of(game) == GameType.of(_game), AbandonReason.newDeal);
+    _newGameSequence++;
     _install(game, hasMove: false);
+    if (dealAnimation) _pendingDeal++;
+    _emit({FeedbackEvent.newDeal});
+    if (dealAnimation) _say('New deal');
   }
 
   /// The same game again after a restart or the app closing: nothing is
@@ -411,12 +515,14 @@ class GameController extends ChangeNotifier {
   }
 
   void _install(Game game, {required bool hasMove}) {
+    _installSequence++;
     _sweep?.dispose();
     _sweep = null;
     _shownStep = null;
     _winTimer?.cancel();
     _winTimer = null;
     _winShown = false;
+    _winPending = false;
     _paused = false;
     _pauseOnReturn = false;
     _game = game;
@@ -446,7 +552,11 @@ class GameController extends ChangeNotifier {
   void undo() {
     if (!canUndo || _sweep != null) return;
     final result = _game.undo(unlimited: settings.unlimitedUndo);
-    if (result is Applied<Game>) replaceGameKeepingClock(result.game);
+    if (result is Applied<Game>) {
+      replaceGameKeepingClock(result.game);
+      _emit({FeedbackEvent.snap}); // an undo snaps, never flips or chimes
+      _say('Undone');
+    }
   }
 
   /// FINISH is offered only when the sweep really completes (#67).
@@ -484,7 +594,11 @@ class GameController extends ChangeNotifier {
   /// move is abandoned first (#85).
   void restart() {
     _abandonIf(true, AbandonReason.restart);
+    _newGameSequence++;
     _install(_game.restart(), hasMove: false);
+    _pendingDeal++;
+    _emit({FeedbackEvent.newDeal});
+    _say('Restarted');
   }
 
   /// Adds the clock's unflushed part to the game (before a save or a stats
@@ -499,7 +613,7 @@ class GameController extends ChangeNotifier {
   void newDeal() {
     var number = dealNumberSource();
     if (number == _game.dealNumber) number = dealNumberSource();
-    replaceGame(switch (_game) {
+    replaceGame(dealAnimation: true, switch (_game) {
       KlondikeGame k => KlondikeGame.deal(number, k.options),
       SpiderGame s => SpiderGame.deal(number, s.options),
     });
@@ -516,7 +630,9 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _hint = _translate(engine.hint(_game));
+    final h = engine.hint(_game);
+    _hint = _translate(h);
+    _say(describeHint(_game, h)); // the no-moves case is the banner's
     notifyListeners();
   }
 
@@ -590,9 +706,7 @@ class GameController extends ChangeNotifier {
   /// Whether a drag may start from card [index] of [pile]: a Klondike valid
   /// run start, waste top or foundation top; a Spider same-suit run start.
   bool canDrag(BoardPile pile, int? index) {
-    if (_game.isWon || _springBack != null || _sweep != null || _paused) {
-      return false;
-    }
+    if (_game.isWon || _sweep != null || _paused) return false;
     final cards = _pileCards(pile);
     if (cards == null || cards.isEmpty) return false;
     switch (pile) {
@@ -625,6 +739,8 @@ class GameController extends ChangeNotifier {
     List<Rect> homeRects,
     Offset grab,
   ) {
+    // A running spring-back no longer blocks input: it lands now (#99).
+    _clearSpring();
     if (!canDrag(pile, index)) return false;
     final cards = _pileCards(pile)!;
     final start = pile is TableauPile ? index! : cards.length - 1;
@@ -728,6 +844,11 @@ class GameController extends ChangeNotifier {
 
   void _springHome(DragState d) {
     _springTimer?.cancel();
+    if (!motion.cards) {
+      // Instant: the cards are already drawn at home.
+      _springBack = null;
+      return;
+    }
     _springSequence++;
     _springBack = SpringBack(
       pile: d.pile,
@@ -756,15 +877,14 @@ class GameController extends ChangeNotifier {
     return cards != null &&
         cards.any((c) => c.faceUp) &&
         _dragging == null &&
-        _springBack == null &&
         _sweep == null &&
         !_paused;
   }
 
   void startPeek(int column) {
     if (!canPeek(column)) return;
+    _emit({FeedbackEvent.peek}); // the tick (#107) is the feedback layer's
     _peekColumn = column;
-    HapticFeedback.selectionClick();
     notifyListeners();
   }
 
@@ -777,6 +897,7 @@ class GameController extends ChangeNotifier {
   /// Shakes [pile] from [start] for [shakeDuration]; the target clears
   /// itself afterwards with a second notification.
   void startShake(BoardPile pile, int? start) {
+    _emit({FeedbackEvent.refused});
     _shakeTimer?.cancel();
     _shakeSequence++;
     _shake = ShakeTarget(pile, start, _shakeSequence);
@@ -799,6 +920,23 @@ class GameController extends ChangeNotifier {
   /// strip) at [at] (a pointer timestamp, for the double-tap window).
   void tapPile(BoardPile? pile, int? index, {Duration at = Duration.zero}) {
     if (_game.isWon || _sweep != null || _paused) return;
+    final said = _said;
+    final was = _selection;
+    _tap(pile, index, at);
+    // A tap that said nothing else announces what it did to the selection.
+    if (_said != said) return;
+    final now = _selection;
+    if (now != null && now != was) {
+      final cards = _pileCards(now.$1);
+      if (cards != null && now.$2 < cards.length) {
+        _say('${runWords(cards.sublist(now.$2))} selected');
+      }
+    } else if (now == null && was != null) {
+      _say('Selection cleared');
+    }
+  }
+
+  void _tap(BoardPile? pile, int? index, Duration at) {
     _hint = null; // any tap clears a showing hint
     _tapAt = at;
     final last = _lastTap;
@@ -944,7 +1082,7 @@ class GameController extends ChangeNotifier {
   };
 
   void _selectOrOneTap(BoardPile pile, int start, engine.PileRef source) {
-    if (settings.oneTap) {
+    if (settings.oneTap && !alwaysSelect) {
       final dest = engine.bestDestination(_game, source);
       if (dest != null) {
         _apply(dest, shake: null);
@@ -965,6 +1103,7 @@ class GameController extends ChangeNotifier {
           _apply(const Recycle(), shake: (const StockPile(), null));
         } else {
           startShake(const StockPile(), null);
+          _say('Stock empty');
         }
       case SpiderGame _:
         final lastDeal = _lastDealAt;
@@ -1055,8 +1194,8 @@ class GameController extends ChangeNotifier {
   ApplyResult<Game> move(BoardPile from, int start, BoardPile to) {
     final m = _moveFor(from, start, to);
     if (m == null) {
-      startShake(from, start);
-      _haptic();
+      startShake(from, start); // publishes the refusal
+      _say(describeRefusal(_game, null));
       notifyListeners();
       return const Refused(RefusalReason.invalidMove);
     }
@@ -1091,20 +1230,37 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  /// Applies [m]; on a refusal shakes [shake] (when given) and buzzes.
+  /// Applies [m]; on a refusal shakes [shake] (when given).
   ApplyResult<Game> _apply(Move m, {required (BoardPile, int?)? shake}) {
     _flushClock();
     final result = _game.apply(m);
     switch (result) {
       case Applied(:final game):
-        _commit(game);
+        _commit(game, move: m);
         _clearShake();
         onApplied(result);
       case Refused():
-        if (shake != null) startShake(shake.$1, shake.$2);
-        _haptic();
+        // The shake publishes the refusal; without one, publish it here so
+        // the tick (#107) still answers.
+        if (shake != null) {
+          startShake(shake.$1, shake.$2);
+        } else {
+          _emit({FeedbackEvent.refused});
+        }
+        _say(describeRefusal(_game, m));
     }
     return result;
+  }
+
+  /// Applies [m] from a TalkBack custom action (#108): the same path as a
+  /// tap-move, the selection and hint cleared, a refusal shaking its source.
+  void applyMove(Move m) {
+    if (_game.isWon || _sweep != null || _paused || _dragging != null) return;
+    _hint = null;
+    _selection = null;
+    _peekColumn = null;
+    _apply(m, shake: sourceOf(m));
+    notifyListeners();
   }
 
   /// A hook for the stories that react to every applied move (the clock,
@@ -1112,14 +1268,12 @@ class GameController extends ChangeNotifier {
   @protected
   void onApplied(Applied<Game> result) {}
 
-  void _haptic() {
-    if (settings.haptics) HapticFeedback.lightImpact();
-  }
-
   void _onSettings() => notifyListeners();
 
   @override
   void dispose() {
+    _disposed = true;
+    feedback.dispose();
     playSettings.removeListener(_onSettings);
     _shakeTimer?.cancel();
     _springTimer?.cancel();
@@ -1149,4 +1303,74 @@ class GameNotifier extends ChangeNotifier implements ValueListenable<Game> {
     _value = game;
     notifyListeners();
   }
+}
+
+/// A notifier that fires on every assignment: two equal steps in a row
+/// are two actions.
+/// Notifies on every non-null set, equal values included: two refusals in
+/// a row are two steps and two announcements.
+class _StepNotifier<T> extends ChangeNotifier implements ValueListenable<T?> {
+  T? _value;
+
+  @override
+  T? get value => _value;
+
+  set value(T? step) {
+    _value = step;
+    if (step != null) notifyListeners();
+  }
+}
+
+/// What a committed change from [before] to [after] did, from the states
+/// alone: a Spider row dealt, tableau cards turned up, runs and foundations
+/// completed, a win — and otherwise a snap.
+Set<FeedbackEvent> deriveFeedback(Game before, Game after) {
+  final events = <FeedbackEvent>{};
+  switch ((before, after)) {
+    case (SpiderGame b, SpiderGame a):
+      if (a.stock.length < b.stock.length) events.add(FeedbackEvent.dealRow);
+      if (a.completed.length > b.completed.length) {
+        events.add(FeedbackEvent.runCompleted);
+      }
+      if (_tableauTurnedUp(b.tableau, a.tableau)) {
+        events.add(FeedbackEvent.flip);
+      }
+    case (KlondikeGame b, KlondikeGame a):
+      for (var i = 0; i < 4; i++) {
+        if (a.foundations[i].length == kingRank &&
+            b.foundations[i].length < kingRank) {
+          events.add(FeedbackEvent.foundationCompleted);
+        }
+      }
+      if (_tableauTurnedUp(b.tableau, a.tableau)) {
+        events.add(FeedbackEvent.flip);
+      }
+    default:
+      break;
+  }
+  if (after.isWon && !before.isWon) events.add(FeedbackEvent.win);
+  if (events.isEmpty ||
+      events.every(
+        (e) =>
+            e == FeedbackEvent.flip || e == FeedbackEvent.foundationCompleted,
+      )) {
+    events.add(FeedbackEvent.snap);
+  }
+  return events;
+}
+
+/// A face-down tableau card of [before] is face up in [after], by id.
+bool _tableauTurnedUp(List<List<Card>> before, List<List<Card>> after) {
+  final down = <int>{
+    for (final column in before)
+      for (final c in column)
+        if (!c.faceUp && c.id >= 0) c.id,
+  };
+  if (down.isEmpty) return false;
+  for (final column in after) {
+    for (final c in column) {
+      if (c.faceUp && down.contains(c.id)) return true;
+    }
+  }
+  return false;
 }

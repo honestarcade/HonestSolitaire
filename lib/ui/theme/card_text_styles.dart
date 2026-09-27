@@ -3,12 +3,15 @@ library;
 
 import 'package:flutter/painting.dart';
 
+import '../fonts.dart';
+
 class CardTextStyles {
   const CardTextStyles._();
 
   /// The rank: bold, tight, no line-height slack (the design's
   /// `font:700 …/1`, `letter-spacing:-.05em`).
   static TextStyle rank(double size, Color color) => TextStyle(
+    fontFamily: kFontOutfit,
     fontSize: size,
     fontWeight: FontWeight.w700,
     height: 1.0,

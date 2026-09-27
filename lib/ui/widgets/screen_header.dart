@@ -1,4 +1,4 @@
-/// The shared screen chrome (M4): the ‹ back button and the title, and the
+/// The shared screen chrome (M4): the back button (#100's glyph) and the title, and the
 /// scrolling scaffold every non-board screen uses.
 library;
 
@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 
 import '../board/board_layout.dart';
 import '../theme/palette.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 /// Board width over the design's 390, capped like the board.
 double screenScale(BuildContext context) =>
@@ -20,7 +22,7 @@ class ScreenHeader extends StatelessWidget {
     required this.onBack,
     required this.keyPrefix,
     this.kicker,
-    this.kickerColor = const Color(0xFF6E93C4),
+    this.kickerColor = Palette.textKicker,
     this.scale = 1,
   });
 
@@ -42,6 +44,7 @@ class ScreenHeader extends StatelessWidget {
         Semantics(
           button: true,
           label: 'Back',
+          onTap: onBack,
           excludeSemantics: true,
           child: GestureDetector(
             key: Key('$keyPrefix-back'),
@@ -60,9 +63,10 @@ class ScreenHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11 * s),
                   ),
                   alignment: Alignment.center,
-                  child: CustomPaint(
-                    size: Size(8 * s, 12 * s),
-                    painter: const _Chevron(),
+                  child: GlyphIcon(
+                    Glyph.back,
+                    size: 16 * s,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -94,6 +98,7 @@ class ScreenHeader extends StatelessWidget {
                     fontSize: 9.5 * s,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.16 * 9.5 * s,
+                    fontFamily: kFontMono,
                     color: kickerColor,
                     height: 1,
                   ),
@@ -105,29 +110,6 @@ class ScreenHeader extends StatelessWidget {
       ],
     );
   }
-}
-
-/// ‹ as a painted stroke.
-class _Chevron extends CustomPainter {
-  const _Chevron();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final path = Path()
-      ..moveTo(size.width, 0)
-      ..lineTo(0, size.height / 2)
-      ..lineTo(size.width, size.height);
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(_Chevron oldDelegate) => false;
 }
 
 /// A non-board screen: navy background (or a gradient), safe-area padding
@@ -154,55 +136,53 @@ class ScreenScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = screenScale(context);
     final insets = MediaQuery.viewPaddingOf(context);
-    return MediaQuery.withNoTextScaling(
-      child: DecoratedBox(
-        decoration: BoxDecoration(color: Palette.navy, gradient: gradient),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = math.min(constraints.maxWidth, maxBoardWidth);
-            return SingleChildScrollView(
-              controller: controller,
-              padding: EdgeInsets.only(
-                top: insets.top + 20 * s,
-                bottom: insets.bottom + 24 * s,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: width,
-                    minHeight:
-                        constraints.maxHeight -
-                        insets.top -
-                        insets.bottom -
-                        44 * s,
-                  ),
-                  // IntrinsicHeight bounds the column to the taller of the
-                  // viewport and its content, so the Spacer before the
-                  // pinned part has a finite height to fill.
-                  child: IntrinsicHeight(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20 * s),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < children.length; i++) ...[
-                            if (i > 0) SizedBox(height: gap * s),
-                            children[i],
-                          ],
-                          if (pinned != null) ...[
-                            const Spacer(),
-                            SizedBox(height: gap * s),
-                            pinned!,
-                          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(color: Palette.navy, gradient: gradient),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = math.min(constraints.maxWidth, maxBoardWidth);
+          return SingleChildScrollView(
+            controller: controller,
+            padding: EdgeInsets.only(
+              top: insets.top + 20 * s,
+              bottom: insets.bottom + 24 * s,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: width,
+                  minHeight:
+                      constraints.maxHeight -
+                      insets.top -
+                      insets.bottom -
+                      44 * s,
+                ),
+                // IntrinsicHeight bounds the column to the taller of the
+                // viewport and its content, so the Spacer before the
+                // pinned part has a finite height to fill.
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20 * s),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < children.length; i++) ...[
+                          if (i > 0) SizedBox(height: gap * s),
+                          children[i],
                         ],
-                      ),
+                        if (pinned != null) ...[
+                          const Spacer(),
+                          SizedBox(height: gap * s),
+                          pinned!,
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -245,7 +225,7 @@ class Kicker extends StatelessWidget {
     this.text, {
     super.key,
     this.scale = 1,
-    this.color = const Color(0xFF6E93C4),
+    this.color = Palette.textKicker,
     this.size = 9.5,
   });
 
@@ -260,6 +240,7 @@ class Kicker extends StatelessWidget {
     child: Text(
       text,
       style: TextStyle(
+        fontFamily: kFontMono,
         fontSize: size * scale,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.16 * size * scale,

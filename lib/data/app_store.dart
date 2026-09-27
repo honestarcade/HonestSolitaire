@@ -238,7 +238,7 @@ class AppStore {
     }
   }
 
-  /// Clears the banner's notices (the menu's ✕).
+  /// Clears the banner's notices (the menu's dismiss button).
   void dismissNotices() => corruptionNotices.value = const {};
 
   /// Waits for every queued write to land (background flushes, dispose).

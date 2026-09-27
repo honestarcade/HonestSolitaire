@@ -66,6 +66,8 @@ class Mutation:
     also: tuple = ()
     slow: bool = False
     creates: tuple = ()
+    deletes: str = ""
+    replaces_with: tuple = ()
     """A substring of the reason the RIGHT assertion prints when it fires.
 
     Without this the battery measures "the suite went red", which is not the
@@ -80,6 +82,14 @@ class Mutation:
     root, that file outlived the run, and it was then swept into a commit by
     `git add -A` -- twice. Being tracked, it went into the leak scan's skip
     set and blinded the very guard the mutation exists to exercise (#213).
+
+    `deletes` names one file removed for the run and `replaces_with` is a
+    `(target, fixture)` pair whose fixture bytes overwrite the target (#97):
+    the defects a text substitution cannot express -- a missing raster, the
+    template's icon back in place. Both are byte snapshots restored in the
+    same try/finally as the text edits; tools/test_mutation_check.py holds
+    the round trip byte-identical. A mutation of these kinds may leave
+    `path` empty.
 
     `also` carries further `(path, apply)` edits. Some defects are not
     expressible in one file: #203 is "a second parse path is added AND the
@@ -357,7 +367,175 @@ MUTATIONS: list[Mutation] = [
                  "('KlondikeScoring.standard.foundationToTableau', -10)"),
              "How to play would state a scoring rule the engine does not play",
              'rules-text: KlondikeScoring.standard.foundationToTableau drifted from the engine'),
+    # ---- #96: the bundled fonts (ported from Honest Sudoku's #47) ----------
+    Mutation("#96a", "the pubspec declares a weight that is not bundled",
+             "pubspec.yaml",
+             sub(r"(asset: assets/fonts/Outfit-Bold\.ttf\n\s+weight: )700$",
+                 r"\g<1>800", flags=re.M),
+             "Flutter would synthesise bold from the wrong face, silently",
+             'fonts-declared: 1 offender'),
+    Mutation("#96b", "a style asks for a weight Plex Mono does not bundle",
+             "lib/ui/fonts.dart",
+             sub(r"FontWeight weight = FontWeight\.w500,", "FontWeight weight = FontWeight.w800,"),
+             "the engine would fake a heavier weight instead of the design's",
+             'fonts-weights: 1 offender'),
+    Mutation("#96c", "a font file stops matching its recorded hash",
+             "assets/fonts/SHA256SUMS",
+             sub(r"^[0-9a-f]{64}(  Outfit-Regular\.ttf)$", "0" * 64 + r"\1",
+                 flags=re.M),
+             "a swapped font file would ship unnoticed",
+             'fonts-check: fetch_fonts.sh --check exited 1', slow=True),
+    Mutation("#96d", "a licence text drops out of the provenance record",
+             "assets/fonts/SOURCES.tsv",
+             sub(r"^OFL-IBMPlexMono\.txt\t[^\n]*\n", "", flags=re.M),
+             "the OFL requires the licence to travel with the fonts",
+             'fonts-provenance: 1 offender'),
+    Mutation("#96e", "a style reaches for Google Fonts at run time",
+             "lib/ui/fonts.dart",
+             sub(r"const String kFontMono = 'IBM Plex Mono';",
+                 "const String kFontMono = 'IBM Plex Mono';\nconst String kFontUrl = 'https://fonts.googleapis.com/css2?family=Outfit';"),
+             "a font fetched at run time is the network invariant 1 forbids",
+             'fonts-hosts: 1 offender'),
+    # ---- #97: the launcher icon and the start screen -----------------------
+    Mutation("#97a", "the template's default icon is back at one density",
+             "", None,
+             "the store build would ship Flutter's placeholder icon again",
+             'launcher-template: 1 offender',
+             replaces_with=(("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+                             "test/fixtures/template_ic_launcher_xxxhdpi.png"),)),
+    Mutation("#97b", "the adaptive icon loses its themed layer",
+             "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+             sub(r"\n    <monochrome [^\n]*/>", ""),
+             "Android 13 themed icons would show a generic tile",
+             'launcher-adaptive: 1 offender'),
+    Mutation("#97c", "one source's mark drifts from the others",
+             "assets/brand/android-foreground.svg",
+             sub(r'd="M 32 14 C 30 18', 'd="M 32 15 C 30 18'),
+             "the icon's layers would stop agreeing on the mark",
+             'launcher-sources: the inline mark copies differ'),
+    Mutation("#97d", "the Android 12 splash loses the mark",
+             "android/app/src/main/res/values-v31/styles.xml",
+             sub(r'\n\s*<item name="android:windowSplashScreenAnimatedIcon">[^\n]*', ''),
+             "the system splash would show the icon Android forces, not the mark",
+             'launcher-splash: 1 offender'),
+    Mutation("#97e", "a start-screen mark raster goes missing",
+             "", None,
+             "the pre-12 start screen would fail to inflate its drawable",
+             'launcher-rasters: 1 offender',
+             deletes="android/app/src/main/res/drawable-xhdpi/launch_mark.png"),
+    # ---- #98: the audio assets ---------------------------------------------
+    # The file alone cannot go: a declared asset that is missing stops
+    # `flutter test` at the asset bundle, which is the wrong reason. The
+    # honest shape is the file gone AND its pubspec line tidied away, which
+    # is exactly what a "clean-up" commit would do (#98).
+    Mutation("#98a", "a clip the app plays goes missing, and its pubspec line with it",
+             "pubspec.yaml",
+             sub(r"\n    - assets/audio/chime\.wav", ""),
+             "the player would hear nothing where the chime belongs",
+             'assets/audio/chime.wav: missing',
+             deletes="assets/audio/chime.wav"),
+    Mutation("#98b", "a clip loses its licence row",
+             "assets/audio/LICENSES.md",
+             sub(r"^\| `snap\.wav` \|[^\n]*\n", "", flags=re.M),
+             "an unrecorded clip could be swapped for anything",
+             'audio-assets: 1 offender'),
+    Mutation("#98c", "a clip drops out of the bundle",
+             "pubspec.yaml",
+             sub(r"\n    - assets/audio/flip\.wav", ""),
+             "the app would fail to load the flip at run time",
+             'audio-declared: 1 offender'),
+    # ---- #100: the vector icons ------------------------------------------
+    Mutation("#100", "a tool-row icon goes back to a text glyph",
+             "lib/ui/game/tool_row.dart",
+             sub(r"GlyphIcon\(t\.glyph, size: 15 \* s, color: fg\)",
+                 "Text('\u21ba', style: TextStyle(fontSize: 15 * s, color: fg))"),
+             "a phone without that glyph in its fonts would show a box",
+             'glyph-scan: 1 offender'),
+    # ---- #101: the sound bridge --------------------------------------------
+    Mutation("#101a", "the sound channel grows a seventh method",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r'(\n(\s*)"release" -> \{)', r'\n\2"upload" -> result.success(true)\1'),
+             "a new platform capability would ship unreviewed",
+             'platform-surface: the sound channel handles'),
+    Mutation("#101b", "the volume keys stop controlling the media stream",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/MainActivity.kt",
+             sub(r"\n\s*volumeControlStream = AudioManager\.STREAM_MUSIC", ""),
+             "the volume keys would change the ringer while a game plays",
+             'MainActivity.kt: volumeControlStream is not STREAM_MUSIC'),
+    Mutation("#101c", "the bridge starts taking audio focus",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r"(private fun musicStart\(\): Boolean \{\n)", r"\1        // manager?.requestAudioFocus(null, 3, 1)\n"),
+             "the loop would duck or stop the player's own music",
+             'SoundBridge.kt: requests audio focus'),
+    Mutation("#101d", "the bridge stops checking for another app's audio",
+             "android/app/src/main/kotlin/com/honestarcade/solitaire/SoundBridge.kt",
+             sub(r"if \(manager != null && manager\.isMusicActive\) return false", "if (manager == null) return false"),
+             "the loop would play over the player's podcast",
+             'SoundBridge.kt: no isMusicActive check'),
+    # ---- #102: contrast -----------------------------------------------------
+    Mutation("#102", "a dim text token goes back to its design value",
+             "lib/ui/theme/palette.dart",
+             sub(r"static const textMuted = Color\(0xFF93AACB\);", "static const textMuted = Color(0xFF5C7FB0);"),
+             "the loading label would read 2.65:1 on the felt",
+             'muted labels: #5C7FB0 on'),
+    # ---- #105: route transitions -------------------------------------------
+    Mutation("#105", "a screen is pushed with the platform's own transition",
+             "lib/ui/navigation.dart",
+             sub(r"FadePageRoute<void>\(builder: \(_\) => screen\)", "MaterialPageRoute<void>(builder: (_) => screen)"),
+             "Settings would slide up the Android way instead of cross-fading",
+             'route-transitions MaterialPageRoute in lib/ui/navigation.dart'),
+    # ---- #106: large text ------------------------------------------------------
+    Mutation("#106a", "the text-size clamp loses its ceiling",
+             "lib/ui/app.dart",
+             sub(r"\n\s*maxScaleFactor: 1\.3,", ""),
+             "at the phone's largest text size every screen would overflow",
+             'large-text-clamp:', slow=True),
+    Mutation("#106b", "the board ignores the phone's text size again",
+             "lib/ui/app.dart",
+             sub(r"child: board,\n", "child: MediaQuery.withNoTextScaling(child: board),\n"),
+             "the bars would stay small for a player with large text on",
+             'large-text-board:', slow=True),
+    # ---- #107: haptics ---------------------------------------------------------
+    Mutation("#107", "a stray tick outside the haptics port",
+             "lib/ui/game/game_controller.dart",
+             chain(sub(r"(import 'dart:async';\n)", r"\1import 'package:flutter/services.dart';\n"),
+                   sub(r"(  void undo\(\) \{\n)", r"\1    HapticFeedback.lightImpact();\n")),
+             "undo would tick with Haptics off",
+             'haptics-scan: HapticFeedback. in lib/ui/game/game_controller.dart'),
+    # ---- #108: TalkBack ------------------------------------------------------------
+    Mutation("#108a", "an announcement spoken outside the announcer",
+             "lib/ui/board/board_view.dart",
+             chain(sub(r"(import 'dart:async';\n)", r"\1import 'package:flutter/semantics.dart';\n"),
+                   sub(r"(  void finishDeal\(\) \{\n)",
+                       r"\1    SemanticsService.sendAnnouncement(View.of(context), 'Dealt', TextDirection.ltr);\n")),
+             "the deal would be announced to everyone, screen reader or not",
+             'announcer-scan: SemanticsService. in lib/ui/board/board_view.dart'),
+    Mutation("#108b", "the face-down column label names its top card",
+             "lib/ui/board/board_semantics.dart",
+             sub(r"'\$\{capital\(columnName\(column\)\)\}, \$\{plural\(down\.length, 'face-down card'\)\}'",
+                 r"'${capital(columnName(column))}, ${plural(down.length, 'face-down card')}, ${down.last.spokenName}'"),
+             "TalkBack would read the hidden card's rank and suit",
+             'face-down: '),
+    # ---- #109: tap targets -------------------------------------------------------
+    Mutation("#109", "a menu button's hit area shrinks below 48 dp",
+             "lib/ui/screens/menu_screen.dart",
+             sub(r"(const Key\('menu-stats'\),\n(?:.*\n){1,3}?\s*minHeight: )kMinTapTarget", r"\g<1>40"),
+             "Statistics would be a 40 dp target on the menu",
+             'expected tap target size of at least', slow=True),
 ]
+
+
+def snapshot_bytes(paths: list) -> dict:
+    """The current bytes of every path, so a binary mutation can be undone."""
+    return {p: p.read_bytes() for p in paths}
+
+
+def restore_bytes(snapshot: dict) -> None:
+    """Puts every snapshotted file back, byte for byte, recreating a deleted
+    one (and its directory)."""
+    for p, data in snapshot.items():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -639,9 +817,11 @@ def main() -> int:
     broken: list[tuple[Mutation, str]] = []
 
     for i, m in enumerate(selected, 1):
-        edits = [(m.path, m.apply), *m.also]
+        edits = [*([(m.path, m.apply)] if m.path else []), *m.also]
         targets = [ROOT / path for path, _ in edits]
         originals = [target.read_text() for target in targets]
+        binary = [ROOT / m.deletes] if m.deletes else []
+        binary += [ROOT / target for target, _ in m.replaces_with]
         label = f"[{i}/{len(selected)}] {m.issue} {m.name}"
         try:
             mutated = [apply(text) for (_, apply), text in zip(edits, originals)]
@@ -649,7 +829,15 @@ def main() -> int:
             broken.append((m, str(exc)))
             print(f"  BROKEN  {label}\n          {exc}")
             continue
-        if mutated == originals:
+        missing = [p for p in binary if not p.exists()]
+        if missing:
+            broken.append((m, f"binary target missing: {missing[0]}"))
+            print(f"  BROKEN  {label}\n          {missing[0]} does not exist")
+            continue
+        fixtures = {ROOT / target: (ROOT / fixture).read_bytes()
+                    for target, fixture in m.replaces_with}
+        same = [p for p, data in fixtures.items() if p.read_bytes() == data]
+        if (mutated == originals and not binary) or same:
             broken.append((m, "changed nothing"))
             print(f"  BROKEN  {label}\n          changed nothing")
             continue
@@ -677,9 +865,15 @@ def main() -> int:
         IN_FLIGHT.write_text(
             f"{m.issue} {m.name}\n"
             + "".join(f"  {path}\n" for path, _ in edits)
+            + "".join(f"  {p.relative_to(ROOT)}\n" for p in binary)
         )
+        snapshot = snapshot_bytes(binary)
         for target, text in zip(targets, mutated):
             target.write_text(text)
+        if m.deletes:
+            (ROOT / m.deletes).unlink()
+        for target, data in fixtures.items():
+            target.write_bytes(data)
         try:
             unparseable = [t for t in targets if not parses_as_yaml(t)]
             if unparseable:
@@ -729,6 +923,7 @@ def main() -> int:
         finally:
             for target, text in zip(targets, originals):
                 target.write_text(text)
+            restore_bytes(snapshot)
             for made in m.creates:
                 (ROOT / made).unlink(missing_ok=True)
             IN_FLIGHT.unlink(missing_ok=True)

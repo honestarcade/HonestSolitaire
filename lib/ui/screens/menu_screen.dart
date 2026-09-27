@@ -2,20 +2,22 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
 import '../../data/app_store.dart';
 import '../../data/game_saves.dart';
+import '../a11y/tap_target.dart';
 import '../app.dart';
 import '../brand/honest_mark.dart';
 import '../card/playing_card.dart';
 import '../card/suit_paths.dart';
 import '../format.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import '../widgets/screen_header.dart';
 import 'about_app_screen.dart';
 import 'about_studio_screen.dart';
@@ -24,6 +26,8 @@ import 'new_klondike_screen.dart';
 import 'new_spider_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const menuGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -91,11 +95,7 @@ class _MenuScreenState extends State<MenuScreen> {
             _announcedBanner = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                SemanticsService.sendAnnouncement(
-                  View.of(context),
-                  corruptionMessage(notices),
-                  TextDirection.ltr,
-                );
+                scope.announcer.announce(context, corruptionMessage(notices));
               }
             });
           }
@@ -110,10 +110,14 @@ class _MenuScreenState extends State<MenuScreen> {
             children: [
               _Wordmark(scale: s),
               if (notices.isNotEmpty)
-                _CorruptionBanner(
-                  message: corruptionMessage(notices),
-                  scale: s,
-                  onDismiss: scope.store.dismissNotices,
+                Appear(
+                  motion: GameScope.motionOf(context),
+                  duration: bannerFade,
+                  child: _CorruptionBanner(
+                    message: corruptionMessage(notices),
+                    scale: s,
+                    onDismiss: scope.store.dismissNotices,
+                  ),
                 ),
               _ResumeButton(
                 target: target,
@@ -149,7 +153,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         key: const Key('menu-spider'),
                         title: 'Spider',
                         subtitle: '1, 2 or 4 suits · ten columns',
-                        subtitleColor: const Color(0xFFB48CFF),
+                        subtitleColor: Palette.textViolet,
                         accent: Palette.violet,
                         art: const _SpiderArt(),
                         scale: s,
@@ -169,6 +173,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-stats'),
                           s,
                           () => _open(context, const StatsScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                       SizedBox(width: 10 * s),
@@ -178,6 +183,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-howto'),
                           s,
                           () => _open(context, const HowToPlayScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                     ],
@@ -191,6 +197,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-settings'),
                           s,
                           () => _open(context, const SettingsScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                       SizedBox(width: 10 * s),
@@ -200,6 +207,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           const Key('menu-about-app'),
                           s,
                           () => _open(context, const AboutAppScreen()),
+                          minHeight: kMinTapTarget,
                         ),
                       ),
                     ],
@@ -225,61 +233,66 @@ class _Wordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
+    // The wordmark is a drawing: it does not follow the text size (#106).
     return Semantics(
       label: 'Honest Solitaire, by Honest Arcade, no ads',
       excludeSemantics: true,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 52 * s,
-            height: 52 * s,
-            child: CustomPaint(
-              painter: const HonestMarkPainter(strokeScale: 7 / 8),
-              foregroundPainter: _MenuSpade(),
+      child: MediaQuery.withNoTextScaling(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 52 * s,
+              height: 52 * s,
+              child: CustomPaint(
+                painter: const HonestMarkPainter(),
+                foregroundPainter: _MenuSpade(),
+              ),
             ),
-          ),
-          SizedBox(width: 14 * s),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'Honest',
-                      children: const [
-                        TextSpan(
-                          text: 'Solitaire',
-                          style: TextStyle(color: Palette.teal),
-                        ),
-                      ],
+            SizedBox(width: 14 * s),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Honest',
+                        children: const [
+                          TextSpan(
+                            text: 'Solitaire',
+                            style: TextStyle(color: Palette.teal),
+                          ),
+                        ],
+                      ),
+                      style: TextStyle(
+                        fontFamily: kFontOutfit,
+                        fontSize: 27 * s,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.81 * s,
+                        color: Colors.white,
+                        height: 1,
+                      ),
                     ),
+                  ),
+                  SizedBox(height: 7 * s),
+                  Text(
+                    'BY HONEST ARCADE · NO ADS',
                     style: TextStyle(
-                      fontSize: 27 * s,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.81 * s,
-                      color: Colors.white,
+                      fontFamily: kFontMono,
+                      fontSize: 9 * s,
                       height: 1,
+                      letterSpacing: 2.16 * s,
+                      fontWeight: FontWeight.w500,
+                      color: Palette.mist,
                     ),
                   ),
-                ),
-                SizedBox(height: 7 * s),
-                Text(
-                  'BY HONEST ARCADE · NO ADS',
-                  style: TextStyle(
-                    fontSize: 9 * s,
-                    height: 1,
-                    letterSpacing: 2.16 * s,
-                    fontWeight: FontWeight.w500,
-                    color: Palette.mist,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -321,7 +334,7 @@ class _CorruptionBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: Palette.card,
         borderRadius: BorderRadius.circular(12 * s),
-        border: Border.all(color: const Color(0xFFFFB547)),
+        border: Border.all(color: Palette.amber),
       ),
       child: Row(
         children: [
@@ -338,18 +351,20 @@ class _CorruptionBanner extends StatelessWidget {
           Semantics(
             button: true,
             label: 'Dismiss',
+            onTap: onDismiss,
             excludeSemantics: true,
             child: GestureDetector(
               key: const Key('menu-corruption-dismiss'),
               behavior: HitTestBehavior.opaque,
               onTap: onDismiss,
               child: SizedBox(
-                width: 44,
-                height: 44,
+                width: kMinTapTarget,
+                height: kMinTapTarget,
                 child: Center(
-                  child: Text(
-                    '✕',
-                    style: TextStyle(fontSize: 14 * s, color: Palette.mist),
+                  child: GlyphIcon(
+                    Glyph.close,
+                    size: 12 * s,
+                    color: Palette.mist,
                   ),
                 ),
               ),
@@ -395,6 +410,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
     return Semantics(
       button: true,
       label: spoken,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         key: const Key('menu-resume'),
@@ -430,10 +446,11 @@ class _ResumeButtonState extends State<_ResumeButton> {
                   meta,
                   key: const Key('menu-resume-meta'),
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 11 * s,
                     height: 1,
                     fontWeight: FontWeight.w500,
-                    color: Palette.ink.withValues(alpha: 0.7),
+                    color: Palette.textOnTealSoft,
                   ),
                 ),
               ],
@@ -478,6 +495,7 @@ class _GameCardState extends State<_GameCard> {
     return Semantics(
       button: true,
       label: '${widget.title}, ${widget.subtitle}',
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -649,12 +667,20 @@ class _SpiderArt extends StatelessWidget {
 }
 
 class _Secondary extends StatefulWidget {
-  const _Secondary(this.label, Key key, this.scale, this.onTap)
-    : super(key: key);
+  const _Secondary(
+    this.label,
+    Key key,
+    this.scale,
+    this.onTap, {
+    required this.minHeight,
+  }) : super(key: key);
 
   final String label;
   final double scale;
   final VoidCallback onTap;
+
+  /// The hit height: the guideline's 48 dp (#109).
+  final double minHeight;
 
   @override
   State<_Secondary> createState() => _SecondaryState();
@@ -669,6 +695,7 @@ class _SecondaryState extends State<_Secondary> {
     return Semantics(
       button: true,
       label: widget.label,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -677,7 +704,7 @@ class _SecondaryState extends State<_Secondary> {
         onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: BoxConstraints(minHeight: widget.minHeight),
           alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 15 * s),
           decoration: BoxDecoration(
@@ -721,6 +748,7 @@ class _AboutRowState extends State<_AboutRow> {
     return Semantics(
       button: true,
       label: 'About Honest Arcade, no ads, no tracking, open source',
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         key: const Key('menu-about-studio'),
@@ -758,22 +786,14 @@ class _AboutRowState extends State<_AboutRow> {
                       style: TextStyle(
                         fontSize: 11 * s,
                         height: 1.3,
-                        color: const Color(0xFF87A9D0),
+                        color: Palette.textBody,
                       ),
                     ),
                   ],
                 ),
               ),
               SizedBox(width: 12 * s),
-              Text(
-                '›',
-                style: TextStyle(
-                  fontSize: 16 * s,
-                  fontWeight: FontWeight.w500,
-                  color: Palette.teal,
-                  height: 1,
-                ),
-              ),
+              GlyphIcon(Glyph.chevron, size: 16 * s, color: Palette.teal),
             ],
           ),
         ),

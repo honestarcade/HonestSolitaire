@@ -23,11 +23,18 @@ class BoardPointer extends StatefulWidget {
     required this.controller,
     required this.layout,
     required this.child,
+    this.dealing = false,
+    this.onFinishDeal,
   });
 
   final GameController controller;
   final BoardLayout layout;
   final Widget child;
+
+  /// While the deal animation runs (#103), a pointer-down on the board
+  /// lands it and is consumed; one on the bars lands it and passes through.
+  final bool dealing;
+  final VoidCallback? onFinishDeal;
 
   @override
   State<BoardPointer> createState() => _BoardPointerState();
@@ -52,6 +59,11 @@ class _BoardPointerState extends State<BoardPointer> {
       // A second finger snaps any drag or peek home.
       _reset();
       controller.cancelDrag();
+      return;
+    }
+    if (widget.dealing) {
+      widget.onFinishDeal?.call();
+      if (!_inBars(e.localPosition)) _pointer = -1; // consumed: no tap on up
       return;
     }
     if (_inBars(e.localPosition)) return;
@@ -100,6 +112,10 @@ class _BoardPointerState extends State<BoardPointer> {
   }
 
   void _onUp(PointerUpEvent e) {
+    if (_pointer == -1) {
+      _reset();
+      return;
+    }
     if (e.pointer != _pointer) return;
     _hold?.cancel();
     final wasDragging = _dragging;

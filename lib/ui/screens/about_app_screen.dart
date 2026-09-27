@@ -6,6 +6,7 @@ import 'package:honest_solitaire/engine/card.dart';
 
 import '../../app_version.dart';
 import '../app.dart';
+import '../navigation.dart';
 import '../brand/honest_mark.dart';
 import '../card/suit_paths.dart';
 import '../content/about_text.dart';
@@ -14,6 +15,8 @@ import '../theme/palette.dart';
 import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
 import 'about_studio_screen.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const aboutAppGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -52,39 +55,44 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             scale: s,
             color: const Color(0x0DFFFFFF),
             padding: EdgeInsets.all(16 * s),
-            child: Row(
-              children: [
-                IconTile(size: 62 * s),
-                SizedBox(width: 14 * s),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Honest Solitaire',
-                        style: TextStyle(
-                          fontSize: 20 * s,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1,
+            // The tile is a drawing: no text scaling (#106).
+            child: MediaQuery.withNoTextScaling(
+              child: Row(
+                children: [
+                  IconTile(size: 62 * s),
+                  SizedBox(width: 14 * s),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Honest Solitaire',
+                          style: TextStyle(
+                            fontFamily: kFontOutfit,
+                            fontSize: 20 * s,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 7 * s),
-                      Text(
-                        'v$appVersion · OFFLINE',
-                        key: const Key('aboutapp-version'),
-                        style: TextStyle(
-                          fontSize: 10 * s,
-                          height: 1,
-                          letterSpacing: 1.4 * s,
-                          fontWeight: FontWeight.w500,
-                          color: Palette.mist,
+                        SizedBox(height: 7 * s),
+                        Text(
+                          'v$appVersion · OFFLINE',
+                          key: const Key('aboutapp-version'),
+                          style: TextStyle(
+                            fontFamily: kFontMono,
+                            fontSize: 10 * s,
+                            height: 1,
+                            letterSpacing: 1.4 * s,
+                            fontWeight: FontWeight.w500,
+                            color: Palette.mist,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Text(
@@ -92,7 +100,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             style: TextStyle(
               fontSize: 13.5 * s,
               height: 1.65,
-              color: const Color(0xFFBBD2EC),
+              color: Palette.textSoft,
             ),
           ),
           Column(
@@ -183,13 +191,19 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                 Semantics(
                   button: true,
                   label: 'Honest Arcade Promises',
+                  onTap: () => scope.navigating.push(
+                    Navigator.of(context),
+                    FadePageRoute<void>(
+                      builder: (_) => const AboutStudioScreen(),
+                    ),
+                  ),
                   excludeSemantics: true,
                   child: GestureDetector(
                     key: const Key('aboutapp-studio'),
                     behavior: HitTestBehavior.opaque,
                     onTap: () => scope.navigating.push(
                       Navigator.of(context),
-                      MaterialPageRoute<void>(
+                      FadePageRoute<void>(
                         builder: (_) => const AboutStudioScreen(),
                       ),
                     ),
@@ -223,10 +237,11 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
               Text(
                 'MADE BY',
                 style: TextStyle(
+                  fontFamily: kFontMono,
                   fontSize: 9.5 * s,
                   letterSpacing: 1.1 * s,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF4E739F),
+                  color: Palette.textFaint,
                 ),
               ),
               LinkText(
@@ -235,11 +250,11 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                 opener: _opener,
                 scale: s,
               ),
-              Text(
-                '·',
-                style: TextStyle(
-                  fontSize: 9.5 * s,
-                  color: const Color(0xFF4E739F),
+              // A separator, not a word (#109): TalkBack skips it.
+              ExcludeSemantics(
+                child: Text(
+                  '·',
+                  style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
                 ),
               ),
               LinkText(
@@ -273,7 +288,7 @@ class IconTile extends StatelessWidget {
     child: Padding(
       padding: EdgeInsets.all(size * 7 / 62),
       child: CustomPaint(
-        painter: const HonestMarkPainter(strokeScale: 7 / 8),
+        painter: const HonestMarkPainter(),
         foregroundPainter: _TileSpade(),
       ),
     ),
@@ -333,15 +348,7 @@ class _ChipGrid extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Text(
-          '✓',
-          style: TextStyle(
-            fontSize: 10 * s,
-            fontWeight: FontWeight.w600,
-            color: Palette.teal,
-            height: 1,
-          ),
-        ),
+        GlyphIcon(Glyph.check, size: 10 * s, color: Palette.teal),
         SizedBox(width: 6 * s),
         Expanded(
           child: Text(

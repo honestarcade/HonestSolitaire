@@ -29,7 +29,13 @@ import 'repo_files.dart';
 /// "downloads_path_provider" — none of them an advertising SDK. Requiring
 /// the underscore is a cheap word boundary that a Dart/pub package name's
 /// own naming convention makes reliable.
-const blockedNameGlobs = ['*_ads', '*analytics*', '*firebase_crashlytics*'];
+// google_fonts downloads typefaces at run time; the app bundles its own (#96).
+const blockedNameGlobs = [
+  '*_ads',
+  '*analytics*',
+  '*firebase_crashlytics*',
+  'google_fonts',
+];
 
 bool _matchesGlob(String name, String glob) {
   final pattern = RegExp('^${glob.split('*').map(RegExp.escape).join('.*')}\$');
@@ -137,6 +143,7 @@ void main() {
         'firebase_analytics (matches *analytics*)',
       ]);
       expect(blockedDependencies(['firebase_crashlytics']), hasLength(1));
+      expect(blockedDependencies(['google_fonts']), hasLength(1));
     });
 
     for (final shape in bypassShapes.entries) {

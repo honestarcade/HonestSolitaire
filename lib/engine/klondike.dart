@@ -122,7 +122,7 @@ class MoveRun extends KlondikeMove {
   int get hashCode => Object.hash(MoveRun, from, start, to);
 
   @override
-  String toString() => 'MoveRun($from[$start] → $to)';
+  String toString() => 'MoveRun($from[$start] -> $to)';
 }
 
 /// The waste's top card onto column [to].
@@ -209,7 +209,7 @@ class FoundationToTableau extends KlondikeMove {
   int get hashCode => Object.hash(FoundationToTableau, foundation, to);
 
   @override
-  String toString() => 'FoundationToTableau($foundation → $to)';
+  String toString() => 'FoundationToTableau($foundation -> $to)';
 }
 
 /// Turn one or three stock cards onto the waste. Refused on an empty stock:
@@ -384,14 +384,23 @@ class KlondikeGame extends Game {
     if (stock.any((c) => c.faceUp)) {
       throw ArgumentError('the stock is face down');
     }
+    // Presentation ids (#99): each hand-built card takes the deck card of
+    // its rank and suit.
+    final ided = identifyPiles(standardDeck(), [
+      ...tableau,
+      stock,
+      waste,
+      ...foundations,
+    ]);
     return KlondikeGame._(
       dealNumber: dealNumber ?? DealNumber(1),
       options: options,
-      tableau: tableau,
-      stock: stock,
-      waste: [for (final c in waste) c.up],
+      tableau: ided.sublist(0, klondikeColumns),
+      stock: ided[klondikeColumns],
+      waste: [for (final c in ided[klondikeColumns + 1]) c.up],
       foundations: [
-        for (final f in foundations) [for (final c in f) c.up],
+        for (final f in ided.sublist(klondikeColumns + 2))
+          [for (final c in f) c.up],
       ],
       moveScore:
           moveScore ??

@@ -1,6 +1,7 @@
 /// The empty-slot decorations the design draws: 1 px dashed outlines with
-/// per-slot alphas, a 4 % white fill, a suit placeholder at 34 % white and
-/// the ↻ recycle arrow — all painted, never glyphs.
+/// per-slot alphas, a 4 % white fill, a suit placeholder (raised from the
+/// design's 34 % white to read 3:1, #102) and
+/// the recycle arrow — all painted, never font glyphs.
 library;
 
 import 'dart:math' as math;
@@ -10,6 +11,7 @@ import 'package:honest_solitaire/engine/card.dart';
 
 import '../card/suit_paths.dart';
 import '../theme/palette.dart';
+import '../icons/glyphs.dart';
 
 class SlotPainter extends CustomPainter {
   const SlotPainter({
@@ -43,12 +45,23 @@ class SlotPainter extends CustomPainter {
     if (fill != null) {
       canvas.drawRRect(rrect, Paint()..color = fill!);
     }
+    // A hinted slot wears the hint ring's own dash (#102): 2 px, 6/4 scaled
+    // by the slot's width over the design's 48, round caps — so a hint is
+    // told from the 1 px 4/3 outline and the teal target without colour.
+    final hinted = edgeColor == Palette.hintRing;
     final edge = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
+      ..strokeWidth = hinted ? 2 : 1
+      ..strokeCap = hinted ? StrokeCap.round : StrokeCap.butt
       ..color = edgeColor;
     if (edgeColor.a > 0) {
-      if (dashed) {
+      if (hinted) {
+        final k = size.width / 48;
+        canvas.drawPath(
+          dashPath(Path()..addRRect(rrect), 6 * k, 4 * k, radius * math.pi / 2),
+          edge,
+        );
+      } else if (dashed) {
         canvas.drawPath(_dash(Path()..addRRect(rrect)), edge);
       } else {
         canvas.drawRRect(rrect, edge);
@@ -59,7 +72,7 @@ class SlotPainter extends CustomPainter {
       final origin = Offset((size.width - side) / 2, (size.height - side) / 2);
       canvas.drawPath(
         suitPathAt(placeholderSuit!, origin, side),
-        Paint()..color = const Color(0x57FFFFFF),
+        Paint()..color = Palette.placeholderSuit,
       );
     }
     if (recycle) _paintRecycle(canvas, size);
@@ -67,56 +80,20 @@ class SlotPainter extends CustomPainter {
 
   /// One continuous 4/3 dash around the outline, starting where the
   /// top-left corner ends.
-  Path _dash(Path source) {
-    final out = Path();
-    for (final metric in source.computeMetrics()) {
-      var distance = radius * math.pi / 2;
-      final start = distance;
-      while (distance < metric.length + start) {
-        final end = math.min(distance + dashLength, metric.length + start);
-        out.addPath(
-          metric.extractPath(
-            distance % metric.length,
-            math.min(end, metric.length),
-          ),
-          Offset.zero,
-        );
-        if (end > metric.length) {
-          out.addPath(metric.extractPath(0, end - metric.length), Offset.zero);
-        }
-        distance += dashLength + gapLength;
-      }
-    }
-    return out;
-  }
+  Path _dash(Path source) =>
+      dashPath(source, dashLength, gapLength, radius * math.pi / 2);
 
-  /// ↻ as an arc with an arrowhead, 14 px tall by default, in the readout
-  /// colour.
+  /// The recycle arrow (#100's glyph), [recycleSize] tall, in the readout
+  /// colour, centred.
   void _paintRecycle(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final r = recycleSize * 0.36;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.2, recycleSize / 9)
-      ..strokeCap = StrokeCap.round
-      ..color = Palette.readout;
-    final arc = Path()
-      ..addArc(
-        Rect.fromCircle(center: c, radius: r),
-        -math.pi * 0.35,
-        math.pi * 1.55,
-      );
-    canvas.drawPath(arc, paint);
-    final tip = Offset(
-      c.dx + r * math.cos(-math.pi * 0.35),
-      c.dy + r * math.sin(-math.pi * 0.35),
+    paintGlyph(
+      canvas,
+      Glyph.recycle,
+      Offset(c.dx - recycleSize / 2, c.dy - recycleSize / 2),
+      recycleSize,
+      Palette.readout,
     );
-    final head = recycleSize * 0.28;
-    final arrow = Path()
-      ..moveTo(tip.dx - head, tip.dy - head * 0.1)
-      ..lineTo(tip.dx, tip.dy)
-      ..lineTo(tip.dx - head * 0.2, tip.dy + head);
-    canvas.drawPath(arrow, paint);
   }
 
   @override
@@ -128,4 +105,29 @@ class SlotPainter extends CustomPainter {
       old.placeholderSuit != placeholderSuit ||
       old.recycle != recycle ||
       old.recycleSize != recycleSize;
+}
+
+/// [source] as a run of dashes: [dash] on, [gap] off, starting [phase]
+/// along each contour and wrapping at its end (#74, #102).
+Path dashPath(Path source, double dash, double gap, double phase) {
+  final out = Path();
+  for (final metric in source.computeMetrics()) {
+    var distance = phase;
+    final start = distance;
+    while (distance < metric.length + start) {
+      final end = math.min(distance + dash, metric.length + start);
+      out.addPath(
+        metric.extractPath(
+          distance % metric.length,
+          math.min(end, metric.length),
+        ),
+        Offset.zero,
+      );
+      if (end > metric.length) {
+        out.addPath(metric.extractPath(0, end - metric.length), Offset.zero);
+      }
+      distance += dash + gap;
+    }
+  }
+  return out;
 }

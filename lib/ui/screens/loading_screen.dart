@@ -6,7 +6,6 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
@@ -15,9 +14,11 @@ import '../brand/honest_mark.dart';
 import '../card/suit_paths.dart';
 import '../format.dart';
 import '../game/pause_card.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 /// One step of the launch: the label shown while it runs, and the work.
 class LaunchStep {
@@ -29,10 +30,6 @@ class LaunchStep {
 
 /// The splash stays at least this long from its first frame.
 const splashMinimum = Duration(milliseconds: 600);
-
-/// READY holds this long before the fade.
-const splashHold = Duration(milliseconds: 350);
-const splashFade = Duration(milliseconds: 200);
 
 /// A load that takes longer than this counts as failed and is skipped.
 const launchStepTimeout = Duration(seconds: 5);
@@ -130,10 +127,13 @@ class _LoadingScreenState extends State<LoadingScreen> {
       setState(() => _completed++);
     }
     await _minimumShown;
-    await Future<void>.delayed(splashHold);
+    if (!mounted) return;
+    // READY's hold and the fade follow the motion level (#105).
+    final motion = GameScope.motionOf(context);
+    await Future<void>.delayed(motion.splashHold);
     if (!mounted) return;
     setState(() => _fading = true);
-    await Future<void>.delayed(splashFade);
+    await Future<void>.delayed(motion.ui(splashFade));
     if (mounted) widget.onDone!();
   }
 
@@ -172,11 +172,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void _announce(int dealsTried) {
     if (_announceCooldown?.isActive ?? false) return;
     _announceCooldown = Timer(countAnnounceInterval, () {});
-    SemanticsService.sendAnnouncement(
-      View.of(context),
-      _countText(dealsTried),
-      TextDirection.ltr,
-    );
+    GameScope.of(context).announcer.announce(context, _countText(dealsTried));
   }
 
   void _fail() {
@@ -195,7 +191,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     if (!mounted || _cancelled) return;
     final scope = GameScope.of(context);
     widget.onGame?.call(game);
-    scope.controller.replaceGame(game);
+    scope.controller.replaceGame(game, dealAnimation: true);
     openBoard(context);
   }
 
@@ -232,7 +228,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     }
     final game = KlondikeGame.deal(number, widget.options!);
     widget.onGame?.call(game);
-    scope.controller.replaceGame(game);
+    scope.controller.replaceGame(game, dealAnimation: true);
     openBoard(context);
   }
 
@@ -267,24 +263,30 @@ class _LoadingScreenState extends State<LoadingScreen> {
             children: [
               _Mark(size: 132 * s),
               SizedBox(height: 30 * s),
-              _Title(scale: s),
+              // The wordmark is a drawing: no text scaling (#106).
+              MediaQuery.withNoTextScaling(child: _Title(scale: s)),
               SizedBox(height: 30 * s),
               LoadingBar(
                 key: const Key('loading-bar'),
                 width: 220 * s,
                 fraction: launch ? _completed / steps!.length : null,
-                running: !launch && !_failed,
+                // A static bar when the phone removes animations (#105).
+                running:
+                    !launch &&
+                    !_failed &&
+                    GameScope.motionOf(context) != AppMotion.none,
               ),
               SizedBox(height: 30 * s),
               Text(
                 label,
                 key: const Key('loading-label'),
                 style: TextStyle(
+                  fontFamily: kFontMono,
                   fontSize: 10 * s,
                   height: 1,
                   letterSpacing: 2 * s,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF5C7FB0),
+                  color: Palette.textMuted,
                 ),
               ),
               if (!launch) ...[
@@ -293,11 +295,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
                   _dealsTried == null ? '' : _countText(_dealsTried!),
                   key: const Key('loading-count'),
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 10 * s,
                     height: 1,
                     letterSpacing: 2 * s,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF5C7FB0).withValues(alpha: 0.7),
+                    color: Palette.textMuted,
                   ),
                 ),
                 SizedBox(height: 26 * s),
@@ -311,7 +314,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     if (launch) {
       return AnimatedOpacity(
         opacity: _fading ? 0 : 1,
-        duration: splashFade,
+        duration: GameScope.motionOf(context).ui(splashFade),
         child: body,
       );
     }
@@ -398,7 +401,7 @@ class _Mark extends StatelessWidget {
     width: size,
     height: size,
     child: CustomPaint(
-      painter: const HonestMarkPainter(strokeScale: 0.75),
+      painter: const HonestMarkPainter(),
       foregroundPainter: _SpadePainter(),
     ),
   );
@@ -443,6 +446,7 @@ class _Title extends StatelessWidget {
             ],
           ),
           style: TextStyle(
+            fontFamily: kFontOutfit,
             fontSize: 40 * s,
             fontWeight: FontWeight.w700,
             letterSpacing: -1.2 * s,
@@ -454,6 +458,7 @@ class _Title extends StatelessWidget {
         Text(
           'BY HONEST ARCADE',
           style: TextStyle(
+            fontFamily: kFontMono,
             fontSize: 11 * s,
             height: 1,
             letterSpacing: 3.08 * s,

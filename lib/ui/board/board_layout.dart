@@ -21,7 +21,9 @@ const double designWidth = 390;
 /// Boards wider than this are centred at this width.
 const double maxBoardWidth = 480;
 
-const double _topBarHeight = 44;
+/// The top bar's drawn height at the design width (#73); its hit boxes may
+/// be taller (#109).
+const double topBarHeight = 44;
 const double _topRowTop = 48;
 const double _toolRowHeight = 84;
 const double _tableauGap = 8; // between the tableau bottom and the tool row
@@ -182,7 +184,7 @@ class _Frame {
     }
     final totalW = columns * cardSize.width + (columns - 1) * gap;
     x0 = left + (width - totalW) / 2;
-    topBar = Rect.fromLTWH(left, 0, width, _topBarHeight * scale);
+    topBar = Rect.fromLTWH(left, 0, width, topBarHeight * scale);
     final topRowTop = _topRowTop * scale;
     final topRowHeight = klondike ? cardSize.height : 44 * scale;
     topRow = Rect.fromLTWH(left, topRowTop, width, topRowHeight);

@@ -245,7 +245,14 @@ jobs:
     test('no template placeholder survives in a tracked file', () {
       final offenders = <String>[];
       for (final path in trackedFilesUnder('.')) {
-        if (path.endsWith('.png') || path.endsWith('.lock')) continue;
+        // Binary assets are not text; reading a .ttf as UTF-8 throws (#96).
+        if (path.endsWith('.png') ||
+            path.endsWith('.lock') ||
+            path.endsWith('.ttf') ||
+            path.endsWith('.otf') ||
+            path.endsWith('.wav')) {
+          continue;
+        }
         final text = readFile(path);
         for (final token in templateTokens) {
           if (text.contains(token)) offenders.add('$path: $token');

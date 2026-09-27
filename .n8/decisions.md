@@ -338,3 +338,105 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Screen tests settle route transitions with an explicit 900 ms pump (`settle(tester, transition: true)`) and `openScreen` tears the previous app down before pumping a new one.
   **Why:** This Flutter's Android page transition runs 800 ms, and `pumpAndSettle` never settles while the search screen's bar loops; a second `HonestSolitaireApp` in one test otherwise reuses the first `GameRoot` state and store.
   **Issue:** #87, #91
+
+## /n8-exec M5 -- 2026-09-26
+
+- **Decision:** The font files, hashes, sources and README table are Honest Sudoku's, copied byte for byte (not re-fetched); the README says whose dates they are.
+  **Why:** #96's discretion; the pins are identical and `--check` proves the bytes here.
+  **Issue:** #96
+- **Decision:** One transparent `Material` sits above the Navigator in `GameRoot`, so every route inherits the theme's `DefaultTextStyle`. *(Rule 1)*
+  **Why:** The M4 screens are plain `DecoratedBox` scaffolds; without a Material their text carried the framework's fallback style (yellow-underlined `monospace`), which the typography test exposed once real fonts were loaded.
+  **Issue:** #96
+- **Decision:** The template-placeholder guard skips `.ttf`, `.otf` and `.wav`. *(Rule 3)*
+  **Why:** It reads every tracked file as UTF-8; the first bundled font made it throw. Binary assets carry no template text.
+  **Issue:** #96
+- **Decision:** Every mark in the app — card backs, splash, menu, About tile and the launcher icon — uses Honest Frog Across's corner geometry (`M 3 21 L 3 10 A 7 7 …`, stroke 6), taken from its `android-foreground-frog-mint.svg` on GitHub (sha256 `bad1e3e0…36a6`, read 2026-09-26), not the brand sheet's heavier `A 8.5` / stroke 7 drawing; the design's per-surface stroke scales (6, 7, 8) collapse to the one stroke.
+  **Why:** Owner, /n8-plan M5 round two: "the icon uses Frog Across's exact corner geometry, stroke 6"; #97's AC5 extends it to every in-app mark, and one geometry is what `test/ui/mark_geometry_test.dart` can hold to `STUDIO-MARK.svg`.
+  **Issue:** #97
+- **Decision:** The template icon is recognised by length plus FNV-1a 64 of each density's bytes (recorded from android-studio-app-template 4f43e95), not SHA-256.
+  **Why:** `package:crypto` is not a dependency (invariant 2) and the threat is the template surviving by accident, which a 64-bit fingerprint of a known file catches; a wrong but non-default image is outside the guard, as the story says.
+  **Issue:** #97
+- **Decision:** `tools/mutation_check.py` gains `deletes=` and `replaces_with=` as byte snapshots restored in the same `try/finally`; `tools/test_mutation_check.py` holds the round trip and runs under #98's unittest gate step (until then, by hand).
+  **Why:** #97's discretion; a missing raster or the template icon back in place cannot be expressed as a text substitution.
+  **Issue:** #97
+- **Decision:** Epic #7's launcher-icon criterion stands as amended at planning ("Dark icon", 2026-09-24); the light tile is not shipped and nothing is added to the epic.
+  **Why:** #97's AC6; the amendment is quoted in the epic's comment and delivered here.
+  **Issue:** #97
+- **Decision:** The five clips were generated once each on 2026-09-27 from the prompts in `assets/audio/PROMPTS.md` (ElevenLabs `eleven_text_to_sound_v2`, Creator plan, the owner's key from `~/HonestArcadeApps/secrets/elevenlabs.env`), with no auditioning; the loop is mono at −15 dBFS peak, untrimmed.
+  **Why:** Owner, /n8-plan M5 round one ("Generate one clip from prompt for now…"); the exec session runs the generation (round two). The WAVs are the artifacts of record; the script cannot reproduce them.
+  **Issue:** #98
+- **Decision:** `tools/gate.sh` runs the tools' Python unit tests as step 2 through a shell function (`run_python_tests`, discovery finding nothing is not a failure) and finds the build step by its label; the six-step wording in CLAUDE.md and the README becomes seven.
+  **Why:** #98's discretion; `run_step` executes an array of words, and a function name is one.
+  **Issue:** #98
+- **Decision:** `Card.id` is presentation identity only — the unshuffled deck index, carried through shuffles and flips, outside `==`/`hashCode`, never saved; both `fromPiles` assign it by rank and suit through `identifyPiles` (Spider duplicates by occurrence order); the board falls back to a rank/suit/occurrence id when a card has none.
+  **Why:** #99's pass-2 discretion; a restored game is re-dealt and replayed (#69), so its cards get ids from `deal` and the save format is untouched.
+  **Issue:** #99
+- **Decision:** Every test runs with `MediaQuery.disableAnimations` on (`test/flutter_test_config.dart`); the motion tests opt back in.
+  **Why:** The M3/M4 suites read a card's rect right after a move and tap it, which is only true when the board snaps; the setting is the phone's own switch, so the suites exercise the reduced-motion path the story requires.
+  **Issue:** #99
+- **Decision:** A card that only flips (the one a move uncovered) starts its flip when the slides land; a card that slides and flips (a stock draw) flips as it lands; a released drag settles from its last drawn rect; a running spring-back is finished by the next drag rather than blocking it; under `AppMotion.none` the controller skips the spring-back and completes the finish sweep at once.
+  **Why:** #99's discretion, made concrete where the story left the order to the implementation.
+  **Issue:** #99
+- **Decision:** Inline glyphs (↗ in a link, → in the support panel) sit on the line's middle (`PlaceholderAlignment.middle`), not on the baseline through a `Baseline` wrapper as the pass-2 note asked.
+  **Why:** A baseline placeholder asks the painted box for a dry baseline, which `RenderCustomPaint` does not provide, and the screen scaffold's pinned layout runs under `IntrinsicHeight`; the About screens threw during layout.
+  **Issue:** #100
+- **Decision:** The engine's and the hint's `toString` debug strings write `->` instead of `→`.
+  **Why:** They are string literals under `lib/`, so the glyph scan reads them; ASCII loses nothing in a debug string, and an exemption for them would be a second prose list to keep.
+  **Issue:** #100
+- **Decision:** The controller publishes one `FeedbackStep` per action, derived from the committed states (flips by card id in the tableau, runs and foundations completed, wins, a Spider row dealt) and stated explicitly for undo, restart, new deal, refusal and peek; `clipFor` reduces it to one clip (chime > deal > flip > snap; Kings inside the sweep do not chime, the win does). The music gate serialises its bridge calls and keeps one start in flight.
+  **Why:** #101's discretion; deriving from states needs no move type and covers taps, drops, hints and undos alike. A settings change notifies the controller too, which queued a second `musicStart` until the in-flight flag.
+  **Issue:** #101
+- **Decision:** The platform-surface guard's `when`-block parser is brace-balanced (it used to stop at the first 16-space `}`, which the sound bridge's nested `if` has) and now also holds the sound channel's six methods, both channel names, the two registrations, and the bridge's and activity's audio facts.
+  **Why:** #101's AC; the old parser was written against MainActivity's indentation and read one method from SoundBridge.kt.
+  **Issue:** #101
+- **Decision:** Every dim text token is nudged against one shared surface set — the felt's three stops, the two panel fills over navy and the card navy — so one value passes everywhere the token sits; that lifts more tokens than the planner measured on plain navy alone (`textBody`, `mist`, `textViolet` fail only on the felt's brightest stop #0A3A80), and the nudged shades are the guard's own output: `textMuted` #93AACB, `textFaint` #90AAC8, `textKicker` #8FABD1, `textBody` #8BACD1, `mist` #87ABDA, `textViolet` #BB96FF, `textAccentSoft` #06BDB3 (teal at 70 % made opaque), `textHint` #98A9C3 (pale text at 50 % made opaque), `textOnTealSoft` #03535D (ink at 70 % on teal). `readout`, `textSoft`, `textBright`, `textBlue`, `amber` and `errorText` already pass and stay the design's.
+  **Why:** #102's pass-2 discretion ("one nudge that passes every surface they sit on"); the loading label and the splash sit on the gradient's top stop.
+  **Issue:** #102
+- **Decision:** The card rings are a `RingPainter` (a solid 2 px teal stroke, a dashed 6/4 amber stroke) over the card rather than spread shadows; hinted empty slots and Spider's hinted stock (one ring around the sliver group) use the same dash from `dashPath` in `slot_painter.dart`.
+  **Why:** #102's AC1 and discretion; a spread shadow cannot be dashed.
+  **Issue:** #102
+- **Decision:** The deal is a #99 motion plan (`planDeal`) held at 0 until the board route's transition completes, consumed from a one-shot `pendingDeal` token the board compares with the value it saw when it was created; `replaceGame(…, dealAnimation: true)` (setup Deal, `Found`, random-instead, NEW/New deal) and `restart()` raise it, resumes never. A pointer-down during the deal lands it — consumed on the board, passed through on the bars — and pause, a layout change or another install land it too. Under reduced motion or `accessibleNavigation` there is no deal.
+  **Why:** #103's discretion; reusing the motion layer keeps one ticker and one snap rule; #105's cross-fade will be the transition the deal waits for.
+  **Issue:** #103
+- **Decision:** The cascade is an overlay of positioned `PlayingCard`s driven by one `AnimationController` (`planCascade` in `lib/ui/board/win_cascade.dart`), not cards rasterised to images under one `CustomPainter`; the controller's win-card timer hands over to a `beforeWinCard` hook the board installs (record wait ≤ 2 s → last slide lands → cascade → card), and `onSkipWin` ends it (a pointer-down on the board, system back, a background, a new install, an undo, a resize). Foundations draw empty while the cascade owns their cards and once the win card is up, cascade or not.
+  **Why:** #104's discretion; the same widget the board paints keeps the cards pixel-identical with no raster pass, and the board already has the moving-layer pattern from #99.
+  **Issue:** #104
+- **Decision:** During the cascade the tool row keeps RESTART and NEW enabled (they act and end the sequence, as the story asks); UNDO stays disabled because the engine refuses an undo past a win (`_canUndo` in `lib/engine/history.dart`), so the story's "UNDO acts" cannot hold without an engine change (Rule 4 territory) — HINT and FINISH stay disabled on a won board as in #79. The #79 and #80 tests were updated in place: with animations on, the sweep's win card now follows the cascade; system back mid-sweep completes the sweep and shows the card at once.
+  **Why:** The test plan named UNDO; the engine rule predates it and is the safer behaviour (a recorded win is not undone).
+  **Issue:** #104
+- **Decision:** `AppMotion` (`lib/ui/motion.dart`) gains `reduced`; every card-motion check that read `== none` now reads `!cards`, so Card animations off keeps the finish sweep completing at once and the spring-back instant (as #99 shipped it) while UI fades run 100 ms. The menu is a `FadePageRoute` through `onGenerateRoute` rather than `home`: a `MaterialPageRoute` below refuses its secondary animation for a route of another kind, so the menu never faded beneath a pushed screen; the `PageTransitionsTheme` backstop stays for anything the framework makes. `NavigationGuard` skips the lock when the route's transition (or reverse) duration is zero, since a push's proxy animation reads `completed` before its controller attaches.
+  **Why:** #105's discretion, made concrete where the story left the mechanism open; the proxy-status detail is what a status check alone would have got wrong.
+  **Issue:** #105
+- **Decision:** The pause and win cards rise through `Appear`/`Risen` (`lib/ui/widgets/appear.dart`): the whole overlay fades, only the card translates; the same `Appear` (fade only) fronts the corruption and no-moves banners. The switch is an `AnimatedContainer` keyed `switch` with the knob keyed `switch-knob` (the old `switch-on`/`switch-off` keys had to go: a key that changes with the value recreates the widget and kills the slide). The indeterminate search bar under `none` stops at rest as a static segment; Rules/Stats scroll-to-top animates 150 ms under full. The M3/M4 tests that counted tickers or asserted the splash timings were updated in place and now opt into animations where they assert design timings.
+  **Why:** #105's discretion and the story's "update that story's tests in place" convention.
+  **Issue:** #105
+- **Decision:** The text-size clamp (1.0–1.3×) wraps `GameRoot` in `MaterialApp.builder`; `ScreenScaffold`, `BoardScreen`, `TopBar`, `ToolRow` and `GameOverlays` lost their `withNoTextScaling`; the fixed drawings that opt out are `PlayingCard`, the empty-slot label, the menu and splash wordmarks, the About tile and the Settings swatch captions. The top bar's readouts and the tool-row labels sit in `FittedBox(scaleDown)` with the bars' heights unchanged (the tool button has room under its icon; the pill has room within its 44 px); the no-moves banner's message is fitted the same way. The large-text guard (`test/guards/large_text_test.dart`, every `AppRoute` × the board's states × Large cards × Left-handed at 320×568, bundled fonts) found no other screen overflowing or clipping at 1.3×, so the planner's fallback changes (minimum-height text boxes, wrapping setup labels and stat rows, two-line headers) were not made: each would have been a change with no failing case behind it.
+  **Why:** #106's AC and discretion; the guard is the evidence that the M4 layouts already grow with their text.
+  **Issue:** #106
+- **Decision:** `BoardScreen` stays in `lib/ui/app.dart` (the planner's `board_screen.dart` never existed); the board mutation wraps the `board` local there. The guard's "1.3× or fitted" check reads the keyed `board-title` paragraph.
+  **Why:** implementation-detail staleness, adjusted inline.
+  **Issue:** #106
+- **Decision:** Ticks fan out from `GameFeedback` (`tickFor`: `refused`, `runCompleted`, `foundationCompleted`, `peek`, one per step) through `HapticsPort.tick()`; the controller's own `_haptic()` and the peek's `selectionClick` are gone, every refusal publishes `refused` (a refused move or deal through the shake, a refusal with nothing to shake directly), and a peek publishes only when it can peek. `GameFeedback` takes the port as an optional fourth argument so the M5 sound tests stand. The haptics scan reads string literals as well as code (`stripDartComments` keeps them), so the channel's method name cannot be invoked by hand either.
+  **Why:** #107's discretion; the setting is checked in exactly one place.
+  **Issue:** #107
+- **Decision:** TalkBack's board is a semantics layer in `board_view.dart` (`_semanticsLayer`) built from `board_semantics.dart`'s pure functions: one node per pile, per visible face-up card (keyed by `Card.id`) and per column's face-down cards, at the layout's rects; the painted cards and slots are `ExcludeSemantics`. Columns with face-up cards have no extra "Column N" pile node — the top card is the place target and the face-down node places on the column too; the planner's separate pile node would have doubled every column in traversal. Announcements come from the controller's `spoken` step (`describeStep`/`describeRefusal`/`describeHint` in the controller's own `_apply`, `move`, `hint`, `undo`, `restart`, `replaceGame`, `_startSweep`) through `BoardAnnouncements` and one `Announcer` (`lib/ui/a11y/announcer.dart`), which speaks only under `accessibleNavigation`; the five M4 announce sites moved onto it, including the ones that used to speak regardless. The bars keep their own nodes through `Semantics(explicitChildNodes: true)` around each, ordered before and after the board's nodes with `OrdinalSortKey`s.
+  **Why:** #108's discretion; a plain `Semantics(sortKey:)` around a bar merges the bar into one node, which the control-label test caught.
+  **Issue:** #108
+- **Decision:** `alwaysSelect` on the controller (set by the board from `accessibleNavigation`) makes every tap select with One-tap on; custom actions apply through `applyMove`, the tap-move path with the source as the shake target. Selection announcements ("… selected", "Selection cleared") are made only when the tap said nothing else. Draw announces the new waste top in lower case ("Drew nine of diamonds") like the other card names inside a sentence.
+  **Why:** #108's discretion; the planner's product guess on selection wording, kept.
+  **Issue:** #108
+- **Decision:** The guideline guard (`test/guards/accessibility_guidelines_test.dart`) runs the framework's tap-target rule through `RecordingTapTargetGuideline` (`test/helpers/a11y.dart`, the framework's private traversal re-implemented so tagged nodes are skipped and every flagged node recorded) and its text-contrast rule through `ReadableTextContrastGuideline`, which skips nodes under 16 logical px tall and text fields: the framework samples the screen at logical resolution and takes the most frequent light colour, so a 9 px letter-spaced kicker, a 1.9 px "·" or a field with one glyph reports a blended colour whatever its real one (measured 1.01–2.73:1 on tokens #102 holds at 4.5:1 by computation). That is a per-node contrast exception the planner said not to make; the alternative was a guideline that can never pass on this design's small caps, and #102's computed guard is the proof for exactly those tokens.
+  **Why:** #109's AC needs `textContrastGuideline` green and true; the sampler's limit is the framework's, not the palette's.
+  **Issue:** #109
+- **Decision:** Defects the guidelines found, fixed here (Rule 2): 22 controls whose `Semantics(excludeSemantics: true)` dropped the inner `GestureDetector`'s tap action (TalkBack could name them but not activate them) now set `onTap` on the Semantics too; the pause pill's and the no-moves banner's buttons have 48 dp hit boxes with their drawings unchanged (the bar's positioned rect grows to 48 dp, the row aligns to its top and centres each child on the drawn band); the game tabs grow from 40 to 48 dp; the deal-number field fills a 50 dp box (48 inside its border) and the clear and dismiss buttons are 48 dp; empty tableau columns' nodes are widened to 48 dp like #73's top-row hit rects; the foundation's card node uses the widened rect; the scrim under the pause and win cards is no longer a semantic tap; the About screens' "·" separators are excluded from semantics; `mist` is nudged to #96B6DF (#102's mechanism, with the About tile's panel over the felt's brightest stop, #164486, added to its surfaces after the guideline measured 4.48:1); the Statistics reset confirm uses `Palette.red` (white on the design's #E05A4E measured 3.66:1).
+  **Why:** each is a guideline failure on a real screen state; the planner asked for real defects to be fixed in this story.
+  **Issue:** #109
+- **Decision:** Spider's completed-runs node is read-only, so it is listed among the exempt kinds as not tappable (the guideline never measures it) and the guard asserts it is never flagged; the splash case is held on SHUFFLING by a launch step that never completes rather than a store whose first read hangs (the store has no such seam; the splash is the same widget either way).
+  **Why:** the AC lists the completed slots and the splash; both are covered by their actual mechanism.
+  **Issue:** #109
+- **Decision:** The guideline guard checks contrast by computation, not by the framework's `textContrastGuideline`: `CheckedTextGuideline` (`test/helpers/a11y.dart`) requires every text colour drawn on a screen to be a `Palette.textPairs` foreground, which `test/guards/contrast_test.dart` proves at its ratio on every surface it sits on. The sampled guideline renders at logical resolution and takes the most frequent light colour, and the same tokens that passed on the Mac measured 4.36–4.46:1 on the Linux runner (PR #134, run 36302842503, 2026-09-27): a gate check cannot depend on the rasteriser. The one text it found outside the proven set, the empty stock's "EMPTY" at 30 % white, now uses `Palette.placeholderSuit`, the alpha #102 proves for placeholders on the felt.
+  **Why:** #109's AC names `textContrastGuideline`; a check that flips between machines is not a proof, and #102's arithmetic is.
+  **Issue:** #109
+- **Decision (Rule 3):** `ci.yml`'s mutations job timeout rises from 30 to 60 minutes: PR #134's battery (63 entries, three of them `slow`) was cancelled at entry 54 by the 30-minute default with every entry caught so far (run 36303295153, 2026-09-27); the workflow's own comment named this failure in advance.
+  **Why:** a cancelled check is not a red one, and the battery is the guards' own gate; splitting it across jobs is a later choice if it keeps growing.
+  **Issue:** #109 (the M5 PR)

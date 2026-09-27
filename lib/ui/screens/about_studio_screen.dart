@@ -10,6 +10,8 @@ import '../content/links.dart';
 import '../theme/palette.dart';
 import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 const aboutStudioGradient = RadialGradient(
   center: Alignment(0.56, -0.76),
@@ -59,7 +61,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
             style: TextStyle(
               fontSize: 14 * s,
               height: 1.65,
-              color: const Color(0xFFC6DAF0),
+              color: Palette.textBright,
             ),
           ),
           Text(
@@ -74,6 +76,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
             link: true,
             label:
                 'Support Honest Arcade. $supportText ${contributeLink.display}, opens in browser',
+            onTap: () => _opener.open(context, contributeLink),
             excludeSemantics: true,
             child: GestureDetector(
               key: const Key('about-support'),
@@ -104,18 +107,18 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                       style: TextStyle(
                         fontSize: 12.5 * s,
                         height: 1.55,
-                        color: const Color(0xFFC6DAF0),
+                        color: Palette.textBright,
                       ),
                     ),
                     SizedBox(height: 6 * s),
-                    Text(
-                      '${contributeLink.display} →',
-                      style: TextStyle(
-                        fontSize: 11.5 * s,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        height: 1,
+                    Text.rich(
+                      TextSpan(
+                        text: '${contributeLink.display} ',
+                        children: [
+                          inlineGlyph(Glyph.arrow, _supportLinkStyle(s)),
+                        ],
                       ),
+                      style: _supportLinkStyle(s),
                     ),
                   ],
                 ),
@@ -141,12 +144,11 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '✓',
-                        style: TextStyle(
-                          fontSize: 12 * s,
-                          height: 1.2,
-                          fontWeight: FontWeight.w600,
+                      Padding(
+                        padding: EdgeInsets.only(top: 1 * s),
+                        child: GlyphIcon(
+                          Glyph.check,
+                          size: 12 * s,
                           color: p.color,
                         ),
                       ),
@@ -191,13 +193,13 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
               _pill(
                 'NO TRACKING',
                 const Color(0x290076F1),
-                const Color(0xFF6FB4FF),
+                Palette.textBlue,
                 s,
               ),
               _pill(
                 'OPEN SOURCE',
                 const Color(0x298448FC),
-                const Color(0xFFB48CFF),
+                Palette.textViolet,
                 s,
               ),
             ],
@@ -213,11 +215,11 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                 opener: _opener,
                 scale: s,
               ),
-              Text(
-                '·',
-                style: TextStyle(
-                  fontSize: 9.5 * s,
-                  color: const Color(0xFF4E739F),
+              // A separator, not a word (#109): TalkBack skips it.
+              ExcludeSemantics(
+                child: Text(
+                  '·',
+                  style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
                 ),
               ),
               LinkText(
@@ -233,6 +235,13 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
     );
   }
 
+  static TextStyle _supportLinkStyle(double s) => TextStyle(
+    fontSize: 11.5 * s,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+    height: 1,
+  );
+
   Widget _pill(String text, Color bg, Color fg, double s) => Container(
     padding: EdgeInsets.symmetric(horizontal: 12 * s, vertical: 7 * s),
     decoration: BoxDecoration(
@@ -242,6 +251,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
     child: Text(
       text,
       style: TextStyle(
+        fontFamily: kFontMono,
         fontSize: 10.5 * s,
         height: 1,
         letterSpacing: 1 * s,

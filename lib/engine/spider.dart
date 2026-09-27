@@ -111,7 +111,7 @@ class MoveCards extends SpiderMove {
   int get hashCode => Object.hash(MoveCards, from, start, to);
 
   @override
-  String toString() => 'MoveCards($from[$start] → $to)';
+  String toString() => 'MoveCards($from[$start] -> $to)';
 }
 
 /// Deal the next stock row: one face-up card on every column.
@@ -255,12 +255,23 @@ class SpiderGame extends Game {
         );
       }
     }
+    // Presentation ids (#99): duplicates by occurrence order, the completed
+    // runs' ids set aside first.
+    final ided = identifyPiles(
+      spiderDeck(options.suits),
+      [...tableau, ...stock],
+      reserved: [
+        for (final suit in completed)
+          for (var rank = aceRank; rank <= kingRank; rank++) Card(rank, suit),
+      ],
+    );
     return SpiderGame._(
       dealNumber: dealNumber ?? DealNumber(1),
       options: options,
-      tableau: tableau,
+      tableau: ided.sublist(0, spiderColumns),
       stock: [
-        for (final r in stock) [for (final c in r) c.down],
+        for (final r in ided.sublist(spiderColumns))
+          [for (final c in r) c.down],
       ],
       completed: completed,
       moveScore: moveScore,

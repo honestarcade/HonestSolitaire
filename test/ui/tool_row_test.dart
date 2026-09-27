@@ -9,6 +9,7 @@ import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/board/slot_painter.dart';
 import 'package:honest_solitaire/ui/card/card_style.dart';
 import 'package:honest_solitaire/ui/card/playing_card.dart';
+import 'package:honest_solitaire/ui/game/finish_sweep.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
 import 'package:honest_solitaire/ui/game/tool_row.dart';
 import 'package:honest_solitaire/ui/game/top_bar.dart';
@@ -19,6 +20,8 @@ import 'package:honest_solitaire/ui/theme/palette.dart';
 
 import '../engine/positions.dart';
 import 'disposing_host.dart';
+
+import 'package:honest_solitaire/ui/icons/glyphs.dart';
 
 var nextDeal = 500;
 
@@ -378,8 +381,18 @@ void main() {
     final undo = tester.getCenter(find.byKey(const Key('tool-undo')));
     final fresh = tester.getCenter(find.byKey(const Key('tool-new')));
     expect(undo.dx, greaterThan(fresh.dx), reason: 'UNDO is now on the right');
-    for (final glyph in ['↺', '✦', '⇈', '⟳', '✚']) {
-      expect(find.text(glyph), findsOneWidget, reason: glyph);
+    for (final glyph in [
+      Glyph.undo,
+      Glyph.hint,
+      Glyph.finish,
+      Glyph.restart,
+      Glyph.newGame,
+    ]) {
+      expect(
+        find.byWidgetPredicate((w) => w is GlyphIcon && w.glyph == glyph),
+        findsOneWidget,
+        reason: glyph.name,
+      );
     }
     for (final label in ['UNDO', 'HINT', 'FINISH', 'RESTART', 'NEW']) {
       expect(find.text(label), findsOneWidget);
@@ -390,28 +403,45 @@ void main() {
     );
   });
 
-  testWidgets('the whole row disables once won; HINT is silent then', (
-    tester,
-  ) async {
-    final controller = controllerFor(
-      klondike(
-        tableau: [cards('KC'), [], [], [], [], [], []],
-        foundations: [
-          suitRun(Suit.spades, 13),
-          suitRun(Suit.hearts, 13),
-          suitRun(Suit.diamonds, 13),
-          suitRun(Suit.clubs, 12),
-        ],
-      ),
-    );
-    await pumpBoard(tester, controller);
-    controller.move(const TableauPile(0), 0, const FoundationPile(Suit.clubs));
-    await tester.pump();
-    expect(controller.game.isWon, isTrue);
-    for (final tool in ['undo', 'hint', 'finish', 'restart', 'new']) {
-      expect(opacityOf(tester, tool), 0.4, reason: tool);
-    }
-    controller.hint();
-    expect(controller.currentHint, isNull);
-  });
+  testWidgets(
+    'won: HINT and FINISH disable at once, the rest with the win card; HINT is silent then',
+    (tester) async {
+      final controller = controllerFor(
+        klondike(
+          tableau: [cards('KC'), [], [], [], [], [], []],
+          foundations: [
+            suitRun(Suit.spades, 13),
+            suitRun(Suit.hearts, 13),
+            suitRun(Suit.diamonds, 13),
+            suitRun(Suit.clubs, 12),
+          ],
+        ),
+      );
+      await pumpBoard(tester, controller);
+      controller.move(
+        const TableauPile(0),
+        0,
+        const FoundationPile(Suit.clubs),
+      );
+      await tester.pump();
+      expect(controller.game.isWon, isTrue);
+      expect(controller.winShown, isFalse);
+      // #104: RESTART and NEW act through the cascade and end it; UNDO is
+      // out because the engine refuses an undo past a win.
+      for (final tool in ['restart', 'new']) {
+        expect(opacityOf(tester, tool), 1.0, reason: tool);
+      }
+      expect(controller.canUndo, isFalse);
+      for (final tool in ['undo', 'hint', 'finish']) {
+        expect(opacityOf(tester, tool), 0.4, reason: tool);
+      }
+      controller.hint();
+      expect(controller.currentHint, isNull);
+      await tester.pump(winCardDelay);
+      expect(controller.winShown, isTrue);
+      for (final tool in ['undo', 'hint', 'finish', 'restart', 'new']) {
+        expect(opacityOf(tester, tool), 0.4, reason: tool);
+      }
+    },
+  );
 }

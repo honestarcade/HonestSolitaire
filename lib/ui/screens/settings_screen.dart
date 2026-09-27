@@ -10,9 +10,11 @@ import '../app.dart';
 import '../card/card_style.dart';
 import '../card/playing_card.dart';
 import '../settings/display_options.dart';
+import '../motion.dart';
 import '../settings/play_settings.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 /// One row of the design's list.
 class SettingRow {
@@ -97,7 +99,7 @@ const soundRows = [
   SettingRow(
     'haptics',
     'Haptics',
-    'A short tick on an illegal move or a completed run.',
+    'A short tick on an illegal move, a completed run or suit, and the peek.',
   ),
 ];
 
@@ -148,7 +150,7 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11 * s,
                   height: 1.5,
-                  color: const Color(0xFF87A9D0),
+                  color: Palette.textBody,
                 ),
               ),
             ],
@@ -158,11 +160,12 @@ class SettingsScreen extends StatelessWidget {
           versionLine,
           key: const Key('settings-version'),
           style: TextStyle(
+            fontFamily: kFontMono,
             fontSize: 9.5 * s,
             height: 1.6,
             letterSpacing: 0.14 * 9.5 * s,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF4E739F),
+            color: Palette.textFaint,
           ),
         ),
       ],
@@ -204,7 +207,7 @@ class _CardBackPanel extends StatelessWidget {
             style: TextStyle(
               fontSize: 10.5 * s,
               height: 1.35,
-              color: const Color(0xFF87A9D0),
+              color: Palette.textBody,
             ),
           ),
           SizedBox(height: 12 * s),
@@ -218,6 +221,7 @@ class _CardBackPanel extends StatelessWidget {
                     selected: display.cardBack == back,
                     button: true,
                     label: '${back.label} card back',
+                    onTap: () => onPick(back),
                     excludeSemantics: true,
                     child: GestureDetector(
                       key: Key('settings-swatch-back-${back.name}'),
@@ -245,15 +249,18 @@ class _CardBackPanel extends StatelessWidget {
                               shadow: false,
                             ),
                             SizedBox(height: 8 * s),
-                            Text(
-                              back.label.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9.5 * s,
-                                fontWeight: FontWeight.w500,
-                                color: display.cardBack == back
-                                    ? Palette.teal
-                                    : const Color(0xFF87A9D0),
-                                height: 1,
+                            // A swatch caption is part of the drawing (#106).
+                            MediaQuery.withNoTextScaling(
+                              child: Text(
+                                back.label.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 9.5 * s,
+                                  fontWeight: FontWeight.w500,
+                                  color: display.cardBack == back
+                                      ? Palette.teal
+                                      : Palette.textBody,
+                                  height: 1,
+                                ),
                               ),
                             ),
                           ],
@@ -400,6 +407,7 @@ class _SwitchRow extends StatelessWidget {
       toggled: value,
       label: row.label,
       hint: row.description,
+      onTap: () => onChanged(!value),
       excludeSemantics: true,
       child: GestureDetector(
         key: Key('settings-row-${row.field}'),
@@ -433,7 +441,7 @@ class _SwitchRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10.5 * s,
                         height: 1.35,
-                        color: const Color(0xFF87A9D0),
+                        color: Palette.textBody,
                       ),
                     ),
                     if (note != null) ...[
@@ -444,7 +452,7 @@ class _SwitchRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10.5 * s,
                           height: 1.35,
-                          color: Palette.teal.withValues(alpha: 0.7),
+                          color: Palette.textAccentSoft,
                         ),
                       ),
                     ],
@@ -471,8 +479,14 @@ class _Switch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    return Container(
-      key: Key('switch-${value ? 'on' : 'off'}'),
+    // Implicit animations (#105): the first build sits still, a change
+    // slides knob and track colour from wherever they are, at the level
+    // after the toggle (the Card animations switch included).
+    final duration = GameScope.motionOf(context).ui(switchSlide);
+    return AnimatedContainer(
+      key: const Key('switch'),
+      duration: duration,
+      curve: switchCurve,
       width: 46 * s,
       height: 26 * s,
       decoration: BoxDecoration(
@@ -482,6 +496,7 @@ class _Switch extends StatelessWidget {
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
       padding: EdgeInsets.all(3 * s),
       child: Container(
+        key: const Key('switch-knob'),
         width: 20 * s,
         height: 20 * s,
         decoration: const BoxDecoration(

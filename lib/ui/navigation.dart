@@ -9,6 +9,7 @@ import 'package:honest_solitaire/engine/game.dart';
 
 import 'app.dart';
 import 'game/game_event.dart';
+import 'motion.dart';
 import 'screens/new_klondike_screen.dart';
 import 'screens/new_spider_screen.dart';
 
@@ -23,11 +24,117 @@ DealerHandle defaultWinnableSearch(DealNumber base, KlondikeOptions options) =>
 
 const boardRouteName = '/board';
 
+/// Every screen the app has (#106): the large-text guard switches over it
+/// exhaustively, so a new screen without a case fails to compile there.
+enum AppRoute {
+  menu,
+  newKlondike,
+  newSpider,
+  loading,
+  board,
+  settings,
+  stats,
+  howToPlay,
+  aboutApp,
+  aboutStudio,
+}
+
 /// The menu is the app's home route (#94).
 const menuRouteName = '/';
 
+/// Tells the board when it is the visible route (#101's music gate).
+final RouteObserver<ModalRoute<void>> boardRouteObserver =
+    RouteObserver<ModalRoute<void>>();
+
+/// Every screen change (#105): the new page fades in while the old fades
+/// out beneath it, over the navy backdrop under the Navigator. The duration
+/// is read from the motion level when the route is pushed and again when it
+/// pops, so a settings change takes effect at the next transition.
+class FadePageRoute<T> extends PageRoute<T> {
+  FadePageRoute({required this.builder, super.settings});
+
+  final WidgetBuilder builder;
+
+  @override
+  bool get opaque => true;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  String? get barrierLabel => null;
+
+  Duration get _now {
+    final context = navigator?.context;
+    return context == null
+        ? routeFade
+        : GameScope.motionOf(context).ui(routeFade);
+  }
+
+  @override
+  Duration get transitionDuration => _now;
+
+  @override
+  Duration get reverseTransitionDuration => _now;
+
+  @override
+  bool didPop(T? result) {
+    controller?.reverseDuration = _now;
+    return super.didPop(result);
+  }
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) => builder(context);
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => crossFade(animation, secondaryAnimation, child);
+}
+
+/// The cross-fade both [FadePageRoute] and the theme's backstop draw: in
+/// with the route's own animation, out with the one above it.
+Widget crossFade(
+  Animation<double> animation,
+  Animation<double> secondary,
+  Widget child,
+) => FadeTransition(
+  opacity: CurvedAnimation(parent: animation, curve: routeCurve),
+  child: FadeTransition(
+    opacity: ReverseAnimation(
+      CurvedAnimation(parent: secondary, curve: routeCurve),
+    ),
+    child: child,
+  ),
+);
+
+/// The same cross-fade for the routes the framework makes (`home`).
+class CrossFadeTransitionsBuilder extends PageTransitionsBuilder {
+  const CrossFadeTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => crossFade(animation, secondaryAnimation, child);
+}
+
 /// Ignores navigation while a route transition runs; the flag clears when
-/// the transition's animation settles (#87, common conventions).
+/// the transition's animation settles (#87, common conventions), at once
+/// for a route with no transition (#105).
 class NavigationGuard {
   bool _busy = false;
   bool get busy => _busy;
@@ -44,7 +151,7 @@ class NavigationGuard {
     final result = toRoot
         ? navigator.pushAndRemoveUntil(route, (r) => r.isFirst)
         : navigator.push(route);
-    _lock(route);
+    _lock(route, popping: false);
     return result;
   }
 
@@ -53,22 +160,25 @@ class NavigationGuard {
     if (_busy) return false;
     final route = ModalRoute.of(context);
     Navigator.of(context).pop(result);
-    if (route != null) _lock(route);
+    if (route != null) _lock(route, popping: true);
     return true;
   }
 
-  /// Marks a transition started by someone else (a `popUntil`).
-  void lockOn(Route<Object?> route) => _lock(route);
+  /// Marks a pop started by someone else (a `popUntil`).
+  void lockOn(Route<Object?> route) => _lock(route, popping: true);
 
-  void _lock(Route<Object?> route) {
-    final animation = route is TransitionRoute ? route.animation : null;
-    if (animation == null ||
-        animation.status == AnimationStatus.completed ||
-        animation.status == AnimationStatus.dismissed) {
-      // A pop starts from `completed`; wait for the reverse to finish. A
-      // push starts from `dismissed` and moves at the next frame.
-      if (animation == null) return;
-    }
+  void _lock(Route<Object?> route, {required bool popping}) {
+    if (route is! TransitionRoute) return;
+    final animation = route.animation;
+    if (animation == null) return;
+    // A route with no transition is already where it is going (#105).
+    final duration = popping
+        ? route.reverseTransitionDuration
+        : route.transitionDuration;
+    if (duration == Duration.zero) return;
+    // Otherwise the status settles at the next frame (a push's proxy
+    // reads `completed` until its controller is attached) and the listener
+    // hears the end.
     _busy = true;
     void listener(AnimationStatus status) {
       if (status == AnimationStatus.completed ||
@@ -83,7 +193,7 @@ class NavigationGuard {
 }
 
 /// The board route; pushed only with a game on the controller.
-Route<void> boardRoute() => MaterialPageRoute<void>(
+Route<void> boardRoute() => FadePageRoute<void>(
   settings: const RouteSettings(name: boardRouteName),
   builder: (_) => const BoardScreen(),
 );
@@ -130,7 +240,7 @@ Future<void> startNewGame(BuildContext context, Game game) async {
   if (scope.navigating.busy) return;
   final type = GameType.of(game);
   final abandon = scope.statsListener.abandonSaved(type);
-  scope.controller.replaceGame(game);
+  scope.controller.replaceGame(game, dealAnimation: true);
   switch (game) {
     case KlondikeGame k:
       scope.settingsStore.setLastKlondikeOptions(k.options);
@@ -180,7 +290,7 @@ Future<void>? openScreen(BuildContext context, Widget screen) {
   if (onBoard) scope.controller.pause();
   return scope.navigating.push(
     Navigator.of(context),
-    MaterialPageRoute<void>(builder: (_) => screen),
+    FadePageRoute<void>(builder: (_) => screen),
   );
 }
 

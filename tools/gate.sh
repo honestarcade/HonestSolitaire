@@ -29,6 +29,7 @@ fi
 
 LABELS=(
   "resolve dependencies"
+  "unit-test the tools (python)"
   "analyze"
   "check formatting"
   "test (includes the invariant guards)"
@@ -38,6 +39,7 @@ LABELS=(
 
 COMMANDS=(
   "flutter pub get --enforce-lockfile"
+  "run_python_tests"
   "dart analyze --fatal-infos"
   "dart format --output=none --set-exit-if-changed ."
   "flutter test --no-pub"
@@ -77,7 +79,7 @@ SIGNING_VARS=(HS_KEYSTORE_PATH HS_KEYSTORE_PASS HS_KEY_ALIAS HS_KEY_PASS)
 # (U+1680, U+2000-U+200A, U+2028, U+2029, U+205F, U+3000). Widening `tr` again
 # would be the third narrowing of the same rule. Instead the build itself now
 # states which key it used and the gate fails if this prediction disagreed —
-# see the step-5 cross-check below. That is the part that cannot drift.
+# see the build step's cross-check below. That is the part that cannot drift.
 hs_is_blank() {
   [ -z "$(printf '%s' "${1:-}" | tr -d '\011\012\013\014\015\034\035\036\037\040')" ]
 }
@@ -206,6 +208,20 @@ export HS_SIGNING_VERDICT="$VERDICT_FILE"
 trap 'rm -f "$BUILD_LOG" "$VERDICT_FILE"' EXIT
 SIGNING_MODE=""
 
+# The tools' Python unit tests (#98): discovery that finds no tests exits 5,
+# which is not a failure here; anything else is.
+run_python_tests() {
+  local rc=0
+  python3 -m unittest discover -s tools -p 'test_*.py' || rc=$?
+  if [ "$rc" -eq 5 ]; then
+    echo "note: no python tests found under tools/"
+    return 0
+  fi
+  return "$rc"
+}
+
+BUILD_LABEL="build release bundle"
+
 # Runs one step as an array of words.
 #
 # `eval` was the dispatcher, which #17's own discretion forbade in writing
@@ -225,7 +241,7 @@ while [ "$i" -lt "$total" ]; do
   label="${LABELS[$i]}"
   command="${COMMANDS[$i]}"
 
-  if [ "$step" -eq 5 ]; then
+  if [ "$label" = "$BUILD_LABEL" ]; then
     warn_hs_release
     SIGNING_MODE="$(signing_mode)"
     echo "[$step/$total] $label ($SIGNING_MODE)"
@@ -239,7 +255,7 @@ while [ "$i" -lt "$total" ]; do
   # In that form `$?` is the status of the negation, which is always 0 — so the
   # gate printed GATE FAILED and exited 0, and CI would have called it a pass.
   status=0
-  if [ "$step" -eq 5 ]; then
+  if [ "$label" = "$BUILD_LABEL" ]; then
     # Captured as well as streamed, so the cross-check below can read what
     # Gradle actually said. PIPESTATUS, not $?, because $? here would be tee.
     # `set -e` plus `pipefail` killed the script on a failing pipeline before
@@ -269,7 +285,7 @@ while [ "$i" -lt "$total" ]; do
   # have drifted apart twice (#91 on ASCII whitespace, #106 on 0x1C and
   # U+3000), each time with the gate announcing the upload key over a
   # debug-signed bundle. A disagreement is now a gate failure.
-  if [ "$step" -eq 5 ]; then
+  if [ "$label" = "$BUILD_LABEL" ]; then
     # Read from a file Gradle wrote, not grepped out of the build log.
     #
     # The log is not ours: `JAVA_TOOL_OPTIONS='-Dhs="signed with the UPLOAD

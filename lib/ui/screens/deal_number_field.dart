@@ -3,13 +3,16 @@
 library;
 
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 
+import '../a11y/tap_target.dart';
+import '../app.dart';
 import '../theme/palette.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
+import '../icons/glyphs.dart';
 
 /// What the field holds.
 sealed class DealNumberInput {
@@ -45,7 +48,7 @@ DealNumberInput parseDealNumber(String text) {
 }
 
 const dealNumberError = 'Enter 1 to ${DealNumber.max}';
-const dealNumberErrorColor = Color(0xFFFFB547);
+const dealNumberErrorColor = Palette.amber;
 
 /// Keeps ASCII digits only (typed or pasted), capped at seven.
 class _DigitsOnly extends TextInputFormatter {
@@ -99,11 +102,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
     final wasInvalid = _input is Invalid;
     setState(() => _input = input);
     if (input is Invalid && !wasInvalid) {
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        dealNumberError,
-        TextDirection.ltr,
-      );
+      GameScope.of(context).announcer.announce(context, dealNumberError);
     }
     widget.onChanged(input);
   }
@@ -154,12 +153,13 @@ class _DealNumberFieldState extends State<DealNumberField> {
             style: TextStyle(
               fontSize: 11 * s,
               height: 1.4,
-              color: const Color(0xFF87A9D0),
+              color: Palette.textBody,
             ),
           ),
           SizedBox(height: 12 * s),
           Container(
-            height: 48,
+            // 48 dp inside the border: the field's tap target (#109).
+            height: kMinTapTarget + 2,
             padding: EdgeInsets.symmetric(horizontal: 12 * s),
             decoration: BoxDecoration(
               color: const Color(0x0AFFFFFF),
@@ -183,9 +183,15 @@ class _DealNumberFieldState extends State<DealNumberField> {
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.done,
                         inputFormatters: const [_DigitsOnly()],
+                        // The field fills its 48 dp box, so its node is
+                        // a full tap target (#109), not the text line.
+                        expands: true,
+                        maxLines: null,
+                        minLines: null,
+                        textAlignVertical: TextAlignVertical.center,
                         style: TextStyle(
                           fontSize: 15 * s,
-                          fontFamily: 'monospace',
+                          fontFamily: kFontMono,
                           color: Palette.paleText,
                         ),
                         decoration: InputDecoration(
@@ -194,7 +200,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
                           hintText: 'Random',
                           hintStyle: TextStyle(
                             fontSize: 15 * s,
-                            color: Palette.paleText.withValues(alpha: 0.5),
+                            color: Palette.textHint,
                           ),
                         ),
                       ),
@@ -205,21 +211,20 @@ class _DealNumberFieldState extends State<DealNumberField> {
                   Semantics(
                     button: true,
                     label: 'Clear deal number',
+                    onTap: _clear,
                     excludeSemantics: true,
                     child: GestureDetector(
                       key: const Key('deal-number-clear'),
                       behavior: HitTestBehavior.opaque,
                       onTap: _clear,
                       child: SizedBox(
-                        width: 44,
-                        height: 44,
+                        width: kMinTapTarget,
+                        height: kMinTapTarget,
                         child: Center(
-                          child: Text(
-                            '✕',
-                            style: TextStyle(
-                              fontSize: 14 * s,
-                              color: Palette.mist,
-                            ),
+                          child: GlyphIcon(
+                            Glyph.close,
+                            size: 12 * s,
+                            color: Palette.mist,
                           ),
                         ),
                       ),

@@ -342,7 +342,10 @@ void main() {
     );
     controller.replaceGame(position);
     await tester.pump();
-    expect(find.bySemanticsLabel('Recycle'), findsOneWidget);
-    expect(find.bySemanticsLabel('Empty column 2'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Stock, empty, double-tap to recycle'),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('Column 2, empty'), findsOneWidget);
   });
 }

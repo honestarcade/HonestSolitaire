@@ -49,5 +49,5 @@ class UiHint {
       ? 'UiHint.noMoves'
       : stock
       ? 'UiHint.stock'
-      : 'UiHint($source[$start] → $destination)';
+      : 'UiHint($source[$start] -> $destination)';
 }

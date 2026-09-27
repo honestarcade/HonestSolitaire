@@ -25,3 +25,35 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # The clips one by one (#98): LICENSES.md and PROMPTS.md beside them stay
+  # out of the app. test/guards/audio_assets_test.dart holds this list to
+  # lib/feedback/clips.dart.
+  assets:
+    - assets/audio/deal.wav
+    - assets/audio/flip.wav
+    - assets/audio/snap.wav
+    - assets/audio/chime.wav
+    - assets/audio/music.wav
+  # Bundled, never fetched at run time (invariant 1); tools/fetch_fonts.sh
+  # is how they got here, test/guards/fonts_test.dart holds them (#96).
+  fonts:
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Outfit-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Outfit-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Outfit-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit-Bold.ttf
+          weight: 700
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600

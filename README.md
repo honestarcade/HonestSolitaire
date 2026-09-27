@@ -29,10 +29,10 @@ One command runs everything CI runs, in the order CI runs it:
 tools/gate.sh
 ```
 
-Six steps, stopping at the first failure: resolve dependencies against the
-lockfile, analyze (infos are fatal), check formatting, run the tests including
-the invariant guards, build the release bundle, and scan that bundle for
-Android permissions. It reports rather than rewrites — a formatting failure
+Seven steps, stopping at the first failure: resolve dependencies against the
+lockfile, unit-test the tools' Python (`tools/test_*.py`), analyze (infos are
+fatal), check formatting, run the tests including the invariant guards, build
+the release bundle, and scan that bundle for Android permissions. It reports rather than rewrites — a formatting failure
 names the file and leaves it alone.
 
 CI runs one more job, `tools/mutation_check.py`: it reintroduces each known
@@ -103,11 +103,15 @@ repository at `docs/privacy.md` — everything under `docs/` is public.
 **MIT** (see `LICENSE`) — covering the source code and the art. Use it, learn
 from it, ship your own.
 
-Two things are held back, because they are not ours to give away:
+Three things are held back, because they are not ours to give away:
 
-**Audio.** When licensed sound effects ship, they will not be covered by the
-MIT licence, and their provenance will be recorded in an audio licence file
-beside them.
+**Fonts.** Outfit and IBM Plex Mono, in `assets/fonts/`, are licensed under
+the SIL Open Font License 1.1 (OFL), not MIT; their licence texts sit beside
+them and `assets/fonts/README.md` records where each file came from.
+
+**Audio.** The sound clips in `assets/audio/` are not covered by the MIT
+licence: they were generated with ElevenLabs and are licensed to Honest Arcade
+for this app, as `assets/audio/LICENSES.md` beside them records.
 
 **Names and logos.** "Honest Arcade", "Honest Solitaire", the four-corner
 outline mark shared across the studio's apps, and the launcher icons built from

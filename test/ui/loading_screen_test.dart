@@ -101,6 +101,16 @@ double? barTarget(WidgetTester tester) =>
 
 void main() {
   group('launch', () {
+    // READY's hold and the fade are motion (#105): these assert the design
+    // timings, so the phone's switch is off here (on for every test by
+    // default); the last test covers the switch on.
+    setUp(() {
+      TestWidgetsFlutterBinding
+              .instance
+              .platformDispatcher
+              .accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures();
+    });
     testWidgets(
       'progresses through the three labels as each load completes, never early, and stays at least 600 ms',
       (tester) async {
@@ -179,6 +189,37 @@ void main() {
         expect(done, isFalse);
         await tester.pump(const Duration(milliseconds: 600));
         expect(done, isTrue);
+      },
+    );
+
+    testWidgets(
+      'with the phone removing animations READY does not hold and the fade is instant',
+      (tester) async {
+        TestWidgetsFlutterBinding
+            .instance
+            .platformDispatcher
+            .accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+          disableAnimations: true,
+        );
+        var done = false;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LoadingScreen.launch(
+              steps: [
+                LaunchStep('SHUFFLING', () async {}),
+                LaunchStep('DEALING', () async {}),
+                LaunchStep('READY', () async {}),
+              ],
+              onDone: () => done = true,
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 599));
+        expect(done, isFalse, reason: 'the 600 ms minimum is display time');
+        await tester.pump(const Duration(milliseconds: 2));
+        await tester.pump();
+        expect(done, isTrue, reason: 'no hold, no fade');
       },
     );
 

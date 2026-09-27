@@ -62,3 +62,6 @@ key.properties
 
 # Local-only working copies (the design source is the owner's, not published).
 /.n8/local/
+
+# Python's bytecode cache from tools/test_*.py (#98).
+tools/__pycache__/
