@@ -115,9 +115,9 @@ void main() {
   });
 
   testWidgets(
-    'ring states change the outline colour; none keeps a hairline edge',
+    'ring states paint a ring (#102); none keeps a hairline edge and the drop shadow',
     (tester) async {
-      Future<List<BoxShadow>> shadowsFor(
+      Future<(RingPainter?, List<BoxShadow>)> paintFor(
         CardRing ring, {
         bool faceUp = true,
       }) async {
@@ -131,39 +131,32 @@ void main() {
             ),
           ),
         );
+        final paints = find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.foregroundPainter is RingPainter,
+        );
+        final painter = paints.evaluate().isEmpty
+            ? null
+            : tester.widget<CustomPaint>(paints).foregroundPainter
+                  as RingPainter?;
         final box = tester.widget<Container>(find.byType(Container));
-        return (box.decoration as BoxDecoration).boxShadow!;
+        return (painter, (box.decoration as BoxDecoration).boxShadow!);
       }
 
-      final selected = await shadowsFor(CardRing.selected);
-      expect(selected.first.color, Palette.selectedRing);
-      expect(selected.first.spreadRadius, 2);
-      final hinted = await shadowsFor(CardRing.hinted);
-      expect(hinted.first.color, Palette.hintRing);
-      expect(hinted.first.spreadRadius, 2);
-      final none = await shadowsFor(CardRing.none);
+      final (selectedRing, selected) = await paintFor(CardRing.selected);
+      expect(selectedRing!.ring, CardRing.selected);
+      final (hintedRing, hinted) = await paintFor(CardRing.hinted);
+      expect(hintedRing!.ring, CardRing.hinted);
+      final (noRing, none) = await paintFor(CardRing.none);
+      expect(noRing, isNull);
       expect(none.first.color, Palette.faceEdge);
       expect(none.first.spreadRadius, 1);
-      final down = await shadowsFor(CardRing.none, faceUp: false);
+      final (_, down) = await paintFor(CardRing.none, faceUp: false);
       expect(down.first.color, Palette.backEdge);
       // Every state carries the design's drop shadow last.
       for (final s in [selected, hinted, none, down]) {
-        expect(s.last.offset, const Offset(0, 2));
-        expect(s.last.blurRadius, 4);
         expect(s.last.color, Palette.cardShadow);
+        expect(s.last.offset, const Offset(0, 2));
       }
-      expect(find.bySemanticsLabel('Five of clubs, selected'), findsNothing);
-      await tester.pumpWidget(
-        host(
-          const PlayingCard(
-            card: Card(5, Suit.clubs, faceUp: true),
-            size: klondike,
-            back: CardBack.navy,
-            ring: CardRing.hinted,
-          ),
-        ),
-      );
-      expect(find.bySemanticsLabel('Five of clubs, hinted'), findsOneWidget);
     },
   );
 

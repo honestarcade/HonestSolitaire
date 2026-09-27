@@ -96,7 +96,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             style: TextStyle(
               fontSize: 13.5 * s,
               height: 1.65,
-              color: const Color(0xFFBBD2EC),
+              color: Palette.textSoft,
             ),
           ),
           Column(
@@ -231,7 +231,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                   fontSize: 9.5 * s,
                   letterSpacing: 1.1 * s,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF4E739F),
+                  color: Palette.textFaint,
                 ),
               ),
               LinkText(
@@ -242,10 +242,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
               ),
               Text(
                 '·',
-                style: TextStyle(
-                  fontSize: 9.5 * s,
-                  color: const Color(0xFF4E739F),
-                ),
+                style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
               ),
               LinkText(
                 label: 'SOURCE ON GITHUB',

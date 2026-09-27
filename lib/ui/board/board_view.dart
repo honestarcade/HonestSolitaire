@@ -537,6 +537,21 @@ class _Board extends StatelessWidget {
           ),
         ),
       );
+      if (controller.currentHint?.stock ?? false) {
+        // One dashed ring around the whole stock group (#102).
+        final group = slivers.reduce((a, b) => a.expandToInclude(b));
+        out.add(
+          Positioned.fromRect(
+            rect: group,
+            child: IgnorePointer(
+              child: CustomPaint(
+                key: const Key('stock-hint-ring'),
+                painter: RingPainter(CardRing.hinted, radius: tr),
+              ),
+            ),
+          ),
+        );
+      }
       for (var i = rows - 1; i >= 0; i--) {
         out.add(
           Positioned.fromRect(
@@ -547,9 +562,6 @@ class _Board extends StatelessWidget {
                 card: null,
                 size: slivers[i].size,
                 back: controller.display.cardBack,
-                ring: (controller.currentHint?.stock ?? false)
-                    ? CardRing.hinted
-                    : CardRing.none,
                 edge: false,
                 radius: tr,
               ),

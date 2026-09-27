@@ -286,7 +286,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                   height: 1,
                   letterSpacing: 2 * s,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF5C7FB0),
+                  color: Palette.textMuted,
                 ),
               ),
               if (!launch) ...[
@@ -300,7 +300,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                     height: 1,
                     letterSpacing: 2 * s,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF5C7FB0).withValues(alpha: 0.7),
+                    color: Palette.textMuted,
                   ),
                 ),
                 SizedBox(height: 26 * s),

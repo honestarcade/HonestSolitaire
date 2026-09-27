@@ -164,7 +164,7 @@ class _ToolButtonState extends State<_ToolButton> {
       label: t.semantics,
       excludeSemantics: true,
       child: Opacity(
-        opacity: t.enabled ? 1 : 0.4,
+        opacity: t.enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           key: Key('tool-${t.key}'),
           behavior: HitTestBehavior.opaque,

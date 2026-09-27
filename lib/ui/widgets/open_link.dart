@@ -9,6 +9,7 @@ import '../app.dart';
 import '../content/links.dart';
 import '../fonts.dart';
 import '../icons/glyphs.dart';
+import '../theme/palette.dart';
 
 /// Per-screen: a second tap while a call runs is ignored.
 class LinkOpener {
@@ -43,7 +44,7 @@ class LinkOpener {
               fontSize: 10.5,
               letterSpacing: 1.2,
               fontWeight: FontWeight.w500,
-              color: Color(0xFFDCE9F8),
+              color: Palette.paleText,
             ),
           ),
         ),
@@ -59,7 +60,7 @@ TextStyle _linkStyle(double s) => TextStyle(
   height: 1.2,
   letterSpacing: 1.1 * s,
   fontWeight: FontWeight.w500,
-  color: const Color(0xFF7FA6D8),
+  color: Palette.mist,
 );
 
 class LinkText extends StatelessWidget {

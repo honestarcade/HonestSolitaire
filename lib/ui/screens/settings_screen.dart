@@ -149,7 +149,7 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11 * s,
                   height: 1.5,
-                  color: const Color(0xFF87A9D0),
+                  color: Palette.textBody,
                 ),
               ),
             ],
@@ -164,7 +164,7 @@ class SettingsScreen extends StatelessWidget {
             height: 1.6,
             letterSpacing: 0.14 * 9.5 * s,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF4E739F),
+            color: Palette.textFaint,
           ),
         ),
       ],
@@ -206,7 +206,7 @@ class _CardBackPanel extends StatelessWidget {
             style: TextStyle(
               fontSize: 10.5 * s,
               height: 1.35,
-              color: const Color(0xFF87A9D0),
+              color: Palette.textBody,
             ),
           ),
           SizedBox(height: 12 * s),
@@ -254,7 +254,7 @@ class _CardBackPanel extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                                 color: display.cardBack == back
                                     ? Palette.teal
-                                    : const Color(0xFF87A9D0),
+                                    : Palette.textBody,
                                 height: 1,
                               ),
                             ),
@@ -435,7 +435,7 @@ class _SwitchRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10.5 * s,
                         height: 1.35,
-                        color: const Color(0xFF87A9D0),
+                        color: Palette.textBody,
                       ),
                     ),
                     if (note != null) ...[
@@ -446,7 +446,7 @@ class _SwitchRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10.5 * s,
                           height: 1.35,
-                          color: Palette.teal.withValues(alpha: 0.7),
+                          color: Palette.textAccentSoft,
                         ),
                       ),
                     ],

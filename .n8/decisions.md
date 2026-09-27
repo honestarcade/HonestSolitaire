@@ -389,3 +389,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The platform-surface guard's `when`-block parser is brace-balanced (it used to stop at the first 16-space `}`, which the sound bridge's nested `if` has) and now also holds the sound channel's six methods, both channel names, the two registrations, and the bridge's and activity's audio facts.
   **Why:** #101's AC; the old parser was written against MainActivity's indentation and read one method from SoundBridge.kt.
   **Issue:** #101
+- **Decision:** Every dim text token is nudged against one shared surface set — the felt's three stops, the two panel fills over navy and the card navy — so one value passes everywhere the token sits; that lifts more tokens than the planner measured on plain navy alone (`textBody`, `mist`, `textViolet` fail only on the felt's brightest stop #0A3A80), and the nudged shades are the guard's own output: `textMuted` #93AACB, `textFaint` #90AAC8, `textKicker` #8FABD1, `textBody` #8BACD1, `mist` #87ABDA, `textViolet` #BB96FF, `textAccentSoft` #06BDB3 (teal at 70 % made opaque), `textHint` #98A9C3 (pale text at 50 % made opaque), `textOnTealSoft` #03535D (ink at 70 % on teal). `readout`, `textSoft`, `textBright`, `textBlue`, `amber` and `errorText` already pass and stay the design's.
+  **Why:** #102's pass-2 discretion ("one nudge that passes every surface they sit on"); the loading label and the splash sit on the gradient's top stop.
+  **Issue:** #102
+- **Decision:** The card rings are a `RingPainter` (a solid 2 px teal stroke, a dashed 6/4 amber stroke) over the card rather than spread shadows; hinted empty slots and Spider's hinted stock (one ring around the sliver group) use the same dash from `dashPath` in `slot_painter.dart`.
+  **Why:** #102's AC1 and discretion; a spread shadow cannot be dashed.
+  **Issue:** #102

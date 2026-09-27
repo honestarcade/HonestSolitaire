@@ -472,6 +472,12 @@ MUTATIONS: list[Mutation] = [
              sub(r"if \(manager != null && manager\.isMusicActive\) return false", "if (manager == null) return false"),
              "the loop would play over the player's podcast",
              'SoundBridge.kt: no isMusicActive check'),
+    # ---- #102: contrast -----------------------------------------------------
+    Mutation("#102", "a dim text token goes back to its design value",
+             "lib/ui/theme/palette.dart",
+             sub(r"static const textMuted = Color\(0xFF93AACB\);", "static const textMuted = Color(0xFF5C7FB0);"),
+             "the loading label would read 2.65:1 on the felt",
+             'contrast: '),
 ]
 
 

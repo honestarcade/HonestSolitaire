@@ -135,7 +135,7 @@ class _PausePill extends StatelessWidget {
       label: 'Pause, ${title.replaceAll(' · ', ' ')}',
       excludeSemantics: true,
       child: Opacity(
-        opacity: enabled ? 1 : 0.4,
+        opacity: enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           key: const Key('pause-pill'),
           behavior: HitTestBehavior.opaque,

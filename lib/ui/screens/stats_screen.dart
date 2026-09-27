@@ -242,7 +242,7 @@ class _Cards extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10.5 * s,
                 height: 1.3,
-                color: const Color(0xFF87A9D0),
+                color: Palette.textBody,
               ),
             ),
           ],
@@ -463,7 +463,7 @@ class _ResetButton extends StatelessWidget {
       label: 'Reset statistics',
       excludeSemantics: true,
       child: Opacity(
-        opacity: enabled ? 1 : 0.4,
+        opacity: enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           key: const Key('stats-reset'),
           behavior: HitTestBehavior.opaque,
@@ -483,7 +483,7 @@ class _ResetButton extends StatelessWidget {
                 fontSize: 13 * s,
                 fontWeight: FontWeight.w500,
                 height: 1,
-                color: const Color(0xFFFF9A90),
+                color: Palette.errorText,
               ),
             ),
           ),
@@ -556,7 +556,7 @@ class _ConfirmCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12.5 * s,
                       height: 1.55,
-                      color: const Color(0xFFBBD2EC),
+                      color: Palette.textSoft,
                     ),
                   ),
                   SizedBox(height: 18 * s),

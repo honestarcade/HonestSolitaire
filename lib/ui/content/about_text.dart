@@ -5,6 +5,8 @@ library;
 
 import 'package:flutter/painting.dart';
 
+import '../theme/palette.dart';
+
 const aboutIntro =
     'Two classics, done properly: Klondike with draw one or draw three, and '
     'Spider at one, two or four suits. Real shuffles, unlimited undo, honest '
@@ -77,8 +79,8 @@ class Promise {
 }
 
 const _tealMark = Color(0xFF00D6B4);
-const _blueMark = Color(0xFF6FB4FF);
-const _violetMark = Color(0xFFB48CFF);
+const _blueMark = Palette.textBlue;
+const _violetMark = Palette.textViolet;
 
 const promises = [
   Promise(

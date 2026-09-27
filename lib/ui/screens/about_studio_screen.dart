@@ -61,7 +61,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
             style: TextStyle(
               fontSize: 14 * s,
               height: 1.65,
-              color: const Color(0xFFC6DAF0),
+              color: Palette.textBright,
             ),
           ),
           Text(
@@ -106,7 +106,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                       style: TextStyle(
                         fontSize: 12.5 * s,
                         height: 1.55,
-                        color: const Color(0xFFC6DAF0),
+                        color: Palette.textBright,
                       ),
                     ),
                     SizedBox(height: 6 * s),
@@ -192,13 +192,13 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
               _pill(
                 'NO TRACKING',
                 const Color(0x290076F1),
-                const Color(0xFF6FB4FF),
+                Palette.textBlue,
                 s,
               ),
               _pill(
                 'OPEN SOURCE',
                 const Color(0x298448FC),
-                const Color(0xFFB48CFF),
+                Palette.textViolet,
                 s,
               ),
             ],
@@ -216,10 +216,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
               ),
               Text(
                 '·',
-                style: TextStyle(
-                  fontSize: 9.5 * s,
-                  color: const Color(0xFF4E739F),
-                ),
+                style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
               ),
               LinkText(
                 label: 'SOURCE ON GITHUB',

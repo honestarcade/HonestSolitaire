@@ -30,7 +30,7 @@ class SetupAccent {
   static const violet = SetupAccent._(
     border: Palette.violet,
     fill: Color(0x298448FC),
-    text: Color(0xFFB48CFF),
+    text: Palette.textViolet,
     dealFill: Palette.violet,
     dealPressed: Color(0xFF9A68FF),
     dealText: Colors.white,
@@ -97,7 +97,7 @@ class OptionPanel extends StatelessWidget {
             style: TextStyle(
               fontSize: 11 * s,
               height: 1.4,
-              color: const Color(0xFF87A9D0),
+              color: Palette.textBody,
             ),
           ),
           SizedBox(height: 12 * s),
@@ -178,7 +178,7 @@ class _ChoiceButtonState extends State<ChoiceButton> {
       hint: widget.hint,
       excludeSemantics: true,
       child: Opacity(
-        opacity: widget.enabled ? 1 : 0.4,
+        opacity: widget.enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: widget.enabled
@@ -247,7 +247,7 @@ class _DealButtonState extends State<DealButton> {
       label: widget.label,
       excludeSemantics: true,
       child: Opacity(
-        opacity: widget.enabled ? 1 : 0.4,
+        opacity: widget.enabled ? 1 : Palette.disabledOpacity,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: widget.enabled

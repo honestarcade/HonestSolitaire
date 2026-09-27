@@ -118,7 +118,7 @@ class _RuleCardView extends StatelessWidget {
                 card.tag,
                 scale: s,
                 size: 9,
-                color: highlighted ? Palette.teal : const Color(0xFF6E93C4),
+                color: highlighted ? Palette.teal : Palette.textKicker,
               ),
             ),
             SizedBox(height: 9 * s),
@@ -180,7 +180,7 @@ class _GestureRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11.5 * s,
                   height: 1.45,
-                  color: const Color(0xFFBBD2EC),
+                  color: Palette.textSoft,
                 ),
               ),
             ),

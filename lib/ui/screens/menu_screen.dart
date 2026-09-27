@@ -151,7 +151,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         key: const Key('menu-spider'),
                         title: 'Spider',
                         subtitle: '1, 2 or 4 suits · ten columns',
-                        subtitleColor: const Color(0xFFB48CFF),
+                        subtitleColor: Palette.textViolet,
                         accent: Palette.violet,
                         art: const _SpiderArt(),
                         scale: s,
@@ -325,7 +325,7 @@ class _CorruptionBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: Palette.card,
         borderRadius: BorderRadius.circular(12 * s),
-        border: Border.all(color: const Color(0xFFFFB547)),
+        border: Border.all(color: Palette.amber),
       ),
       child: Row(
         children: [
@@ -439,7 +439,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
                     fontSize: 11 * s,
                     height: 1,
                     fontWeight: FontWeight.w500,
-                    color: Palette.ink.withValues(alpha: 0.7),
+                    color: Palette.textOnTealSoft,
                   ),
                 ),
               ],
@@ -764,7 +764,7 @@ class _AboutRowState extends State<_AboutRow> {
                       style: TextStyle(
                         fontSize: 11 * s,
                         height: 1.3,
-                        color: const Color(0xFF87A9D0),
+                        color: Palette.textBody,
                       ),
                     ),
                   ],

@@ -10,6 +10,7 @@ import 'card_back_painter.dart';
 import 'card_labels.dart';
 import 'card_style.dart';
 import 'suit_paths.dart';
+import '../board/slot_painter.dart' show dashPath;
 
 class PlayingCard extends StatelessWidget {
   /// A face-up or face-down card of [size]. [narrow] uses the design's Spider
@@ -81,12 +82,10 @@ class PlayingCard extends StatelessWidget {
           }}'
         : faceDownLabel;
 
+    // The rings are painted (RingPainter, #102), not spread shadows: the
+    // hint ring is dashed so it is told from the selection without colour.
     final shadows = <BoxShadow>[
-      if (ring == CardRing.selected)
-        const BoxShadow(color: Palette.selectedRing, spreadRadius: 2)
-      else if (ring == CardRing.hinted)
-        const BoxShadow(color: Palette.hintRing, spreadRadius: 2)
-      else if (edge)
+      if (ring == CardRing.none && edge)
         BoxShadow(
           color: up ? Palette.faceEdge : Palette.backEdge,
           spreadRadius: 1,
@@ -110,23 +109,78 @@ class PlayingCard extends StatelessWidget {
       excludeSemantics: true,
       child: RepaintBoundary(
         child: MediaQuery.withNoTextScaling(
-          child: Container(
-            width: size.width,
-            height: size.height,
-            decoration: BoxDecoration(
-              color: up ? Palette.cardFace : back.body,
-              borderRadius: BorderRadius.circular(_radius),
-              boxShadow: shadows,
+          child: _ringed(
+            ring,
+            Container(
+              width: size.width,
+              height: size.height,
+              decoration: BoxDecoration(
+                color: up ? Palette.cardFace : back.body,
+                borderRadius: BorderRadius.circular(_radius),
+                boxShadow: shadows,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: up
+                  ? _Face(card: c, size: size, narrow: narrow)
+                  : _Back(back: back, radius: _radius, scale: _scale),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: up
-                ? _Face(card: c, size: size, narrow: narrow)
-                : _Back(back: back, radius: _radius, scale: _scale),
           ),
         ),
       ),
     );
   }
+
+  /// The ring painter over [child], only when there is a ring to paint.
+  Widget _ringed(CardRing ring, Widget child) => ring == CardRing.none
+      ? child
+      : CustomPaint(
+          foregroundPainter: RingPainter(ring, radius: _radius),
+          child: child,
+        );
+}
+
+/// The selection and hint rings (#102): a 2 px stroke on the card's RRect
+/// inflated by 1 px (where #72's 2 px spread sat). The selection is solid
+/// teal; the hint is amber and dashed — 6 on, 4 off, scaled by the card's
+/// width over the design's 48, round caps — so the two are told apart in
+/// greyscale.
+class RingPainter extends CustomPainter {
+  const RingPainter(this.ring, {required this.radius});
+
+  final CardRing ring;
+  final double radius;
+
+  static const double dash = 6;
+  static const double gap = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (ring == CardRing.none) return;
+    final rrect = RRect.fromRectAndRadius(
+      (Offset.zero & size).inflate(1),
+      Radius.circular(radius + 1),
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = ring == CardRing.selected
+          ? Palette.selectedRing
+          : Palette.hintRing;
+    if (ring == CardRing.selected) {
+      canvas.drawRRect(rrect, paint);
+      return;
+    }
+    final k = size.width / 48;
+    canvas.drawPath(
+      dashPath(Path()..addRRect(rrect), dash * k, gap * k, 0),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(RingPainter old) =>
+      old.ring != ring || old.radius != radius;
 }
 
 class _Back extends StatelessWidget {

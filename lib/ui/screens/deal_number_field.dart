@@ -47,7 +47,7 @@ DealNumberInput parseDealNumber(String text) {
 }
 
 const dealNumberError = 'Enter 1 to ${DealNumber.max}';
-const dealNumberErrorColor = Color(0xFFFFB547);
+const dealNumberErrorColor = Palette.amber;
 
 /// Keeps ASCII digits only (typed or pasted), capped at seven.
 class _DigitsOnly extends TextInputFormatter {
@@ -156,7 +156,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
             style: TextStyle(
               fontSize: 11 * s,
               height: 1.4,
-              color: const Color(0xFF87A9D0),
+              color: Palette.textBody,
             ),
           ),
           SizedBox(height: 12 * s),
@@ -196,7 +196,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
                           hintText: 'Random',
                           hintStyle: TextStyle(
                             fontSize: 15 * s,
-                            color: Palette.paleText.withValues(alpha: 0.5),
+                            color: Palette.textHint,
                           ),
                         ),
                       ),

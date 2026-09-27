@@ -22,7 +22,7 @@ class ScreenHeader extends StatelessWidget {
     required this.onBack,
     required this.keyPrefix,
     this.kicker,
-    this.kickerColor = const Color(0xFF6E93C4),
+    this.kickerColor = Palette.textKicker,
     this.scale = 1,
   });
 
@@ -226,7 +226,7 @@ class Kicker extends StatelessWidget {
     this.text, {
     super.key,
     this.scale = 1,
-    this.color = const Color(0xFF6E93C4),
+    this.color = Palette.textKicker,
     this.size = 9.5,
   });
 
