@@ -193,6 +193,18 @@ class GameController extends ChangeNotifier {
   /// step).
   bool get winShown => _winShown;
 
+  /// Runs between the win and the win card (#104's cascade): the board sets
+  /// it. The card shows once the future completes; null shows it at once.
+  Future<void> Function()? beforeWinCard;
+
+  /// Ends a running win sequence early (system back, background).
+  VoidCallback? onSkipWin;
+  bool _winPending = false;
+  bool _disposed = false;
+
+  /// The win card is on its way (the delay or the cascade).
+  bool get winPending => _winPending;
+
   /// Stops the clock and the gestures and shows the pause card (#80). A
   /// sweep in progress completes first, and the win card wins.
   void pause() {
@@ -217,8 +229,14 @@ class GameController extends ChangeNotifier {
   /// card does nothing.
   void back() {
     if (_winShown) return;
+    if (_winPending) {
+      onSkipWin?.call();
+      return;
+    }
     if (_sweep != null) {
+      // Completing at once shows the card at once: no cascade (#104).
       _sweep!.completeNow();
+      if (_winPending) onSkipWin?.call();
       return;
     }
     if (_paused) {
@@ -235,6 +253,7 @@ class GameController extends ChangeNotifier {
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
       _sweep?.completeNow();
+      if (_winPending) onSkipWin?.call();
       if (_moved && !_game.isWon) _pauseOnReturn = true;
     }
     if (_foreground && _pauseOnReturn) {
@@ -292,6 +311,23 @@ class GameController extends ChangeNotifier {
   void _showWin() {
     _winTimer?.cancel();
     _winTimer = null;
+    if (_winShown || _winPending) return;
+    final hook = beforeWinCard;
+    if (hook == null) {
+      _revealWin();
+      return;
+    }
+    _winPending = true;
+    final game = _game;
+    hook().catchError((Object _) {}).whenComplete(() {
+      if (_disposed || !_winPending || !identical(game, _game)) return;
+      _revealWin();
+    });
+  }
+
+  void _revealWin() {
+    _winPending = false;
+    if (!_game.isWon) return; // undone during the sequence
     _winShown = true;
     notifyListeners();
   }
@@ -466,6 +502,7 @@ class GameController extends ChangeNotifier {
     _winTimer?.cancel();
     _winTimer = null;
     _winShown = false;
+    _winPending = false;
     _paused = false;
     _pauseOnReturn = false;
     _game = game;
@@ -1181,6 +1218,7 @@ class GameController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     feedback.dispose();
     playSettings.removeListener(_onSettings);
     _shakeTimer?.cancel();

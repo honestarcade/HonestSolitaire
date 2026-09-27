@@ -7,6 +7,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/scoring.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
+import 'package:honest_solitaire/ui/board/win_cascade.dart';
 import 'package:honest_solitaire/ui/game/finish_sweep.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
 import 'package:honest_solitaire/ui/game/pause_card.dart';
@@ -52,6 +53,32 @@ Future<void> pumpBoard(WidgetTester tester, GameController controller) async {
 Future<void> back(WidgetTester tester) async {
   await tester.binding.handlePopRoute();
   await tester.pump();
+}
+
+/// With animations on, #104's cascade runs between the win and the card:
+/// pumps through it and returns how long that took.
+Future<Duration> pumpThroughCascade(
+  WidgetTester tester,
+  GameController controller,
+) async {
+  var elapsed = Duration.zero;
+  var sawCascade = false;
+  const step = Duration(milliseconds: 100);
+  while (!controller.winShown && elapsed < const Duration(seconds: 6)) {
+    await tester.pump(step);
+    elapsed += step;
+    final state = tester.state<BoardViewState>(find.byType(BoardView));
+    if (state.cascadeRects.isNotEmpty) sawCascade = true;
+  }
+  expect(sawCascade, isTrue, reason: 'the cascade ran before the card');
+  // Coarse pumps put the cascade's clock up to a frame ahead: the exact
+  // timing is win_cascade_test's.
+  expect(
+    elapsed,
+    greaterThanOrEqualTo(cascadeSpread),
+    reason: 'the card waits for the cascade',
+  );
+  return elapsed;
 }
 
 void main() {
@@ -252,6 +279,9 @@ void main() {
         expect(controller.shown.isWon, isTrue);
         expect(controller.finishing, isFalse);
         await tester.pump(winCardDelay);
+        // #104: the cascade runs first (animations are on here).
+        expect(controller.winShown, isFalse);
+        await pumpThroughCascade(tester, controller);
         expect(controller.winShown, isTrue);
         expect(find.byKey(const Key('win-card')), findsOneWidget);
         expect(find.text('GAME COMPLETE'), findsOneWidget);
@@ -274,6 +304,8 @@ void main() {
       await tester.pump();
       expect(controller.finishing, isTrue);
       await tester.pump(sweepStep * 40 + winCardDelay);
+      expect(controller.winShown, isFalse, reason: '#104: the cascade first');
+      await pumpThroughCascade(tester, controller);
       expect(controller.winShown, isTrue);
     });
 
@@ -288,6 +320,7 @@ void main() {
         expect(controller.finishing, isFalse);
         expect(controller.shown.isWon, isTrue);
         expect(controller.isPaused, isFalse);
+        // Completing at once jumps straight to the card: no cascade (#104).
         expect(controller.winShown, isTrue);
         expect(find.byKey(const Key('win-card')), findsOneWidget);
         // Back on the win card does nothing.

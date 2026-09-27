@@ -34,7 +34,11 @@ class ToolRow extends StatelessWidget {
       builder: (context, _) {
         final game = controller.game;
         final won = game.isWon;
-        final blocked = won || controller.isPaused;
+        // RESTART and NEW keep working through #104's cascade and end it;
+        // HINT and FINISH have nothing to do on a won board, and UNDO
+        // follows canUndo (the engine refuses an undo past a win).
+        final blocked = controller.winShown || controller.isPaused;
+        final noMoves = won || controller.isPaused;
         final tools = <_Tool>[
           _Tool(
             key: 'undo',
@@ -49,7 +53,7 @@ class ToolRow extends StatelessWidget {
             glyph: Glyph.hint,
             label: 'HINT',
             semantics: 'Hint',
-            enabled: !blocked,
+            enabled: !noMoves,
             onPressed: controller.hint,
           ),
           if (game is KlondikeGame)
@@ -58,7 +62,7 @@ class ToolRow extends StatelessWidget {
               glyph: Glyph.finish,
               label: 'FINISH',
               semantics: 'Finish',
-              enabled: !blocked && controller.canFinish,
+              enabled: !noMoves && controller.canFinish,
               accent: true,
               onPressed: controller.finish,
             )
@@ -68,7 +72,7 @@ class ToolRow extends StatelessWidget {
               glyph: Glyph.deal,
               label: 'DEAL ${formatCount(controller.dealsLeft)}',
               semantics: 'Deal, ${controller.dealsLeft} left',
-              enabled: !blocked && controller.dealsLeft > 0,
+              enabled: !noMoves && controller.dealsLeft > 0,
               accent: true,
               onPressed: controller.dealRow,
             ),

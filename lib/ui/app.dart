@@ -394,7 +394,8 @@ class _BoardScreenState extends State<BoardScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final controller = GameScope.of(context).controller;
+    final scope = GameScope.of(context);
+    final controller = scope.controller;
     final padding = MediaQuery.viewPaddingOf(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemBars,
@@ -406,6 +407,7 @@ class _BoardScreenState extends State<BoardScreen> with RouteAware {
             return BoardView(
               controller: controller,
               padding: padding,
+              winRecord: () => scope.statsListener.lastRecord,
               topBar: (_) => TopBar(controller: controller, scale: scale),
               toolRow: (_) => ToolRow(
                 controller: controller,

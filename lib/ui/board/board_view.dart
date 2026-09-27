@@ -2,6 +2,7 @@
 /// always exactly the engine's state (#74).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Card;
@@ -18,6 +19,7 @@ import 'board_layout.dart';
 import 'board_pointer.dart';
 import 'card_motion.dart';
 import 'deal_animation.dart';
+import 'win_cascade.dart';
 import 'pile_ref.dart';
 import 'slot_painter.dart';
 import '../game/finish_sweep.dart';
@@ -67,9 +69,14 @@ class BoardView extends StatefulWidget {
     this.padding = EdgeInsets.zero,
     this.topBar,
     this.toolRow,
+    this.winRecord,
   });
 
   final GameController controller;
+
+  /// The win's record in flight (#104's cascade waits for it, at most
+  /// [recordWait]); null when nothing records (board-only tests).
+  final Future<void>? Function()? winRecord;
 
   /// The system insets: the felt paints behind them, the board lays out
   /// inside them.
@@ -78,10 +85,11 @@ class BoardView extends StatefulWidget {
   final WidgetBuilder? toolRow;
 
   @override
-  State<BoardView> createState() => _BoardViewState();
+  State<BoardView> createState() => BoardViewState();
 }
 
-class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
+/// Public for the tests that read [cascadeRects] (#104).
+class BoardViewState extends State<BoardView> with TickerProviderStateMixin {
   late final AnimationController _shake = AnimationController(
     vsync: this,
     duration: shakeDuration,
@@ -95,6 +103,113 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
     curve: Curves.easeOutCubic,
   );
   late final AnimationController _motion = AnimationController(vsync: this);
+  late final AnimationController _cascadeMotion = AnimationController(
+    vsync: this,
+  );
+
+  // The win sequence (#104): the plan in flight and the skip.
+  CascadePlan? _cascade;
+  Completer<void>? _winSkip;
+  Size _screen = Size.zero;
+
+  /// The foundations (Spider's completed slots) draw empty while the
+  /// cascade owns their cards and once the win card is up, cascade or not.
+  bool get _foundationsEmpty =>
+      widget.controller.game.isWon &&
+      (_cascade != null || widget.controller.winShown);
+
+  /// The falling cards' rects at the current frame, for tests.
+  @visibleForTesting
+  Map<int, Rect> get cascadeRects {
+    final plan = _cascade;
+    if (plan == null) return const {};
+    final ms = (_cascadeMotion.value * plan.totalMs).round();
+    return {
+      for (final c in plan.cards)
+        if (!c.goneAt(ms)) c.order: c.rectAt(ms, _screen.height),
+    };
+  }
+
+  bool get _winSequenceRunning => _winSkip != null;
+
+  /// Runs between the win and the win card: wait for the record (at most
+  /// [recordWait]), then the cascade under full motion. A skip resolves it.
+  Future<void> _runWinSequence() async {
+    final skip = Completer<void>();
+    _winSkip = skip;
+    final controller = widget.controller;
+    // The record first, so a skip never loses it.
+    final record = widget.winRecord?.call();
+    if (record != null) {
+      final cap = Completer<void>();
+      final timer = Timer(recordWait, cap.complete);
+      await Future.any([
+        record.catchError((Object _) {}),
+        cap.future,
+        skip.future,
+      ]);
+      timer.cancel();
+    }
+    if (!mounted || skip.isCompleted || !controller.game.isWon) {
+      _endWinSequence();
+      return;
+    }
+    final motion = AppMotion.of(context, controller.settings);
+    if (motion != AppMotion.full ||
+        MediaQuery.accessibleNavigationOf(context)) {
+      _endWinSequence();
+      return;
+    }
+    // The last slide lands first.
+    if (_motion.isAnimating) {
+      final landed = Completer<void>();
+      void onStatus(AnimationStatus status) {
+        if (!status.isAnimating && !landed.isCompleted) landed.complete();
+      }
+
+      _motion.addStatusListener(onStatus);
+      await Future.any([landed.future, skip.future]);
+      _motion.removeStatusListener(onStatus);
+    }
+    if (!mounted || skip.isCompleted || !controller.game.isWon) {
+      _endWinSequence();
+      return;
+    }
+    final layout = _layout(controller.shown, _screen, controller.display);
+    final plan = planCascade(controller.shown, layout, width: _screen.width);
+    if (plan.isEmpty) {
+      _endWinSequence();
+      return;
+    }
+    setState(() => _cascade = plan);
+    _cascadeMotion.duration = Duration(milliseconds: plan.totalMs);
+    await Future.any([
+      _cascadeMotion.forward(from: 0).orCancel.catchError((Object _) {}),
+      skip.future,
+    ]);
+    _endWinSequence();
+  }
+
+  /// [rebuilding] when called from a build: the frame in progress shows the
+  /// change, so no setState.
+  void _endWinSequence({bool rebuilding = false}) {
+    _winSkip = null;
+    _cascadeMotion.stop();
+    if (mounted && _cascade != null && !rebuilding) {
+      setState(() => _cascade = null);
+    } else {
+      _cascade = null;
+    }
+  }
+
+  /// A tap on the board, system back or a background: straight to the card.
+  void skipWinSequence({bool rebuilding = false}) {
+    final skip = _winSkip;
+    if (skip == null) return;
+    if (!skip.isCompleted) skip.complete();
+    _endWinSequence(rebuilding: rebuilding);
+  }
+
   int _shakeSequence = 0;
   int _springSequence = 0;
   _LayoutCache? _cache;
@@ -127,6 +242,24 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
     // Only a token raised after this board exists deals: a cold start, a
     // resume and a return to the board show the cards in place.
     _dealConsumed = widget.controller.pendingDeal;
+    _hook(widget.controller);
+  }
+
+  void _hook(GameController controller) {
+    controller.beforeWinCard = _runWinSequence;
+    controller.onSkipWin = skipWinSequence;
+  }
+
+  @override
+  void didUpdateWidget(BoardView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      if (oldWidget.controller.beforeWinCard == _runWinSequence) {
+        oldWidget.controller.beforeWinCard = null;
+        oldWidget.controller.onSkipWin = null;
+      }
+      _hook(widget.controller);
+    }
   }
 
   /// Lands every dealt card now: a tap, a pause, a layout change.
@@ -189,10 +322,17 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _winSkip?.complete();
+    _winSkip = null;
+    if (widget.controller.beforeWinCard == _runWinSequence) {
+      widget.controller.beforeWinCard = null;
+      widget.controller.onSkipWin = null;
+    }
     _routeAnimation?.removeStatusListener(_onRouteStatus);
     _shake.dispose();
     _spring.dispose();
     _motion.dispose();
+    _cascadeMotion.dispose();
     super.dispose();
   }
 
@@ -225,6 +365,13 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
           _framesInstall != controller.installSequence;
       // Any change lands a running deal (a move, a pause, a resize).
       if (_dealing) _landDeal();
+      // A new game, an undo or a resize ends the win sequence at the card.
+      if (_winSequenceRunning &&
+          (_framesInstall != controller.installSequence ||
+              !game.isWon ||
+              _framesSize != size)) {
+        skipWinSequence(rebuilding: true);
+      }
       _frames = frames;
       _framesGame = game;
       _framesSize = size;
@@ -303,6 +450,7 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
             builder: (context, _) => LayoutBuilder(
               builder: (context, constraints) {
                 final size = Size(constraints.maxWidth, constraints.maxHeight);
+                _screen = size;
                 final game = controller.shown;
                 final options = controller.display;
                 final layout = _layout(game, size, options);
@@ -322,7 +470,7 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
                 final topBar = widget.topBar?.call(context);
                 final toolRow = widget.toolRow?.call(context);
                 return AnimatedBuilder(
-                  animation: _motion,
+                  animation: Listenable.merge([_motion, _cascadeMotion]),
                   builder: (context, _) {
                     final plan = _plan;
                     final ms = plan == null
@@ -335,8 +483,17 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
                       plan: plan,
                       ms: ms,
                       motion: motion,
-                      dealing: _dealing,
-                      onFinishDeal: finishDeal,
+                      dealing: _dealing || _winSequenceRunning,
+                      onFinishDeal: () {
+                        finishDeal();
+                        skipWinSequence();
+                      },
+                      cascade: _cascade,
+                      cascadeMs: _cascade == null
+                          ? 0
+                          : (_cascadeMotion.value * _cascade!.totalMs).round(),
+                      foundationsEmpty: _foundationsEmpty,
+                      screen: size,
                       shakeAnimation: _shake,
                       springAnimation: _springCurve,
                       topBar: topBar,
@@ -391,6 +548,10 @@ class _Board extends StatelessWidget {
     required this.motion,
     required this.dealing,
     required this.onFinishDeal,
+    this.cascade,
+    this.cascadeMs = 0,
+    this.foundationsEmpty = false,
+    this.screen = Size.zero,
     required this.shakeAnimation,
     required this.springAnimation,
     this.topBar,
@@ -406,9 +567,19 @@ class _Board extends StatelessWidget {
   final int ms;
   final AppMotion motion;
 
-  /// A deal in flight (#103): a pointer-down on the board lands it.
+  /// A deal in flight (#103) or a win sequence (#104): a pointer-down on
+  /// the board lands or skips it.
   final bool dealing;
   final VoidCallback onFinishDeal;
+
+  /// The cascade in flight and the time into it (#104).
+  final CascadePlan? cascade;
+  final int cascadeMs;
+
+  /// The foundations (and completed slots) draw empty: during and after the
+  /// cascade, and on a won board.
+  final bool foundationsEmpty;
+  final Size screen;
   final Animation<double> shakeAnimation;
   final Animation<double> springAnimation;
 
@@ -461,6 +632,7 @@ class _Board extends StatelessWidget {
         _cards(children, const StockPile(), k.stock, dpr);
         _cards(children, const WastePile(), k.waste, dpr);
         for (final suit in Suit.values) {
+          if (foundationsEmpty) continue; // the cascade owns them (#104)
           _cards(
             children,
             FoundationPile(suit),
@@ -487,6 +659,7 @@ class _Board extends StatelessWidget {
     _dragTargets(children);
     children.addAll(peekLayer);
     _movingLayer(children);
+    _cascadeLayer(children);
     if (topBar != null) {
       children.add(Positioned.fromRect(rect: layout.topBar, child: topBar!));
     }
@@ -681,7 +854,7 @@ class _Board extends StatelessWidget {
           plan != null &&
           plan!.completedSlot == i &&
           plan!.motions.any((m) => m.toPile == null && !m.doneAt(ms));
-      if (i < game.completed.length && !arriving) {
+      if (i < game.completed.length && !arriving && !foundationsEmpty) {
         out.add(
           Positioned.fromRect(
             rect: rect,
@@ -847,6 +1020,32 @@ class _Board extends StatelessWidget {
         );
       }
       out.add(Positioned.fromRect(rect: rect, child: child));
+    }
+  }
+
+  /// The falling cards (#104), above the board and below the bars: waiting
+  /// ones in place, later cards above earlier, gone ones dropped.
+  void _cascadeLayer(List<Widget> out) {
+    final plan = cascade;
+    if (plan == null) return;
+    for (final c in plan.cards) {
+      if (c.goneAt(cascadeMs)) continue;
+      final rect = c.rectAt(cascadeMs, screen.height);
+      out.add(
+        Positioned.fromRect(
+          rect: rect,
+          child: ExcludeSemantics(
+            child: PlayingCard(
+              key: Key('cascade-${c.order}'),
+              card: c.card,
+              size: rect.size,
+              back: controller.display.cardBack,
+              narrow: c.narrow,
+              radius: layout.radius,
+            ),
+          ),
+        ),
+      );
     }
   }
 
