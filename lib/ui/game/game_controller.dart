@@ -179,11 +179,6 @@ class GameController extends ChangeNotifier {
   bool _winShown = false;
   Timer? _winTimer;
 
-  /// The other game, kept while the player is on this one (owner, /n8-plan
-  /// M3 round two: switching back resumes it).
-
-  /// The last Klondike options seen, for "Switch to Klondike".
-
   /// Whether a finish sweep is stepping: every input is blocked meanwhile.
   bool get finishing => _sweep != null;
 
