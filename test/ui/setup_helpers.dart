@@ -28,6 +28,9 @@ Future<GameScope> openScreen(
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   var i = 0;
+  // A second app in the same test must not reuse the first GameRoot's
+  // state (and store): tear the old tree down first.
+  await tester.pumpWidget(const SizedBox());
   await tester.pumpWidget(
     HonestSolitaireApp(
       store: store ?? AppStore.memory(),
