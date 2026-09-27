@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark Mode on: the same navy as every other mode (see values/styles.xml). -->
+    <!-- Android 12+ draws its own splash: navy behind the system-forced icon
+         until M5 ships the design's icon. -->
     <style name="LaunchTheme" parent="HonestDark">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_navy</item>
     </style>
-    <style name="NormalTheme" parent="HonestDark" />
 </resources>

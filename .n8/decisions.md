@@ -250,3 +250,30 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The determinism guard's fresh-isolate check runs one `Isolate.run` per mode computing all 300 deals, not one per deal.
   **Why:** The plan's "fresh process state" is a fresh isolate; five spawns prove the same thing as fifteen hundred in a fraction of the time.
   **Issue:** #70
+
+## /n8-exec M3 -- 2026-09-26
+
+- **Decision:** The UI's pile type is `BoardPile` (`lib/ui/board/pile_ref.dart`), not `PileRef` as #73 names it.
+  **Why:** The engine already exports `PileRef` for hints (#65); the controller converts at its boundary as #74's pass-2 note foresaw.
+  **Issue:** #73, #74
+- **Decision:** `GameController.move()` notifies its listeners itself; `displayGame` is a `GameNotifier` that notifies on every assignment.
+  **Why:** A plain `ValueNotifier<Game>` stayed silent on clock ticks because game equality ignores `elapsed`, and widgets driven through `move()` in tests showed stale state.
+  **Issue:** #75, #78
+- **Decision:** UI tests host their controller in a `DisposingHost` widget (`test/ui/disposing_host.dart`) instead of a tear-down.
+  **Why:** flutter_test checks for pending timers after unmounting the tree and before tear-downs run; a running clock must be disposed with the tree.
+  **Issue:** #78
+- **Decision:** The tool row draws the design's glyphs as text with Noto Symbols fallbacks and carries a build-time switch to Material icons (`useGlyphFallbackIcons`) rather than a runtime missing-glyph check.
+  **Why:** Flutter reports no missing-glyph event at run time; the device check in #81's demo decides the switch, and M5 replaces the glyphs with the icon set anyway.
+  **Issue:** #79
+- **Decision:** `UiHint.move` takes an optional destination; a flip hint rings the face-down card alone.
+  **Why:** #79's own discretion note; the engine's `Flip` has no destination pile.
+  **Issue:** #79
+- **Decision:** The pause card's Restart, New deal and Switch resume the game (unpause) as part of replacing it; `switchGame` keeps the other game on the controller (`keptGame`) and, when the kept game is won, deals a fresh one of its type.
+  **Why:** #80's owner answers (round two and the gate defaults).
+  **Issue:** #80
+- **Decision:** The finish sweep commits `applyFinish` at once and shows per-step states through `shown`/`displayGame`; every input is blocked meanwhile; back, pause and backgrounding complete it instantly and show the win card.
+  **Why:** #80's discretion: one undo step, the clock stops when the sweep starts so the time bonus uses that moment.
+  **Issue:** #80
+- **Decision:** The board's safe area is `MediaQuery.viewPadding` (the system bars), and both Android theme files inherit one `HonestDark` parent with a navy window background.
+  **Why:** #81's discretion; one parent keeps light and dark mode identical, which the design is.
+  **Issue:** #81
