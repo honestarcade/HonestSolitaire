@@ -1,8 +1,11 @@
-/// What the player hears when something happens (#101): the controller's
-/// [FeedbackStep]s reduced to at most one clip by priority, played when the
-/// Sound effects setting is on; and the one snap that answers the player
-/// turning that setting on.
+/// What the player hears and feels when something happens (#101, #107):
+/// the controller's [FeedbackStep]s reduced to at most one clip by priority,
+/// played when the Sound effects setting is on, and to at most one tick,
+/// given when the Haptics setting is on; and the samples that answer the
+/// player turning either setting on.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
@@ -11,6 +14,7 @@ import '../ui/game/game_controller.dart';
 import '../ui/settings/play_settings.dart';
 import 'clips.dart';
 import 'feedback_event.dart';
+import 'haptics.dart';
 import 'sound_player.dart';
 
 export 'feedback_event.dart';
@@ -32,22 +36,48 @@ Clip? clipFor(FeedbackStep step) {
   return null;
 }
 
-/// Plays the controller's steps through [player] while Sound effects is on.
+/// Whether a step ticks (#107, owner): a refused move, a Spider run
+/// completing, a Klondike foundation reaching its King, a peek starting —
+/// never an ordinary move. One tick per step however many of these it
+/// holds; a sweep step ticks only when it completes a foundation.
+bool tickFor(FeedbackStep step) =>
+    step.has(FeedbackEvent.refused) ||
+    step.has(FeedbackEvent.runCompleted) ||
+    step.has(FeedbackEvent.foundationCompleted) ||
+    step.has(FeedbackEvent.peek);
+
+/// Plays the controller's steps through [player] while Sound effects is on
+/// and ticks them through [haptics] while Haptics is on.
 class GameFeedback {
-  GameFeedback(this.controller, this.playSettings, this.player) {
+  GameFeedback(
+    this.controller,
+    this.playSettings,
+    this.player, [
+    this.haptics = const NoHaptics(),
+  ]) {
     controller.feedback.addListener(_onStep);
   }
 
   final GameController controller;
   final ValueListenable<PlaySettings> playSettings;
   final SoundPlayer player;
+  final HapticsPort haptics;
 
   /// The clips played, newest last, for tests.
   final List<Clip> played = [];
 
+  /// How many ticks were given, for tests.
+  int ticks = 0;
+
   void _onStep() {
     final step = controller.feedback.value;
-    if (step == null || !playSettings.value.sound) return;
+    if (step == null) return;
+    final settings = playSettings.value;
+    if (settings.haptics && tickFor(step)) {
+      ticks++;
+      unawaited(haptics.tick());
+    }
+    if (!settings.sound) return;
     final clip = clipFor(step);
     if (clip == null) return;
     played.add(clip);

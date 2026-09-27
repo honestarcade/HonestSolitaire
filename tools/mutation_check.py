@@ -495,6 +495,13 @@ MUTATIONS: list[Mutation] = [
              sub(r"child: board,\n", "child: MediaQuery.withNoTextScaling(child: board),\n"),
              "the bars would stay small for a player with large text on",
              'large-text-board:', slow=True),
+    # ---- #107: haptics ---------------------------------------------------------
+    Mutation("#107", "a stray tick outside the haptics port",
+             "lib/ui/game/game_controller.dart",
+             chain(sub(r"(import 'dart:async';\n)", r"\1import 'package:flutter/services.dart';\n"),
+                   sub(r"(  void undo\(\) \{\n)", r"\1    HapticFeedback.lightImpact();\n")),
+             "undo would tick with Haptics off",
+             'haptics-scan: HapticFeedback. in lib/ui/game/game_controller.dart'),
 ]
 
 

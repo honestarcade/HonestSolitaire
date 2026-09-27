@@ -5,9 +5,9 @@
 library;
 
 import 'dart:async';
+import 'dart:ui' show Offset, Rect;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
@@ -858,10 +858,9 @@ class GameController extends ChangeNotifier {
   }
 
   void startPeek(int column) {
-    _emit({FeedbackEvent.peek});
     if (!canPeek(column)) return;
+    _emit({FeedbackEvent.peek}); // the tick (#107) is the feedback layer's
     _peekColumn = column;
-    HapticFeedback.selectionClick();
     notifyListeners();
   }
 
@@ -1153,8 +1152,7 @@ class GameController extends ChangeNotifier {
   ApplyResult<Game> move(BoardPile from, int start, BoardPile to) {
     final m = _moveFor(from, start, to);
     if (m == null) {
-      startShake(from, start);
-      _haptic();
+      startShake(from, start); // publishes the refusal
       notifyListeners();
       return const Refused(RefusalReason.invalidMove);
     }
@@ -1189,7 +1187,7 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  /// Applies [m]; on a refusal shakes [shake] (when given) and buzzes.
+  /// Applies [m]; on a refusal shakes [shake] (when given).
   ApplyResult<Game> _apply(Move m, {required (BoardPile, int?)? shake}) {
     _flushClock();
     final result = _game.apply(m);
@@ -1199,8 +1197,13 @@ class GameController extends ChangeNotifier {
         _clearShake();
         onApplied(result);
       case Refused():
-        if (shake != null) startShake(shake.$1, shake.$2);
-        _haptic();
+        // The shake publishes the refusal; without one, publish it here so
+        // the tick (#107) still answers.
+        if (shake != null) {
+          startShake(shake.$1, shake.$2);
+        } else {
+          _emit({FeedbackEvent.refused});
+        }
     }
     return result;
   }
@@ -1209,10 +1212,6 @@ class GameController extends ChangeNotifier {
   /// auto-finish).
   @protected
   void onApplied(Applied<Game> result) {}
-
-  void _haptic() {
-    if (settings.haptics) HapticFeedback.lightImpact();
-  }
 
   void _onSettings() => notifyListeners();
 

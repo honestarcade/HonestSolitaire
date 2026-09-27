@@ -99,7 +99,7 @@ const soundRows = [
   SettingRow(
     'haptics',
     'Haptics',
-    'A short tick on an illegal move or a completed run.',
+    'A short tick on an illegal move, a completed run or suit, and the peek.',
   ),
 ];
 

@@ -16,6 +16,7 @@ import '../data/settings_store.dart';
 import '../data/stats.dart';
 import '../feedback/clips.dart';
 import '../feedback/game_feedback.dart';
+import '../feedback/haptics.dart';
 import '../feedback/music_controller.dart';
 import '../feedback/sound_player.dart';
 import '../platform/platform_channel.dart';
@@ -63,6 +64,7 @@ class HonestSolitaireApp extends StatelessWidget {
     this.platform,
     this.search,
     this.sound,
+    this.haptics,
     this.showSplash = true,
   });
 
@@ -77,6 +79,7 @@ class HonestSolitaireApp extends StatelessWidget {
   final PlatformChannel? platform;
   final WinnableSearch? search;
   final SoundPlayer? sound;
+  final HapticsPort? haptics;
 
   /// False skips the launch splash (tests of other screens).
   final bool showSplash;
@@ -131,6 +134,7 @@ class HonestSolitaireApp extends StatelessWidget {
           platform: platform,
           search: search,
           sound: sound,
+          haptics: haptics,
           showSplash: showSplash,
           child: child!,
         ),
@@ -158,6 +162,7 @@ class GameRoot extends StatefulWidget {
     this.platform,
     this.search,
     this.sound,
+    this.haptics,
     this.showSplash = true,
     required this.child,
   });
@@ -169,6 +174,7 @@ class GameRoot extends StatefulWidget {
   final PlatformChannel? platform;
   final WinnableSearch? search;
   final SoundPlayer? sound;
+  final HapticsPort? haptics;
   final bool showSplash;
   final Widget child;
 
@@ -212,10 +218,12 @@ class _GameRootState extends State<GameRoot> {
   final navigating = NavigationGuard();
   late final WinnableSearch search = widget.search ?? defaultWinnableSearch;
   late final SoundPlayer sound = widget.sound ?? ChannelSoundPlayer();
+  late final HapticsPort haptics = widget.haptics ?? FlutterHaptics();
   late final GameFeedback feedback = GameFeedback(
     controller,
     playSettings,
     sound,
+    haptics,
   );
   final boardVisible = ValueNotifier<bool>(false);
   late final MusicController music = MusicController(
@@ -228,7 +236,7 @@ class _GameRootState extends State<GameRoot> {
     playSettings,
     settingsStore,
     onSoundOn: () => sound.play(Clip.snap),
-    onHapticsOn: () {},
+    onHapticsOn: () => unawaited(haptics.tick()),
   );
   late bool _loading = widget.showSplash;
 
@@ -296,6 +304,7 @@ class _GameRootState extends State<GameRoot> {
     persistence: persistence,
     boardVisible: boardVisible,
     sound: sound,
+    haptics: haptics,
     // One transparent Material above the Navigator: every route's text
     // takes the theme's DefaultTextStyle (Outfit, #96) instead of the
     // yellow-underlined fallback a Material-less screen would show.
@@ -336,6 +345,7 @@ class GameScope extends InheritedWidget {
     required this.persistence,
     required this.boardVisible,
     required this.sound,
+    required this.haptics,
     required super.child,
   });
 
@@ -355,6 +365,7 @@ class GameScope extends InheritedWidget {
   /// True while a board route is the visible one (#101's music gate).
   final ValueNotifier<bool> boardVisible;
   final SoundPlayer sound;
+  final HapticsPort haptics;
 
   /// Null outside the app (the board-only widget tests).
   static GameScope? maybeOf(BuildContext context) =>

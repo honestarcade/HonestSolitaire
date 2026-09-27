@@ -416,3 +416,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `BoardScreen` stays in `lib/ui/app.dart` (the planner's `board_screen.dart` never existed); the board mutation wraps the `board` local there. The guard's "1.3× or fitted" check reads the keyed `board-title` paragraph.
   **Why:** implementation-detail staleness, adjusted inline.
   **Issue:** #106
+- **Decision:** Ticks fan out from `GameFeedback` (`tickFor`: `refused`, `runCompleted`, `foundationCompleted`, `peek`, one per step) through `HapticsPort.tick()`; the controller's own `_haptic()` and the peek's `selectionClick` are gone, every refusal publishes `refused` (a refused move or deal through the shake, a refusal with nothing to shake directly), and a peek publishes only when it can peek. `GameFeedback` takes the port as an optional fourth argument so the M5 sound tests stand. The haptics scan reads string literals as well as code (`stripDartComments` keeps them), so the channel's method name cannot be invoked by hand either.
+  **Why:** #107's discretion; the setting is checked in exactly one place.
+  **Issue:** #107

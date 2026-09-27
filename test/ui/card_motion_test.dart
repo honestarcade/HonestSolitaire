@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart' hide Card;
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/game.dart';
+import 'package:honest_solitaire/feedback/feedback_event.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/card/playing_card.dart';
@@ -134,21 +134,8 @@ void main() {
       expect(tickers(tester), 0);
       await tester.pump(const Duration(milliseconds: 300));
       expect(rectOf(tester, 'card-t0-1'), now);
-      // The shake: refused move, no motion, the haptic still fires.
-      final calls = <String>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        (call) async {
-          calls.add(call.method);
-          return null;
-        },
-      );
-      addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
-      );
+      // The shake: refused move, no motion, the refusal still published
+      // (the tick is #107's feedback layer's, tested in haptics_test).
       controller.tapPile(const TableauPile(0), 1);
       controller.tapPile(
         const FoundationPile(Suit.spades),
@@ -158,7 +145,7 @@ void main() {
       await tester.pump();
       expect(controller.shake, isNotNull, reason: 'refused');
       expect(tickers(tester), 0, reason: 'no shake motion');
-      expect(calls, contains('HapticFeedback.vibrate'));
+      expect(controller.feedback.value?.has(FeedbackEvent.refused), isTrue);
       final still = rectOf(tester, 'card-t0-1');
       await tester.pump(const Duration(milliseconds: 100));
       expect(rectOf(tester, 'card-t0-1'), still);
