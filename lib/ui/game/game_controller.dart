@@ -48,6 +48,75 @@ const Duration doubleTapWindow = Duration(milliseconds: 300);
 /// never dealt by accident (owner, /n8-plan M3 gate default).
 const Duration dealDebounce = Duration(milliseconds: 300);
 
+/// An illegal drop slides home over this long (#77).
+const Duration springBackDuration = Duration(milliseconds: 200);
+
+/// A run being dragged (#77).
+class DragState {
+  const DragState({
+    required this.pile,
+    required this.start,
+    required this.cards,
+    required this.homeRects,
+    required this.grabOffset,
+    required this.position,
+    required this.targets,
+  });
+
+  final BoardPile pile;
+  final int start;
+  final List<Card> cards;
+
+  /// Where the cards sat when lifted, in board coordinates.
+  final List<Rect> homeRects;
+
+  /// Finger position minus the first card's origin at lift.
+  final Offset grabOffset;
+
+  /// The finger now, in board coordinates.
+  final Offset position;
+
+  /// Piles that accept the run (the own-suit foundation only, in Klondike).
+  final Set<BoardPile> targets;
+
+  /// The first card's origin now.
+  Offset get origin => position - grabOffset;
+
+  /// Every card's rect now, keeping the run's fan.
+  List<Rect> get rects => [
+    for (final r in homeRects) r.shift(origin - homeRects.first.topLeft),
+  ];
+
+  DragState moved(Offset to) => DragState(
+    pile: pile,
+    start: start,
+    cards: cards,
+    homeRects: homeRects,
+    grabOffset: grabOffset,
+    position: to,
+    targets: targets,
+  );
+}
+
+/// A run sliding home after an illegal drop.
+class SpringBack {
+  const SpringBack({
+    required this.pile,
+    required this.start,
+    required this.cards,
+    required this.from,
+    required this.to,
+    required this.sequence,
+  });
+
+  final BoardPile pile;
+  final int start;
+  final List<Card> cards;
+  final List<Rect> from;
+  final List<Rect> to;
+  final int sequence;
+}
+
 class GameController extends ChangeNotifier {
   GameController(
     Game game,
@@ -88,6 +157,17 @@ class GameController extends ChangeNotifier {
   Duration _tapAt = Duration.zero;
   Duration? _lastDealAt;
 
+  DragState? _dragging;
+  DragState? get dragging => _dragging;
+
+  SpringBack? _springBack;
+  SpringBack? get springBack => _springBack;
+  int _springSequence = 0;
+  Timer? _springTimer;
+
+  int? _peekColumn;
+  int? get peekColumn => _peekColumn;
+
   PlaySettings get settings => playSettings.value;
   DisplayOptions get display => displayOptions.value;
 
@@ -99,6 +179,193 @@ class GameController extends ChangeNotifier {
     _lastTap = null;
     _lastDealAt = null;
     _clearShake();
+    _dragging = null;
+    _clearSpring();
+    _peekColumn = null;
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------ drag, peek
+
+  /// Whether a drag may start from card [index] of [pile]: a Klondike valid
+  /// run start, waste top or foundation top; a Spider same-suit run start.
+  bool canDrag(BoardPile pile, int? index) {
+    if (_game.isWon || _springBack != null) return false;
+    final cards = _pileCards(pile);
+    if (cards == null || cards.isEmpty) return false;
+    switch (pile) {
+      case WastePile():
+      case FoundationPile():
+        return index == null || index == cards.length - 1;
+      case TableauPile(:final column):
+        if (index == null || index >= cards.length || !cards[index].faceUp) {
+          return false;
+        }
+        return switch (_game) {
+          KlondikeGame k => KlondikeGame.isAlternatingRun(
+            k.tableau[column],
+            index,
+          ),
+          SpiderGame s => SpiderGame.isSameSuitRun(s.tableau[column], index),
+        };
+      case StockPile():
+      case CompletedPile():
+        return false;
+    }
+  }
+
+  /// Lifts the run at [index] of [pile]; [homeRects] are its cards' rects
+  /// and [grab] the finger position. Returns false when nothing draggable is
+  /// there. Starting a drag clears the selection and hint.
+  bool beginDrag(
+    BoardPile pile,
+    int? index,
+    List<Rect> homeRects,
+    Offset grab,
+  ) {
+    if (!canDrag(pile, index)) return false;
+    final cards = _pileCards(pile)!;
+    final start = pile is TableauPile ? index! : cards.length - 1;
+    final run = cards.sublist(start);
+    final rects = homeRects.sublist(start);
+    final targets = <BoardPile>{};
+    for (final m in _game.legalMoves()) {
+      final t = _targetOf(pile, start, m);
+      if (t != null) targets.add(t);
+    }
+    _selection = null;
+    _hint = null;
+    _peekColumn = null;
+    _dragging = DragState(
+      pile: pile,
+      start: start,
+      cards: run,
+      homeRects: rects,
+      grabOffset: grab - rects.first.topLeft,
+      position: grab,
+      targets: targets,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  /// The pile [m] moves the run at ([pile], [start]) to, or null when [m] is
+  /// not that run's move. Klondike foundation moves name the own suit.
+  BoardPile? _targetOf(BoardPile pile, int start, Move m) {
+    final k = _game;
+    switch (m) {
+      case MoveRun(:final from, start: final s, :final to):
+        return pile == TableauPile(from) && s == start ? TableauPile(to) : null;
+      case WasteToTableau(:final to):
+        return pile is WastePile ? TableauPile(to) : null;
+      case WasteToFoundation():
+        return pile is WastePile && k is KlondikeGame
+            ? FoundationPile(k.waste.last.suit)
+            : null;
+      case TableauToFoundation(:final from):
+        if (pile != TableauPile(from) || k is! KlondikeGame) return null;
+        return start == k.tableau[from].length - 1
+            ? FoundationPile(k.tableau[from].last.suit)
+            : null;
+      case FoundationToTableau(:final foundation, :final to):
+        return pile == FoundationPile(Suit.values[foundation])
+            ? TableauPile(to)
+            : null;
+      case MoveCards(:final from, start: final s, :final to):
+        return pile == TableauPile(from) && s == start ? TableauPile(to) : null;
+      default:
+        return null;
+    }
+  }
+
+  void updateDrag(Offset position) {
+    final d = _dragging;
+    if (d == null) return;
+    _dragging = d.moved(position);
+    notifyListeners();
+  }
+
+  /// Drops on [target] (the pile under the finger, or null for felt). A pile
+  /// that accepts the run takes it through the engine — a Klondike drop on
+  /// any foundation goes to the card's own suit; anything else, the source
+  /// pile included, springs the run home without calling the engine.
+  bool endDrag(BoardPile? target) {
+    final d = _dragging;
+    if (d == null) return false;
+    _dragging = null;
+    var to = target;
+    if (to is FoundationPile && _game is KlondikeGame) {
+      to = FoundationPile(d.cards.first.suit);
+    }
+    if (to != null && to != d.pile) {
+      final m = _moveFor(d.pile, d.start, to);
+      if (m != null) {
+        final result = _game.apply(m);
+        if (result is Applied<Game>) {
+          _game = result.game;
+          _clearShake();
+          onApplied(result);
+          notifyListeners();
+          return true;
+        }
+      }
+    }
+    _springHome(d);
+    notifyListeners();
+    return false;
+  }
+
+  /// Snaps a drag home at once (undo, pause, a second finger, a cancel).
+  void cancelDrag() {
+    if (_dragging == null && _peekColumn == null) return;
+    _dragging = null;
+    _peekColumn = null;
+    notifyListeners();
+  }
+
+  void _springHome(DragState d) {
+    _springTimer?.cancel();
+    _springSequence++;
+    _springBack = SpringBack(
+      pile: d.pile,
+      start: d.start,
+      cards: d.cards,
+      from: d.rects,
+      to: d.homeRects,
+      sequence: _springSequence,
+    );
+    _springTimer = Timer(springBackDuration, () {
+      _springBack = null;
+      _springTimer = null;
+      notifyListeners();
+    });
+  }
+
+  void _clearSpring() {
+    _springTimer?.cancel();
+    _springTimer = null;
+    _springBack = null;
+  }
+
+  /// Whether column [column] has face-up cards to fan.
+  bool canPeek(int column) {
+    final cards = _pileCards(TableauPile(column));
+    return cards != null &&
+        cards.any((c) => c.faceUp) &&
+        _dragging == null &&
+        _springBack == null;
+  }
+
+  void startPeek(int column) {
+    if (!canPeek(column)) return;
+    _peekColumn = column;
+    HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void endPeek() {
+    if (_peekColumn == null) return;
+    _peekColumn = null;
     notifyListeners();
   }
 
@@ -446,6 +713,7 @@ class GameController extends ChangeNotifier {
   void dispose() {
     playSettings.removeListener(_onSettings);
     _shakeTimer?.cancel();
+    _springTimer?.cancel();
     super.dispose();
   }
 }

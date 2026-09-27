@@ -24,6 +24,7 @@ class PlayingCard extends StatelessWidget {
     this.radius,
     this.edge = true,
     this.shadow = true,
+    this.lifted = false,
   });
 
   /// A back with no card behind it: the Spider stock's slivers.
@@ -60,6 +61,9 @@ class PlayingCard extends StatelessWidget {
   final bool edge;
   final bool shadow;
 
+  /// A dragged card: the design's deeper (0,6)/12 shadow.
+  final bool lifted;
+
   bool get faceUp => card?.faceUp ?? false;
 
   /// Width over the design's width for this proportion set.
@@ -87,7 +91,13 @@ class PlayingCard extends StatelessWidget {
           color: up ? Palette.faceEdge : Palette.backEdge,
           spreadRadius: 1,
         ),
-      if (shadow)
+      if (lifted)
+        const BoxShadow(
+          color: Palette.cardShadow,
+          offset: Offset(0, 6),
+          blurRadius: 12,
+        )
+      else if (shadow)
         const BoxShadow(
           color: Palette.cardShadow,
           offset: Offset(0, 2),

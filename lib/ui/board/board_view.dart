@@ -76,18 +76,27 @@ class BoardView extends StatefulWidget {
   State<BoardView> createState() => _BoardViewState();
 }
 
-class _BoardViewState extends State<BoardView>
-    with SingleTickerProviderStateMixin {
+class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
   late final AnimationController _shake = AnimationController(
     vsync: this,
     duration: shakeDuration,
   );
+  late final AnimationController _spring = AnimationController(
+    vsync: this,
+    duration: springBackDuration,
+  );
+  late final Animation<double> _springCurve = CurvedAnimation(
+    parent: _spring,
+    curve: Curves.easeOutCubic,
+  );
   int _shakeSequence = 0;
+  int _springSequence = 0;
   _LayoutCache? _cache;
 
   @override
   void dispose() {
     _shake.dispose();
+    _spring.dispose();
     super.dispose();
   }
 
@@ -121,10 +130,16 @@ class _BoardViewState extends State<BoardView>
                 _shakeSequence = shake.sequence;
                 _shake.forward(from: 0);
               }
+              final spring = controller.springBack;
+              if (spring != null && spring.sequence != _springSequence) {
+                _springSequence = spring.sequence;
+                _spring.forward(from: 0);
+              }
               return _Board(
                 controller: controller,
                 layout: layout,
                 shakeAnimation: _shake,
+                springAnimation: _springCurve,
                 topBar: widget.topBar?.call(context),
                 toolRow: widget.toolRow?.call(context),
               );
@@ -169,6 +184,7 @@ class _Board extends StatelessWidget {
     required this.controller,
     required this.layout,
     required this.shakeAnimation,
+    required this.springAnimation,
     this.topBar,
     this.toolRow,
   });
@@ -176,6 +192,18 @@ class _Board extends StatelessWidget {
   final GameController controller;
   final BoardLayout layout;
   final Animation<double> shakeAnimation;
+  final Animation<double> springAnimation;
+
+  /// The run lifted out of its pile by a drag or a spring-back: (pile,
+  /// first index), painted in the top layer instead.
+  (BoardPile, int)? get _lifted {
+    final d = controller.dragging;
+    if (d != null) return (d.pile, d.start);
+    final s = controller.springBack;
+    if (s != null) return (s.pile, s.start);
+    return null;
+  }
+
   final Widget? topBar;
   final Widget? toolRow;
 
@@ -184,11 +212,23 @@ class _Board extends StatelessWidget {
     final game = controller.game;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final children = <Widget>[];
+    final peek = controller.peekColumn;
+    final peekLayer = <Widget>[];
     switch (game) {
       case KlondikeGame k:
         _klondikeSlots(children, k);
         for (var c = 0; c < klondikeColumns; c++) {
-          _cards(children, TableauPile(c), k.tableau[c], dpr);
+          if (c == peek) {
+            _cards(
+              peekLayer,
+              TableauPile(c),
+              k.tableau[c],
+              dpr,
+              rects: layoutColumn(k, c, layout, peek: true),
+            );
+          } else {
+            _cards(children, TableauPile(c), k.tableau[c], dpr);
+          }
         }
         _cards(children, const StockPile(), k.stock, dpr);
         _cards(children, const WastePile(), k.waste, dpr);
@@ -203,15 +243,28 @@ class _Board extends StatelessWidget {
       case SpiderGame s:
         _spiderSlots(children, s);
         for (var c = 0; c < spiderColumns; c++) {
-          _cards(children, TableauPile(c), s.tableau[c], dpr);
+          if (c == peek) {
+            _cards(
+              peekLayer,
+              TableauPile(c),
+              s.tableau[c],
+              dpr,
+              rects: layoutColumn(s, c, layout, peek: true),
+            );
+          } else {
+            _cards(children, TableauPile(c), s.tableau[c], dpr);
+          }
         }
     }
+    _dragTargets(children);
+    children.addAll(peekLayer);
     if (topBar != null) {
       children.add(Positioned.fromRect(rect: layout.topBar, child: topBar!));
     }
     if (toolRow != null) {
       children.add(Positioned.fromRect(rect: layout.toolRow, child: toolRow!));
     }
+    _dragLayer(children);
     return BoardPointer(
       controller: controller,
       layout: layout,
@@ -438,12 +491,98 @@ class _Board extends StatelessWidget {
     return CardRing.none;
   }
 
-  void _cards(List<Widget> out, BoardPile pile, List<Card> cards, double dpr) {
-    final rects = layout.cards[pile]!;
+  /// The lifted run's cards, following the finger with the design's deeper
+  /// shadow, or sliding home after an illegal drop. They keep their pile
+  /// keys, so a test reads their positions like any card's.
+  void _dragLayer(List<Widget> out) {
+    final d = controller.dragging;
+    if (d != null) {
+      final rects = d.rects;
+      for (var i = 0; i < d.cards.length; i++) {
+        out.add(
+          Positioned(
+            left: rects[i].left,
+            top: rects[i].top,
+            child: PlayingCard(
+              key: Key('card-${d.pile.token}-${d.start + i}'),
+              card: d.cards[i],
+              size: layout.cardSize,
+              back: controller.display.cardBack,
+              narrow: layout.narrow,
+              radius: layout.radius,
+              lifted: true,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    final s = controller.springBack;
+    if (s != null) {
+      for (var i = 0; i < s.cards.length; i++) {
+        out.add(
+          AnimatedBuilder(
+            animation: springAnimation,
+            builder: (context, child) {
+              final rect = Rect.lerp(
+                s.from[i],
+                s.to[i],
+                springAnimation.value,
+              )!;
+              return Positioned(left: rect.left, top: rect.top, child: child!);
+            },
+            child: PlayingCard(
+              key: Key('card-${s.pile.token}-${s.start + i}'),
+              card: s.cards[i],
+              size: layout.cardSize,
+              back: controller.display.cardBack,
+              narrow: layout.narrow,
+              radius: layout.radius,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  /// While dragging, every pile that accepts the run outlines teal: around
+  /// its top card, or its empty slot.
+  void _dragTargets(List<Widget> out) {
+    final d = controller.dragging;
+    if (d == null) return;
+    for (final pile in d.targets) {
+      final cards = layout.cards[pile];
+      final rect = cards != null && cards.isNotEmpty
+          ? cards.last
+          : layout.slots[pile];
+      if (rect == null) continue;
+      out.add(
+        _slot(
+          rect,
+          SlotPainter(radius: layout.radius, edgeColor: _columnEdgeActive),
+          key: Key('target-${pile.token}'),
+        ),
+      );
+    }
+  }
+
+  void _cards(
+    List<Widget> out,
+    BoardPile pile,
+    List<Card> cards,
+    double dpr, {
+    List<Rect>? rects,
+  }) {
+    rects ??= layout.cards[pile]!;
     final shake = controller.shake;
     final shaking = shake != null && shake.pile == pile;
+    final lifted = _lifted;
+    final liftedFrom = lifted != null && lifted.$1 == pile
+        ? lifted.$2
+        : cards.length;
     final raised = <Widget>[];
     for (var i = 0; i < cards.length; i++) {
+      if (i >= liftedFrom) break; // painted by the drag layer
       final rect = rects[i];
       // Snap the origin to a device pixel; sizes stay fractional.
       final left = (rect.left * dpr).roundToDouble() / dpr;
