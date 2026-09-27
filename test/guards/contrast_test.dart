@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  test('contrast: every declared pair passes on every surface', () {
+  test('every declared pair passes on every surface', () {
     final failures = <String>[];
     for (final pair in Palette.textPairs) {
       if (pair.disabled) continue;
@@ -63,7 +63,7 @@ void main() {
     );
   });
 
-  test('contrast: every nudged token is the nearest passing shade of its design value', () {
+  test('every nudged token is the nearest passing shade of its design value', () {
     final drift = <String>[];
     for (final n in Palette.nudges) {
       final want = nudge(n.design, n.surfaces).color;

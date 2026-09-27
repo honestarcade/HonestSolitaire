@@ -477,7 +477,7 @@ MUTATIONS: list[Mutation] = [
              "lib/ui/theme/palette.dart",
              sub(r"static const textMuted = Color\(0xFF93AACB\);", "static const textMuted = Color(0xFF5C7FB0);"),
              "the loading label would read 2.65:1 on the felt",
-             'contrast: '),
+             'muted labels: #5C7FB0 on'),
 ]
 
 
