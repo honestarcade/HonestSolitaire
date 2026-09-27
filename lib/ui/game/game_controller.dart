@@ -12,6 +12,7 @@ import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
+import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
 
@@ -285,6 +286,154 @@ class GameController extends ChangeNotifier {
     _clearSpring();
     _peekColumn = null;
     notifyListeners();
+  }
+
+  // ------------------------------------------------------------ tool row
+
+  /// Undo is allowed by the engine under the Unlimited-undo setting.
+  bool get canUndo => _game.canUndo(unlimited: settings.unlimitedUndo);
+
+  /// Steps back one move (or one finish sweep), instantly; the clock keeps
+  /// running. Clears the selection, the hint and any drag.
+  void undo() {
+    if (!canUndo) return;
+    final result = _game.undo(unlimited: settings.unlimitedUndo);
+    if (result is Applied<Game>) replaceGameKeepingClock(result.game);
+  }
+
+  /// FINISH is offered only when the sweep really completes (#67).
+  bool get canFinish => switch (_game) {
+    KlondikeGame k => !k.isWon && engine.canFinish(k),
+    SpiderGame() => false,
+  };
+
+  /// Sweeps the board to the foundations as one undo step. (#80 steps the
+  /// animation; here the sweep lands at once.)
+  void finish() {
+    final g = _game;
+    if (g is! KlondikeGame || !canFinish) return;
+    _hint = null;
+    _selection = null;
+    _dragging = null;
+    _peekColumn = null;
+    _flushClock();
+    final result = engine.applyFinish(g);
+    if (result is Applied<KlondikeGame>) {
+      _commit(result.game);
+      onApplied(result);
+    }
+    notifyListeners();
+  }
+
+  /// Spider's DEAL: the same refusal as tapping the stock.
+  void dealRow() {
+    if (_game is! SpiderGame || _game.isWon) return;
+    _hint = null;
+    _dragging = null;
+    _peekColumn = null;
+    _apply(const DealRow(), shake: (const StockPile(), null));
+    _selection = null;
+    notifyListeners();
+  }
+
+  /// Rows left to deal (Spider), 0 otherwise.
+  int get dealsLeft => switch (_game) {
+    SpiderGame s => s.rowsLeft,
+    KlondikeGame() => 0,
+  };
+
+  /// The same deal again, at once, waiting for a first move.
+  void restart() => replaceGame(_game.restart());
+
+  /// A new random deal with the same options; the number is rerolled if it
+  /// matches the current one.
+  void newDeal() {
+    var number = dealNumberSource();
+    if (number == _game.dealNumber) number = dealNumberSource();
+    replaceGame(switch (_game) {
+      KlondikeGame k => KlondikeGame.deal(number, k.options),
+      SpiderGame s => SpiderGame.deal(number, s.options),
+    });
+  }
+
+  /// HINT: shows the most useful move as amber rings, or the "No moves
+  /// left" notice; pressing it while a hint shows hides it. Clears the
+  /// selection.
+  void hint() {
+    if (_game.isWon) return;
+    _selection = null;
+    if (_hint != null) {
+      _hint = null;
+      notifyListeners();
+      return;
+    }
+    _hint = _translate(engine.hint(_game));
+    notifyListeners();
+  }
+
+  /// Hides a showing hint or notice (the "next action").
+  void clearHint() {
+    if (_hint == null) return;
+    _hint = null;
+    notifyListeners();
+  }
+
+  /// The engine's hint on the board's piles: the hinted run and where it
+  /// goes, the stock for a draw, recycle or deal, or no moves.
+  UiHint _translate(engine.Hint h) {
+    switch (h) {
+      case engine.NoMovesLeft():
+        return const UiHint.noMoves();
+      case engine.MoveHint(:final move):
+        final g = _game;
+        switch (move) {
+          case MoveRun(:final from, :final start, :final to):
+            return UiHint.move(
+              source: TableauPile(from),
+              start: start,
+              destination: TableauPile(to),
+            );
+          case MoveCards(:final from, :final start, :final to):
+            return UiHint.move(
+              source: TableauPile(from),
+              start: start,
+              destination: TableauPile(to),
+            );
+          case WasteToTableau(:final to):
+            final k = g as KlondikeGame;
+            return UiHint.move(
+              source: const WastePile(),
+              start: k.waste.length - 1,
+              destination: TableauPile(to),
+            );
+          case WasteToFoundation():
+            final k = g as KlondikeGame;
+            return UiHint.move(
+              source: const WastePile(),
+              start: k.waste.length - 1,
+              destination: FoundationPile(k.waste.last.suit),
+            );
+          case TableauToFoundation(:final from):
+            final k = g as KlondikeGame;
+            final column = k.tableau[from];
+            return UiHint.move(
+              source: TableauPile(from),
+              start: column.length - 1,
+              destination: FoundationPile(column.last.suit),
+            );
+          case Flip(:final column):
+            final cards = _pileCards(TableauPile(column))!;
+            return UiHint.move(
+              source: TableauPile(column),
+              start: cards.length - 1,
+              destination: null,
+            );
+          case Draw() || Recycle() || DealRow():
+            return const UiHint.stock();
+          case FoundationToTableau() || MoveGroup():
+            return const UiHint.noMoves(); // never hinted by the engine
+        }
+    }
   }
 
   // ------------------------------------------------------------ drag, peek
@@ -755,9 +904,12 @@ class GameController extends ChangeNotifier {
     if (m == null) {
       startShake(from, start);
       _haptic();
+      notifyListeners();
       return const Refused(RefusalReason.invalidMove);
     }
-    return _apply(m, shake: (from, start));
+    final result = _apply(m, shake: (from, start));
+    notifyListeners();
+    return result;
   }
 
   Move? _moveFor(BoardPile from, int start, BoardPile to) {

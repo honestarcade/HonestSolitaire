@@ -8,6 +8,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import '../format.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
+import 'notice_banner.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key, required this.controller, required this.scale});
@@ -29,6 +30,7 @@ class TopBar extends StatelessWidget {
         final game = controller.displayGame.value;
         final options = controller.display;
         final readouts = <Widget>[];
+        final notice = controller.currentHint?.noMoves ?? false;
         if (options.showTimer && isTimed(game)) {
           readouts.add(
             _Readout(
@@ -82,7 +84,26 @@ class TopBar extends StatelessWidget {
                   ),
                 ),
               ),
-              for (final r in readouts) ...[SizedBox(width: 6 * scale), r],
+              if (notice) ...[
+                SizedBox(width: 6 * scale),
+                Flexible(
+                  flex: 3,
+                  child: NoticeBanner(
+                    key: const Key('no-moves-banner'),
+                    message: 'No moves left',
+                    scale: scale,
+                    actions: [
+                      NoticeAction(
+                        'Undo',
+                        controller.undo,
+                        enabled: controller.canUndo,
+                      ),
+                      NoticeAction('New deal', controller.newDeal),
+                    ],
+                  ),
+                ),
+              ] else
+                for (final r in readouts) ...[SizedBox(width: 6 * scale), r],
             ],
           ),
         );

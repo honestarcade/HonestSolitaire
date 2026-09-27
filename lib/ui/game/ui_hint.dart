@@ -7,7 +7,7 @@ class UiHint {
   const UiHint.move({
     required this.source,
     required this.start,
-    required this.destination,
+    this.destination,
   }) : stock = false,
        noMoves = false;
 

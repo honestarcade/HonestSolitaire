@@ -54,6 +54,7 @@ const _columnEdgeActive = Color(0x8000D6B4); // teal .5
 const _spiderEmptyEdge = Color(0x29FFFFFF); // .16
 const _completedEdge = Color(0x24FFFFFF); // .14
 const _slotFill = Color(0x0AFFFFFF); // .04
+const _hintEdge = Palette.hintRing;
 
 class BoardView extends StatefulWidget {
   const BoardView({
@@ -294,14 +295,13 @@ class _Board extends StatelessWidget {
   static String _capital(String s) => s[0].toUpperCase() + s.substring(1);
 
   void _klondikeSlots(List<Widget> out, KlondikeGame game) {
-    final selecting = controller.selection != null;
     final r = layout.radius;
     out.add(
       _slot(
         layout.slots[const StockPile()]!,
         SlotPainter(
           radius: r,
-          edgeColor: _stockEdge,
+          edgeColor: _slotEdge(const StockPile(), _stockEdge),
           fill: game.stock.isEmpty ? _slotFill : null,
           recycle: game.stock.isEmpty && game.waste.isNotEmpty,
           recycleSize: 14 * layout.scale,
@@ -333,7 +333,7 @@ class _Board extends StatelessWidget {
           layout.slots[FoundationPile(suit)]!,
           SlotPainter(
             radius: r,
-            edgeColor: _foundationEdge,
+            edgeColor: _slotEdge(FoundationPile(suit), _foundationEdge),
             fill: empty ? _slotFill : null,
             placeholderSuit: empty ? suit : null,
           ),
@@ -353,7 +353,7 @@ class _Board extends StatelessWidget {
           layout.slots[TableauPile(c)]!,
           SlotPainter(
             radius: r,
-            edgeColor: selecting ? _columnEdgeActive : _columnEdge,
+            edgeColor: _slotEdge(TableauPile(c), _columnEdge, selectable: true),
           ),
           key: Key('slot-t$c'),
           pile: TableauPile(c),
@@ -364,7 +364,6 @@ class _Board extends StatelessWidget {
   }
 
   void _spiderSlots(List<Widget> out, SpiderGame game) {
-    final selecting = controller.selection != null;
     final r = layout.radius;
     final tr = layout.topRowRadius;
     if (game.stock.isEmpty) {
@@ -378,7 +377,10 @@ class _Board extends StatelessWidget {
             onTap: () => controller.tapPile(const StockPile(), null),
             child: CustomPaint(
               key: const Key('stock-empty'),
-              painter: SlotPainter(radius: tr, edgeColor: _spiderEmptyEdge),
+              painter: SlotPainter(
+                radius: tr,
+                edgeColor: _slotEdge(const StockPile(), _spiderEmptyEdge),
+              ),
               child: Center(
                 child: Text(
                   'EMPTY',
@@ -414,10 +416,14 @@ class _Board extends StatelessWidget {
           Positioned.fromRect(
             rect: slivers[i],
             child: ExcludeSemantics(
-              child: PlayingCard.back(
-                slivers[i].size,
-                controller.display.cardBack,
+              child: PlayingCard(
                 key: Key('stock-sliver-$i'),
+                card: null,
+                size: slivers[i].size,
+                back: controller.display.cardBack,
+                ring: (controller.currentHint?.stock ?? false)
+                    ? CardRing.hinted
+                    : CardRing.none,
                 edge: false,
                 radius: tr,
               ),
@@ -463,7 +469,7 @@ class _Board extends StatelessWidget {
           layout.slots[TableauPile(c)]!,
           SlotPainter(
             radius: r,
-            edgeColor: selecting ? _columnEdgeActive : _columnEdge,
+            edgeColor: _slotEdge(TableauPile(c), _columnEdge, selectable: true),
           ),
           key: Key('slot-t$c'),
           pile: TableauPile(c),
@@ -480,6 +486,10 @@ class _Board extends StatelessWidget {
     }
     final hint = controller.currentHint;
     if (hint != null) {
+      if (hint.stock && pile is StockPile) {
+        final rects = layout.cards[pile]!;
+        return index == rects.length - 1 ? CardRing.hinted : CardRing.none;
+      }
       if (hint.source == pile && hint.start != null && index >= hint.start!) {
         return CardRing.hinted;
       }
@@ -489,6 +499,19 @@ class _Board extends StatelessWidget {
       }
     }
     return CardRing.none;
+  }
+
+  /// The outline colour of an empty slot: amber when it is the hint's
+  /// destination (or the stock for a draw/recycle/deal hint), teal while a
+  /// selection is active (columns), else the design's alpha.
+  Color _slotEdge(BoardPile pile, Color base, {bool selectable = false}) {
+    final hint = controller.currentHint;
+    if (hint != null) {
+      if (hint.destination == pile) return _hintEdge;
+      if (hint.stock && pile is StockPile) return _hintEdge;
+    }
+    if (selectable && controller.selection != null) return _columnEdgeActive;
+    return base;
   }
 
   /// The lifted run's cards, following the finger with the design's deeper
