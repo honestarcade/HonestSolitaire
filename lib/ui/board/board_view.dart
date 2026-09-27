@@ -14,6 +14,7 @@ import '../game/game_controller.dart';
 import '../settings/display_options.dart';
 import '../theme/palette.dart';
 import 'board_layout.dart';
+import 'board_pointer.dart';
 import 'pile_ref.dart';
 import 'slot_painter.dart';
 
@@ -211,14 +212,33 @@ class _Board extends StatelessWidget {
     if (toolRow != null) {
       children.add(Positioned.fromRect(rect: layout.toolRow, child: toolRow!));
     }
-    return Stack(clipBehavior: Clip.none, children: children);
+    return BoardPointer(
+      controller: controller,
+      layout: layout,
+      child: Stack(clipBehavior: Clip.none, children: children),
+    );
   }
 
-  Widget _slot(Rect rect, SlotPainter painter, {Key? key}) =>
-      Positioned.fromRect(
-        rect: rect,
-        child: CustomPaint(key: key, painter: painter, size: rect.size),
+  Widget _slot(
+    Rect rect,
+    SlotPainter painter, {
+    Key? key,
+    String? label,
+    BoardPile? pile,
+  }) {
+    Widget paint = CustomPaint(key: key, painter: painter, size: rect.size);
+    if (label != null) {
+      paint = Semantics(
+        button: true,
+        label: label,
+        onTap: pile == null ? null : () => controller.tapPile(pile, null),
+        child: paint,
       );
+    }
+    return Positioned.fromRect(rect: rect, child: paint);
+  }
+
+  static String _capital(String s) => s[0].toUpperCase() + s.substring(1);
 
   void _klondikeSlots(List<Widget> out, KlondikeGame game) {
     final selecting = controller.selection != null;
@@ -234,6 +254,12 @@ class _Board extends StatelessWidget {
           recycleSize: 14 * layout.scale,
         ),
         key: const Key('slot-stock'),
+        pile: const StockPile(),
+        label: game.stock.isNotEmpty
+            ? 'Stock, ${game.stock.length} cards'
+            : game.waste.isNotEmpty
+            ? 'Recycle'
+            : 'Stock, empty',
       ),
     );
     out.add(
@@ -241,6 +267,10 @@ class _Board extends StatelessWidget {
         layout.slots[const WastePile()]!,
         SlotPainter(radius: r, edgeColor: _wasteEdge),
         key: const Key('slot-waste'),
+        pile: const WastePile(),
+        label: game.waste.isEmpty
+            ? 'Waste, empty'
+            : 'Waste, ${game.waste.length} cards',
       ),
     );
     for (final suit in Suit.values) {
@@ -255,6 +285,11 @@ class _Board extends StatelessWidget {
             placeholderSuit: empty ? suit : null,
           ),
           key: Key('slot-f-${suit.name}'),
+          pile: FoundationPile(suit),
+          label: empty
+              ? '${_capital(suit.name)} foundation, empty'
+              : '${_capital(suit.name)} foundation, up to '
+                    '${game.foundations[suit.index].last.rankName}',
         ),
       );
     }
@@ -268,6 +303,8 @@ class _Board extends StatelessWidget {
             edgeColor: selecting ? _columnEdgeActive : _columnEdge,
           ),
           key: Key('slot-t$c'),
+          pile: TableauPile(c),
+          label: 'Empty column ${c + 1}',
         ),
       );
     }
@@ -352,6 +389,8 @@ class _Board extends StatelessWidget {
             edgeColor: selecting ? _columnEdgeActive : _columnEdge,
           ),
           key: Key('slot-t$c'),
+          pile: TableauPile(c),
+          label: 'Empty column ${c + 1}',
         ),
       );
     }
