@@ -9,8 +9,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
+import 'package:honest_solitaire/ui/theme/palette.dart';
 
 /// One node the guideline would have flagged, tagged or not.
 class Flagged {
@@ -117,29 +119,68 @@ class RecordingTapTargetGuideline extends AccessibilityGuideline {
           parent.bottom - child.bottom > _gap);
 }
 
-/// The framework's text-contrast guideline, less the nodes its sampler
-/// cannot read: it renders the screen at logical resolution and takes the
-/// most frequent light colour, so text under [minReadableHeight] logical
-/// pixels tall (a 9 px description or kicker on a small phone) yields a
-/// blended "light"
-/// colour whatever its real one. Those tokens are held to 4.5:1 by
-/// computation in test/guards/contrast_test.dart (#102); everything taller
-/// is measured here as rendered.
-class ReadableTextContrastGuideline extends MinimumTextContrastGuideline {
-  const ReadableTextContrastGuideline({this.minReadableHeight = 16});
-
-  final double minReadableHeight;
-
-  /// Text fields are skipped too: the sampler reads the box's border and
-  /// fill, not the few glyphs inside; the field's text colour is one of
-  /// #102's computed pairs.
-  @override
-  bool shouldSkipNode(SemanticsData data) =>
-      super.shouldSkipNode(data) ||
-      data.rect.height < minReadableHeight ||
-      data.flagsCollection.isTextField;
+/// Contrast by computation, not by sampling (#109): the framework's
+/// `textContrastGuideline` renders the screen at logical resolution and
+/// takes the most frequent light colour, which differs between a Mac and
+/// the Linux runner and blends small text into its background — the same
+/// tokens measured 4.36:1 on CI and passed locally (run 36302842503,
+/// 2026-09-27). This guideline instead requires every text colour drawn on
+/// the screen to be one of `Palette.textPairs`' foregrounds, each of which
+/// test/guards/contrast_test.dart proves at its ratio on every surface it
+/// sits on, by arithmetic, on every machine alike. Text under an `Opacity`
+/// below 1 is the disabled state, whose 40 % is #102's own rule.
+class CheckedTextGuideline extends AccessibilityGuideline {
+  const CheckedTextGuideline();
 
   @override
   String get description =>
-      'Text at least $minReadableHeight px tall should follow WCAG contrast';
+      'Every text colour is a pair test/guards/contrast_test.dart proves';
+
+  static final Set<int> _allowed = {
+    for (final pair in Palette.textPairs) pair.fg.toARGB32(),
+  };
+
+  @override
+  Evaluation evaluate(WidgetTester tester) {
+    var result = const Evaluation.pass();
+    final seen = <String>{};
+    for (final element in find.byType(RichText).evaluate()) {
+      final render = element.renderObject;
+      if (render is! RenderParagraph || !render.attached) continue;
+      var dimmed = false;
+      element.visitAncestorElements((a) {
+        final w = a.widget;
+        if (w is Opacity && w.opacity < 1) dimmed = true;
+        return !dimmed;
+      });
+      if (dimmed) continue;
+      final colours = <Color>{};
+      void collect(InlineSpan span, Color? inherited) {
+        final own = span.style?.color ?? inherited;
+        if (span is TextSpan) {
+          if (span.text != null &&
+              span.text!.trim().isNotEmpty &&
+              own != null) {
+            colours.add(own);
+          }
+          for (final child in span.children ?? const <InlineSpan>[]) {
+            collect(child, own);
+          }
+        }
+      }
+
+      collect(render.text, null);
+      for (final c in colours) {
+        if (_allowed.contains(c.toARGB32())) continue;
+        final text = render.text.toPlainText();
+        final key = '${c.toARGB32().toRadixString(16)}:$text';
+        if (!seen.add(key)) continue;
+        result += Evaluation.fail(
+          '"$text" is drawn in #${c.toARGB32().toRadixString(16).toUpperCase()}, '
+          'which is no Palette.textPairs foreground: no contrast proof holds it\n',
+        );
+      }
+    }
+    return result;
+  }
 }

@@ -1086,7 +1086,8 @@ class _Board extends StatelessWidget {
                     fontSize: 9 * layout.scale,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.06 * 9 * layout.scale,
-                    color: const Color(0x4DFFFFFF),
+                    // The placeholder alpha #102 proves on the felt (#109).
+                    color: Palette.placeholderSuit,
                     height: 1,
                   ),
                 ),

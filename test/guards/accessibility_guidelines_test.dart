@@ -542,7 +542,7 @@ Future<void> check(WidgetTester tester, String label, A11yCase c) async {
   );
   await expectLater(
     tester,
-    meetsGuideline(const ReadableTextContrastGuideline()),
+    meetsGuideline(const CheckedTextGuideline()),
     reason: label,
   );
   for (final f in flagged) {
@@ -639,10 +639,7 @@ void main() {
     await tester.pump();
     expect(find.text('SHUFFLING'), findsOneWidget);
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-    await expectLater(
-      tester,
-      meetsGuideline(const ReadableTextContrastGuideline()),
-    );
+    await expectLater(tester, meetsGuideline(const CheckedTextGuideline()));
     await expectLater(tester, meetsGuideline(RecordingTapTargetGuideline([])));
     handle.dispose();
     // The minimum-display and step-timeout timers run out.
