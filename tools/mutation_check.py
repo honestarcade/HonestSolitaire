@@ -346,6 +346,11 @@ MUTATIONS: list[Mutation] = [
              sub(r"<application\n", '<application\n        android:allowBackup="false"\n'),
              "the player's backup choice would be overridden by the app",
              'platform-surface: the manifest sets android:allowBackup'),
+    Mutation("#86", "the release build stops passing the version code",
+             ".github/workflows/release.yml",
+             sub(r'\n\s*--dart-define=APP_BUILD="\$\{\{ steps\.version\.outputs\.code \}\}"', ''),
+             "a store build would show BUILD dev in Settings",
+             'release-version: APP_BUILD is not passed'),
 ]
 
 
