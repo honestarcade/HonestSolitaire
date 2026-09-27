@@ -176,21 +176,26 @@ class ScreenScaffold extends StatelessWidget {
                         insets.bottom -
                         44 * s,
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20 * s),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < children.length; i++) ...[
-                          if (i > 0) SizedBox(height: gap * s),
-                          children[i],
+                  // IntrinsicHeight bounds the column to the taller of the
+                  // viewport and its content, so the Spacer before the
+                  // pinned part has a finite height to fill.
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20 * s),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < children.length; i++) ...[
+                            if (i > 0) SizedBox(height: gap * s),
+                            children[i],
+                          ],
+                          if (pinned != null) ...[
+                            const Spacer(),
+                            SizedBox(height: gap * s),
+                            pinned!,
+                          ],
                         ],
-                        if (pinned != null) ...[
-                          const Spacer(),
-                          SizedBox(height: gap * s),
-                          pinned!,
-                        ],
-                      ],
+                      ),
                     ),
                   ),
                 ),

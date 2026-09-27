@@ -8,6 +8,7 @@ import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
 import 'app.dart';
+import 'game/game_event.dart';
 
 /// Starts a winnable-deal search; `GameScope.search` holds the app's.
 typedef WinnableSearch = DealerHandle Function(
@@ -51,6 +52,9 @@ class NavigationGuard {
     return true;
   }
 
+  /// Marks a transition started by someone else (a `popUntil`).
+  void lockOn(Route<Object?> route) => _lock(route);
+
   void _lock(Route<Object?> route) {
     final animation = route is TransitionRoute ? route.animation : null;
     if (animation == null ||
@@ -85,4 +89,76 @@ Future<void>? openBoard(BuildContext context) {
     ),
     toRoot: true,
   );
+}
+
+/// Whether a board route sits somewhere in the stack (the launch root
+/// today, a named board route once #94 makes the menu the root).
+bool hasBoardBelow(NavigatorState navigator) {
+  var found = false;
+  navigator.popUntil((route) {
+    if (route.settings.name == boardRouteName || route.isFirst) found = true;
+    return true;
+  });
+  return found;
+}
+
+/// The game a setup screen's "Keep playing" would return to: the
+/// controller's live game of [type] when it has a move, else the saved
+/// slot when it is resumable. Null hides the button.
+Game? keepPlayingTarget(GameScope scope, GameType type) {
+  final live = scope.controller.game;
+  if (GameType.of(live) == type) {
+    return scope.controller.hasMove && !live.isWon ? live : null;
+  }
+  final slot = scope.saves.value[type];
+  return slot != null && slot.resumable ? slot.game : null;
+}
+
+/// Starts [game] from a setup screen: the saved game of its type that is
+/// not the live one has its loss recorded once (#85); the live one is the
+/// controller's own event. Then the board opens on it.
+Future<void> startNewGame(BuildContext context, Game game) async {
+  final scope = GameScope.of(context);
+  if (scope.navigating.busy) return;
+  final type = GameType.of(game);
+  final abandon = scope.statsListener.abandonSaved(type);
+  scope.controller.replaceGame(game);
+  switch (game) {
+    case KlondikeGame k:
+      scope.settingsStore.setLastKlondikeOptions(k.options);
+    case SpiderGame s:
+      scope.settingsStore.setLastSpiderOptions(s.options);
+  }
+  openBoard(context);
+  await abandon;
+}
+
+/// Resumes [target] (from [keepPlayingTarget]): the live game is unpaused
+/// and its board below is returned to; a saved game is installed on a new
+/// board, recording nothing.
+void keepPlaying(BuildContext context, Game target) {
+  final scope = GameScope.of(context);
+  if (scope.navigating.busy) return;
+  final navigator = Navigator.of(context);
+  if (identical(scope.controller.game, target) ||
+      scope.controller.game == target) {
+    scope.controller.resume();
+    if (hasBoardBelow(navigator)) {
+      final route = ModalRoute.of(context);
+      navigator.popUntil((r) => r.settings.name == boardRouteName || r.isFirst);
+      if (route != null) scope.navigating.lockOn(route);
+      return;
+    }
+  } else {
+    final slot = scope.saves.value[GameType.of(target)];
+    scope.controller.resumeGame(target, hasMove: slot?.start ?? true);
+  }
+  openBoard(context);
+}
+
+/// A fresh random number, rerolled once if it equals [current].
+DealNumber freshDealNumber(GameScope scope, DealNumber? current) {
+  var number = scope.controller.dealNumberSource();
+  if (number == current) number = scope.controller.dealNumberSource();
+  return number;
 }
