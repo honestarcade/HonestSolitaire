@@ -12,7 +12,10 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      HonestSolitaireApp(dealNumberSource: () => DealNumber(4242)),
+      HonestSolitaireApp(
+        showSplash: false,
+        dealNumberSource: () => DealNumber(4242),
+      ),
     );
     expect(find.byType(BoardView), findsOneWidget);
     expect(find.byType(TopBar), findsOneWidget);

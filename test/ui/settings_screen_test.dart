@@ -20,7 +20,11 @@ Future<GameScope> openSettings(WidgetTester tester, AppStore store) async {
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    HonestSolitaireApp(store: store, dealNumberSource: () => DealNumber(5)),
+    HonestSolitaireApp(
+      store: store,
+      showSplash: false,
+      dealNumberSource: () => DealNumber(5),
+    ),
   );
   await tester.pump();
   final scope = tester.widget<GameScope>(find.byType(GameScope));

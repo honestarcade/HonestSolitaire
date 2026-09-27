@@ -27,7 +27,10 @@ Future<GameController> pumpApp(WidgetTester tester, Size logical) async {
   tester.view.viewPadding = insets;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    HonestSolitaireApp(dealNumberSource: () => DealNumber(17)),
+    HonestSolitaireApp(
+      showSplash: false,
+      dealNumberSource: () => DealNumber(17),
+    ),
   );
   return tester.widget<GameScope>(find.byType(GameScope)).controller;
 }

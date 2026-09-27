@@ -286,3 +286,31 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 
 ## /n8-exec M4 -- 2026-09-26
 
+
+- **Decision:** Player data is written as versioned envelope documents (`{"format":1,"data":{...}}`) through one `AppStore` with atomic temp-file-and-rename writes, a per-document queue, and quarantine of an unreadable file to `.bad-<epochMillis>.json` (three kept) with a `corruptionNotices` list for the UI.
+  **Why:** #83's discretion; a torn write must never lose the previous good file, and a corrupt one must be kept for the player to see rather than silently replaced.
+  **Issue:** #83
+- **Decision:** The files directory and URL opening go through the app's own method channel `honestsolitaire/platform` in `MainActivity.kt`; the guard `test/guards/platform_surface_test.dart` covers the channel's handled methods and `android:allowBackup` (mutations #83a–#83d).
+  **Why:** Invariants 1 and 2 forbid a plugin for either; the owner's backup amendment (Ad-hoc above) is what the guard fixes in place.
+  **Issue:** #83
+- **Decision:** Saving is throttled to one write per 500 ms (leading and trailing) and flushed when the app pauses; `replaceGame` emits `Abandoned` only for a same-type game with a move, and the saved slot of the other type stays resumable.
+  **Why:** #84's and #85's discretion notes; a rapid undo burst should not write every step, and a switch of game type is not a loss.
+  **Issue:** #84, #85
+- **Decision:** Statistics are pure functions over an immutable `StatsDocument`; a record arriving before the load completes is queued and applied once, and a won slot whose outcome was never recorded is reconciled at launch.
+  **Why:** #85's discretion; the honest-count requirement (played once, won once) has to survive a crash between the win and the write.
+  **Issue:** #85
+- **Decision:** `GameScope` sits above the `Navigator` (MaterialApp `builder`) and carries the store, saves, stats, settings store, platform channel, winnable search and the navigation guard.
+  **Why:** The Settings route pushed over the board could not see a scope placed at `home`; every M4 screen needs the same objects.
+  **Issue:** #86, #87
+- **Decision:** Settings descriptions are corrected to what the app does (unlimited undo off is "your last move, and never a draw"; winnable-only is Klondike only) and the version line reads `--dart-define` values with `dev` as the local fallback; `ci.yml` passes `HS_APP_BUILD=pr` and `tools/gate.sh` forwards it with the pubspec version.
+  **Why:** #86's AC ask for honest copy; a version baked into source rots, so CI is the source (guard `release_version_test`, mutation #86).
+  **Issue:** #86
+- **Decision:** The splash and the search screen measure their minimum showing time with a `Future.delayed` started at init, not the wall clock; `DealerSearch` implements a `DealerHandle` interface so tests drive a fake stream.
+  **Why:** flutter_test fakes timers but not `DateTime.now`, and the dealer's constructor is library-private.
+  **Issue:** #87
+- **Decision:** System back during the launch splash is left to the route beneath (the board today, the menu after #94); no observer intercepts it.
+  **Why:** `WidgetsApp` handles `didPopRoute` before any observer registered after it, and both roots leave the app when nothing is in progress anyway.
+  **Issue:** #87
+- **Decision:** Until #94 puts the menu at the root, `openBoard` pushes the board above the launch board (`pushAndRemoveUntil(isFirst)`), so a found deal briefly stacks two boards.
+  **Why:** The navigation stack's shape is #94's; building the menu early would fork it.
+  **Issue:** #87
