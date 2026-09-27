@@ -495,6 +495,11 @@ MUTATIONS: list[Mutation] = [
              sub(r"child: board,\n", "child: MediaQuery.withNoTextScaling(child: board),\n"),
              "the bars would stay small for a player with large text on",
              'large-text-board:', slow=True),
+    Mutation("#106c", "the stock's EMPTY label follows the phone's text size",
+             "lib/ui/board/board_view.dart",
+             sub(r"\n\s*textScaler: TextScaler\.noScaling, // a slot label \(#106\)", ""),
+             "the empty-stock label would grow with the system font size",
+             'large-text-fixed:', slow=True),
     # ---- #107: haptics ---------------------------------------------------------
     Mutation("#107", "a stray tick outside the haptics port",
              "lib/ui/game/game_controller.dart",

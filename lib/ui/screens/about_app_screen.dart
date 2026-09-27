@@ -52,6 +52,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             scale: s,
           ),
           Panel(
+            key: const Key('aboutapp-tile'),
             scale: s,
             color: const Color(0x0DFFFFFF),
             padding: EdgeInsets.all(16 * s),

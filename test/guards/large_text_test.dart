@@ -327,8 +327,26 @@ List<Object> exceptions(WidgetTester tester) {
 const ellipsisAllowed = {'board-title'};
 
 /// Every paragraph on screen: its text, its scaled font size, whether it
-/// overflowed its lines, whether a FittedBox holds it, and whether it is a
-/// card face.
+/// overflowed its lines, whether a FittedBox holds it, and whether it is
+/// one of the fixed drawings (#106) that must never scale.
+///
+/// A fixed paragraph is tagged by an ancestor that exists independently of
+/// the `MediaQuery.withNoTextScaling`/`TextScaler.noScaling` line that
+/// currently protects it — a [PlayingCard], or a key one structural level
+/// above that line — so deleting just that line still leaves the ancestor
+/// in place, and the paragraph stays selected while its *size* now
+/// differs between scales, which is what the assertion below catches.
+/// The keys: `stock-empty` (board_view.dart), `splash-title`
+/// (loading_screen.dart), `aboutapp-tile` (about_app_screen.dart),
+/// `menu-wordmark` (menu_screen.dart), `settings-swatch-back-*`
+/// (settings_screen.dart).
+const _fixedKeys = {
+  'stock-empty',
+  'splash-title',
+  'aboutapp-tile',
+  'menu-wordmark',
+};
+
 List<
   ({
     String text,
@@ -336,6 +354,7 @@ List<
     bool exceeded,
     bool fitted,
     bool card,
+    bool fixed,
     bool allowedEllipsis,
   })
 >
@@ -348,6 +367,7 @@ paragraphs(WidgetTester tester) {
           bool exceeded,
           bool fitted,
           bool card,
+          bool fixed,
           bool allowedEllipsis,
         })
       >[];
@@ -359,14 +379,22 @@ paragraphs(WidgetTester tester) {
     if (fontSize == null) continue;
     var fitted = false;
     var card = false;
+    var fixed = false;
     var allowed = false;
     element.visitAncestorElements((a) {
       final w = a.widget;
       if (w is FittedBox) fitted = true;
-      if (w is PlayingCard) card = true;
+      if (w is PlayingCard) {
+        card = true;
+        fixed = true;
+      }
       final k = w.key;
-      if (k is ValueKey<String> && ellipsisAllowed.contains(k.value)) {
-        allowed = true;
+      if (k is ValueKey<String>) {
+        if (ellipsisAllowed.contains(k.value)) allowed = true;
+        if (_fixedKeys.contains(k.value) ||
+            k.value.startsWith('settings-swatch-back-')) {
+          fixed = true;
+        }
       }
       return true;
     });
@@ -376,6 +404,7 @@ paragraphs(WidgetTester tester) {
       exceeded: render.didExceedMaxLines,
       fitted: fitted,
       card: card,
+      fixed: fixed,
       allowedEllipsis: allowed,
     ));
   }
@@ -426,9 +455,43 @@ void main() {
         reason:
             '$c clips text at 1.3×: ${exceeded.map((p) => p.text).toList()}',
       );
-      final cardSizes1 = base.where((p) => p.card).map((p) => p.size).toSet();
-      final cardSizes13 = large.where((p) => p.card).map((p) => p.size).toSet();
-      expect(cardSizes13, cardSizes1, reason: '$c: card faces never scale');
+      // Every fixed drawing (#106): card faces, the stock's EMPTY label,
+      // the splash/loading mark+title, the About tile, the menu wordmark
+      // and the Settings card-back swatches. Selected structurally (by an
+      // ancestor that survives a deleted noScaling line, not by the
+      // scaler itself — see `paragraphs`), so a regression that unwraps
+      // one shows up here as a size mismatch, not a silently shrunk set.
+      final fixedSizes1 = base
+          .where((p) => p.fixed)
+          .map((p) => (p.text, p.size))
+          .toSet();
+      final fixedSizes13 = large
+          .where((p) => p.fixed)
+          .map((p) => (p.text, p.size))
+          .toSet();
+      expect(
+        fixedSizes13,
+        fixedSizes1,
+        reason:
+            'large-text-fixed: $c scaled a fixed drawing: '
+            '${fixedSizes13.difference(fixedSizes1)}',
+      );
+      // Non-vacuous: each of these routes must actually show its fixed
+      // drawing, so a renamed/removed key can't silently empty the set
+      // above and pass by having nothing left to compare.
+      const routesWithFixedText = {
+        AppRoute.menu,
+        AppRoute.settings,
+        AppRoute.loading,
+        AppRoute.aboutApp,
+      };
+      if (routesWithFixedText.contains(c.route)) {
+        expect(
+          large.where((p) => p.fixed),
+          isNotEmpty,
+          reason: '$c: expected a fixed drawing on screen',
+        );
+      }
       if (c.route == AppRoute.board && c.state != BoardState.won) {
         final title = large.where((p) => p.allowedEllipsis);
         expect(title, isNotEmpty, reason: '$c: the board title is on screen');

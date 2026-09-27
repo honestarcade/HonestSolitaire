@@ -6,6 +6,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
 import 'package:honest_solitaire/ui/motion.dart';
+import 'package:honest_solitaire/ui/game/tool_row.dart';
 import 'package:honest_solitaire/ui/game/top_bar.dart';
 import 'package:honest_solitaire/ui/screens/new_klondike_screen.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
@@ -14,20 +15,27 @@ import 'package:honest_solitaire/ui/settings/play_settings.dart';
 import 'disposing_host.dart';
 import 'setup_helpers.dart';
 
-GameController controllerFor(Game game) => GameController(
-  game,
-  ValueNotifier(const PlaySettings(oneTap: false)),
-  ValueNotifier(const DisplayOptions()),
-  dealNumberSource: () => DealNumber(9),
-);
+GameController controllerFor(Game game, {bool cardAnimations = true}) =>
+    GameController(
+      game,
+      ValueNotifier(
+        PlaySettings(oneTap: false, cardAnimations: cardAnimations),
+      ),
+      ValueNotifier(const DisplayOptions()),
+      dealNumberSource: () => DealNumber(9),
+    );
 
 Future<void> pumpBoard(
   WidgetTester tester,
   GameController controller, {
   bool reduced = false,
+  bool talkBack = false,
 }) async {
   tester.platformDispatcher.accessibilityFeaturesTestValue =
-      FakeAccessibilityFeatures(disableAnimations: reduced);
+      FakeAccessibilityFeatures(
+        disableAnimations: reduced,
+        accessibleNavigation: talkBack,
+      );
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -38,6 +46,7 @@ Future<void> pumpBoard(
         child: BoardView(
           controller: controller,
           topBar: (_) => TopBar(controller: controller, scale: 1),
+          toolRow: (_) => ToolRow(controller: controller, scale: 1),
         ),
       ),
     ),
@@ -204,9 +213,13 @@ void main() {
     },
   );
 
-  testWidgets('with reduced motion there is no deal', (tester) async {
-    final controller = controllerFor(KlondikeGame.deal(DealNumber(3)));
-    await pumpBoard(tester, controller, reduced: true);
+  /// The three independent gates that skip the deal (#144): the phone's
+  /// own remove-animations switch, the Card animations setting, and
+  /// TalkBack — each asserted here on its own, not conflated with another.
+  Future<void> expectNoDeal(
+    WidgetTester tester,
+    GameController controller,
+  ) async {
     final settled = tableauRects(tester, controller.game);
     controller.newDeal();
     await tester.pump();
@@ -220,6 +233,68 @@ void main() {
       isTrue,
     );
     expect(tickers(tester), 0);
+  }
+
+  testWidgets("with the phone's remove-animations there is no deal", (
+    tester,
+  ) async {
+    final controller = controllerFor(KlondikeGame.deal(DealNumber(3)));
+    await pumpBoard(tester, controller, reduced: true);
+    await expectNoDeal(tester, controller);
+  });
+
+  testWidgets('with Card animations off there is no deal', (tester) async {
+    final controller = controllerFor(
+      KlondikeGame.deal(DealNumber(3)),
+      cardAnimations: false,
+    );
+    await pumpBoard(tester, controller);
+    await expectNoDeal(tester, controller);
+  });
+
+  testWidgets('with TalkBack there is no deal', (tester) async {
+    final controller = controllerFor(KlondikeGame.deal(DealNumber(3)));
+    await pumpBoard(tester, controller, talkBack: true);
+    await expectNoDeal(tester, controller);
+  });
+
+  testWidgets('a tool-row tap mid-deal lands it and acts normally', (
+    tester,
+  ) async {
+    final controller = controllerFor(KlondikeGame.deal(DealNumber(3)));
+    await pumpBoard(tester, controller);
+    controller.newDeal();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.currentHint, isNull);
+    await tester.tap(find.byKey(const Key('tool-hint')));
+    await tester.pump();
+    expect(tickers(tester), 0, reason: 'the deal landed under the tap');
+    expect(
+      controller.currentHint,
+      isNotNull,
+      reason: 'HINT still acted, not just consumed',
+    );
+    // The button's own press-feedback timer.
+    await tester.pump(const Duration(milliseconds: 150));
+  });
+
+  testWidgets('system back mid-deal lands it and acts normally', (
+    tester,
+  ) async {
+    final controller = controllerFor(KlondikeGame.deal(DealNumber(3)));
+    await pumpBoard(tester, controller);
+    controller.newDeal();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    controller.back();
+    await tester.pump();
+    expect(find.byKey(const Key('pause-card')), findsOneWidget);
+    // The pause card's own rise (#105) runs 350 ms; the deal's ticker is gone.
+    await tester.pump(cardRise);
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(tickers(tester), 0, reason: 'back landed the deal, same as pause');
+    expect(controller.isPaused, isTrue, reason: 'back still acted normally');
   });
 
   testWidgets('Spider deals from its next-row sliver', (tester) async {

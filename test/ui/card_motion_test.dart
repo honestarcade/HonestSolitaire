@@ -171,6 +171,43 @@ void main() {
       expect(tickers(tester), 0);
       await tester.pump(const Duration(milliseconds: 400));
     });
+
+    testWidgets(
+      '$label: a revealed card is face up at once, no mid-flip frame',
+      (tester) async {
+        final controller = controllerFor(uncover, animations: animations);
+        await pumpBoard(tester, controller, reduced: reduced);
+        controller.move(const TableauPile(0), 1, const TableauPile(1));
+        await tester.pump();
+        expect(
+          (controller.game as KlondikeGame).tableau[0].single.faceUp,
+          isTrue,
+          reason: 'committed at once',
+        );
+        expect(
+          tester
+              .widget<PlayingCard>(find.byKey(const Key('card-t0-0')))
+              .card!
+              .faceUp,
+          isTrue,
+          reason: 'drawn face up at once, not mid-flip',
+        );
+        expect(
+          find.byKey(const Key('flip-card-t0-0')),
+          findsNothing,
+          reason: 'no flip animation layer at all',
+        );
+        expect(tickers(tester), 0);
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(
+          tester
+              .widget<PlayingCard>(find.byKey(const Key('card-t0-0')))
+              .card!
+              .faceUp,
+          isTrue,
+        );
+      },
+    );
   }
 
   testWidgets('with no animations the finish sweep completes at once', (

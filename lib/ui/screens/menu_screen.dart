@@ -108,7 +108,7 @@ class _MenuScreenState extends State<MenuScreen> {
               onTap: () => _open(context, const AboutStudioScreen()),
             ),
             children: [
-              _Wordmark(scale: s),
+              _Wordmark(key: const Key('menu-wordmark'), scale: s),
               if (notices.isNotEmpty)
                 Appear(
                   motion: GameScope.motionOf(context),
@@ -226,7 +226,7 @@ class _MenuScreenState extends State<MenuScreen> {
 }
 
 class _Wordmark extends StatelessWidget {
-  const _Wordmark({required this.scale});
+  const _Wordmark({super.key, required this.scale});
 
   final double scale;
 
