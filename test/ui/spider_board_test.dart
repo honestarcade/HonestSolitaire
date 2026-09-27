@@ -328,4 +328,28 @@ void main() {
       expect(king.narrow, isTrue);
     },
   );
+
+  testWidgets(
+    'a filled completed slot acts as felt with a selection active (#138)',
+    (tester) async {
+      final position = spider(
+        tableau: [cards('7H'), cards('AS'), [], [], [], [], [], [], [], []],
+        completed: [Suit.spades],
+        options: const SpiderOptions(suits: SpiderSuits.two),
+      );
+      final controller = controllerFor(position);
+      await pumpBoard(tester, controller);
+      await tapCard(tester, 'card-t0-0');
+      expect(controller.selection, (const TableauPile(0), 0));
+      await tapCard(tester, 'completed-0');
+      expect(
+        controller.selection,
+        isNull,
+        reason: 'cleared like a felt tap, not refused',
+      );
+      expect(controller.shake, isNull, reason: 'no shake, not an illegal move');
+      expect(gameOf(controller).completed, [Suit.spades], reason: 'unchanged');
+      expect(gameOf(controller).tableau[0], cards('7H'), reason: 'unchanged');
+    },
+  );
 }

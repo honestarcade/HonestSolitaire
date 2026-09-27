@@ -1133,6 +1133,13 @@ class GameController extends ChangeNotifier {
       _tapStock();
       return;
     }
+    if (pile is CompletedPile) {
+      // Never a move target (a run completes on its own, never by a
+      // player-initiated move to the slot): acts as the felt behind it,
+      // clearing the selection rather than shaking (#138).
+      _selection = null;
+      return;
+    }
     if (pile == selPile) {
       // Inside the source pile: re-tap the selection to clear it, tap another
       // selectable card to switch, anything else clears.
