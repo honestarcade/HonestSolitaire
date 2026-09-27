@@ -573,13 +573,19 @@ class GameController extends ChangeNotifier {
     _startSweep(g);
   }
 
-  /// Spider's DEAL: the same refusal as tapping the stock.
-  void dealRow() {
+  /// Spider's DEAL: the same refusal as tapping the stock, including the
+  /// post-deal debounce a following stock tap must honour (#137). [at] is
+  /// the tool row's own pointer-down timestamp, the same clock a board tap
+  /// supplies to [tapPile] — so a stock tap right after this one is
+  /// debounced against it correctly.
+  void dealRow({Duration at = Duration.zero}) {
     if (_game is! SpiderGame || _game.isWon || _sweep != null) return;
     _hint = null;
     _dragging = null;
     _peekColumn = null;
-    _apply(const DealRow(), shake: (const StockPile(), null));
+    _tapAt = at;
+    final result = _apply(const DealRow(), shake: (const StockPile(), null));
+    if (result is Applied) _lastDealAt = _tapAt;
     _selection = null;
     notifyListeners();
   }
