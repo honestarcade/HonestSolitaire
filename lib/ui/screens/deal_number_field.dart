@@ -10,6 +10,7 @@ import 'package:honest_solitaire/engine/deal_number.dart';
 import '../theme/palette.dart';
 import '../widgets/option_panel.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 /// What the field holds.
 sealed class DealNumberInput {
@@ -185,7 +186,7 @@ class _DealNumberFieldState extends State<DealNumberField> {
                         inputFormatters: const [_DigitsOnly()],
                         style: TextStyle(
                           fontSize: 15 * s,
-                          fontFamily: 'monospace',
+                          fontFamily: kFontMono,
                           color: Palette.paleText,
                         ),
                         decoration: InputDecoration(

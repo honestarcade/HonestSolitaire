@@ -119,3 +119,53 @@ List<String> trackedFilesUnder(String relativeDir) {
 /// `<rule> <path>: <offender>`.
 String describeOffenders(String rule, List<String> offenders) =>
     '$rule: ${offenders.length} offender(s)\n${offenders.map((o) => '  $rule $o').join('\n')}';
+
+/// Removes `//` and `/* */` comments from Dart source, leaving string
+/// contents alone, so a commented-out line is not treated as code.
+String stripDartComments(String source) {
+  final out = StringBuffer();
+  var i = 0;
+  String? quote;
+  while (i < source.length) {
+    final ch = source[i];
+    if (quote != null) {
+      out.write(ch);
+      if (ch == r'\' && i + 1 < source.length) {
+        out.write(source[i + 1]);
+        i += 2;
+        continue;
+      }
+      if (source.startsWith(quote, i)) {
+        out.write(quote.substring(1));
+        i += quote.length;
+        quote = null;
+        continue;
+      }
+      i++;
+      continue;
+    }
+    if (ch == "'" || ch == '"') {
+      quote = source.startsWith(ch * 3, i) ? ch * 3 : ch;
+      out.write(quote);
+      i += quote.length;
+      continue;
+    }
+    if (source.startsWith('//', i)) {
+      final end = source.indexOf('\n', i);
+      i = end < 0 ? source.length : end;
+      continue;
+    }
+    if (source.startsWith('/*', i)) {
+      final end = source.indexOf('*/', i + 2);
+      final stop = end < 0 ? source.length : end + 2;
+      for (final c in source.substring(i, stop).split('')) {
+        if (c == '\n') out.write(c);
+      }
+      i = stop;
+      continue;
+    }
+    out.write(ch);
+    i++;
+  }
+  return out.toString();
+}

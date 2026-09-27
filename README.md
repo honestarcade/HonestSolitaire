@@ -103,7 +103,11 @@ repository at `docs/privacy.md` — everything under `docs/` is public.
 **MIT** (see `LICENSE`) — covering the source code and the art. Use it, learn
 from it, ship your own.
 
-Two things are held back, because they are not ours to give away:
+Three things are held back, because they are not ours to give away:
+
+**Fonts.** Outfit and IBM Plex Mono, in `assets/fonts/`, are licensed under
+the SIL Open Font License 1.1 (OFL), not MIT; their licence texts sit beside
+them and `assets/fonts/README.md` records where each file came from.
 
 **Audio.** When licensed sound effects ship, they will not be covered by the
 MIT licence, and their provenance will be recorded in an audio licence file

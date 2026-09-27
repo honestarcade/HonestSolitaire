@@ -15,6 +15,7 @@ import '../screens/settings_screen.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
 import 'game_event.dart';
+import '../fonts.dart';
 
 /// "KLONDIKE · DRAW 3 · VEGAS · 2:14 · DEAL #48213".
 String pauseMeta(Game game) {
@@ -95,6 +96,7 @@ class PauseCard extends StatelessWidget {
               pauseMeta(game),
               key: const Key('pause-meta'),
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 10 * s,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.14 * 10 * s,

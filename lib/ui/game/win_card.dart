@@ -14,6 +14,7 @@ import '../theme/palette.dart';
 import 'game_controller.dart';
 import 'game_event.dart';
 import 'pause_card.dart';
+import '../fonts.dart';
 
 /// The cells the card shows, in order: TIME, MOVES, SCORE, STREAK (when
 /// the statistics are at hand, #93), TIME BONUS.
@@ -100,6 +101,7 @@ class WinCard extends StatelessWidget {
             Text(
               'GAME COMPLETE',
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 10 * s,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 2 * s,
@@ -111,6 +113,7 @@ class WinCard extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
+                fontFamily: kFontOutfit,
                 fontSize: 27 * s,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.54 * s,
@@ -202,6 +205,7 @@ class _Cell extends StatelessWidget {
           Text(
             cell.$1,
             style: TextStyle(
+              fontFamily: kFontMono,
               fontSize: 9 * s,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.14 * 9 * s,

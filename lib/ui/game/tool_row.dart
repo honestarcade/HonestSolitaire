@@ -8,6 +8,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import '../format.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
+import '../fonts.dart';
 
 class ToolRow extends StatelessWidget {
   const ToolRow({
@@ -225,6 +226,7 @@ class _ToolButtonState extends State<_ToolButton> {
                 Text(
                   t.label,
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 8.5 * s,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.1 * 8.5 * s,

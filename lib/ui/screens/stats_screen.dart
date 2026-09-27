@@ -12,6 +12,7 @@ import '../game/game_event.dart';
 import '../theme/palette.dart';
 import '../widgets/game_tabs.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 const resetConfirmText =
     'Clears every recorded game, streak, best time and score for both '
@@ -211,6 +212,7 @@ class _Cards extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 9 * s,
                 height: 1,
                 letterSpacing: 1.3 * s,
@@ -404,6 +406,7 @@ class _BarRow extends StatelessWidget {
                   fontSize: 11.5 * s,
                   fontWeight: FontWeight.w500,
                   height: 1,
+                  fontFamily: kFontMono,
                   color: Palette.readout,
                 ),
               ),

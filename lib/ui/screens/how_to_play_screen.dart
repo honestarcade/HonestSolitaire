@@ -10,6 +10,7 @@ import '../game/game_event.dart';
 import '../theme/palette.dart';
 import '../widgets/game_tabs.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 class HowToPlayScreen extends StatefulWidget {
   /// [game] is the tab to open on (the pause card passes its game); null
@@ -161,6 +162,7 @@ class _GestureRow extends StatelessWidget {
             child: Text(
               gesture.name,
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 9.5 * s,
                 height: 1,
                 fontWeight: FontWeight.w500,

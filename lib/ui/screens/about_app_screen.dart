@@ -14,6 +14,7 @@ import '../theme/palette.dart';
 import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
 import 'about_studio_screen.dart';
+import '../fonts.dart';
 
 const aboutAppGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -63,6 +64,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                       Text(
                         'Honest Solitaire',
                         style: TextStyle(
+                          fontFamily: kFontOutfit,
                           fontSize: 20 * s,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -74,6 +76,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                         'v$appVersion · OFFLINE',
                         key: const Key('aboutapp-version'),
                         style: TextStyle(
+                          fontFamily: kFontMono,
                           fontSize: 10 * s,
                           height: 1,
                           letterSpacing: 1.4 * s,
@@ -223,6 +226,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
               Text(
                 'MADE BY',
                 style: TextStyle(
+                  fontFamily: kFontMono,
                   fontSize: 9.5 * s,
                   letterSpacing: 1.1 * s,
                   fontWeight: FontWeight.w500,

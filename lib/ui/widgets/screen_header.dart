@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../board/board_layout.dart';
 import '../theme/palette.dart';
+import '../fonts.dart';
 
 /// Board width over the design's 390, capped like the board.
 double screenScale(BuildContext context) =>
@@ -94,6 +95,7 @@ class ScreenHeader extends StatelessWidget {
                     fontSize: 9.5 * s,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.16 * 9.5 * s,
+                    fontFamily: kFontMono,
                     color: kickerColor,
                     height: 1,
                   ),
@@ -260,6 +262,7 @@ class Kicker extends StatelessWidget {
     child: Text(
       text,
       style: TextStyle(
+        fontFamily: kFontMono,
         fontSize: size * scale,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.16 * size * scale,

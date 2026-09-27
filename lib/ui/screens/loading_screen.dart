@@ -18,6 +18,7 @@ import '../game/pause_card.dart';
 import '../navigation.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 /// One step of the launch: the label shown while it runs, and the work.
 class LaunchStep {
@@ -280,6 +281,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 label,
                 key: const Key('loading-label'),
                 style: TextStyle(
+                  fontFamily: kFontMono,
                   fontSize: 10 * s,
                   height: 1,
                   letterSpacing: 2 * s,
@@ -293,6 +295,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                   _dealsTried == null ? '' : _countText(_dealsTried!),
                   key: const Key('loading-count'),
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 10 * s,
                     height: 1,
                     letterSpacing: 2 * s,
@@ -443,6 +446,7 @@ class _Title extends StatelessWidget {
             ],
           ),
           style: TextStyle(
+            fontFamily: kFontOutfit,
             fontSize: 40 * s,
             fontWeight: FontWeight.w700,
             letterSpacing: -1.2 * s,
@@ -454,6 +458,7 @@ class _Title extends StatelessWidget {
         Text(
           'BY HONEST ARCADE',
           style: TextStyle(
+            fontFamily: kFontMono,
             fontSize: 11 * s,
             height: 1,
             letterSpacing: 3.08 * s,

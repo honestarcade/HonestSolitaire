@@ -28,6 +28,7 @@ import 'game/top_bar.dart';
 import 'settings/display_options.dart';
 import 'settings/play_settings.dart';
 import 'theme/palette.dart';
+import 'fonts.dart';
 
 /// The design's defaults for the launch deal and for NEW: draw 3, standard
 /// scoring, timed. Auto-flip follows the setting at deal time.
@@ -87,6 +88,7 @@ class HonestSolitaireApp extends StatelessWidget {
       colorScheme: scheme,
       scaffoldBackgroundColor: Palette.navy,
       canvasColor: Palette.navy,
+      fontFamily: kFontOutfit,
       useMaterial3: true,
       brightness: Brightness.dark,
     );
@@ -227,16 +229,22 @@ class _GameRootState extends State<GameRoot> {
     search: search,
     navigating: navigating,
     persistence: persistence,
-    child: Stack(
-      children: [
-        widget.child,
-        if (_loading)
-          LoadingScreen.launch(
-            key: const Key('launch-splash'),
-            steps: launchSteps,
-            onDone: () => setState(() => _loading = false),
-          ),
-      ],
+    // One transparent Material above the Navigator: every route's text
+    // takes the theme's DefaultTextStyle (Outfit, #96) instead of the
+    // yellow-underlined fallback a Material-less screen would show.
+    child: Material(
+      type: MaterialType.transparency,
+      child: Stack(
+        children: [
+          widget.child,
+          if (_loading)
+            LoadingScreen.launch(
+              key: const Key('launch-splash'),
+              steps: launchSteps,
+              onDone: () => setState(() => _loading = false),
+            ),
+        ],
+      ),
     ),
   );
 }

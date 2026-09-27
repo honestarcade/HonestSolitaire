@@ -10,6 +10,7 @@ import '../content/links.dart';
 import '../theme/palette.dart';
 import '../widgets/open_link.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 const aboutStudioGradient = RadialGradient(
   center: Alignment(0.56, -0.76),
@@ -242,6 +243,7 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
     child: Text(
       text,
       style: TextStyle(
+        fontFamily: kFontMono,
         fontSize: 10.5 * s,
         height: 1,
         letterSpacing: 1 * s,

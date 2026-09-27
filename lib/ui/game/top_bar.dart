@@ -9,6 +9,7 @@ import '../format.dart';
 import '../theme/palette.dart';
 import 'game_controller.dart';
 import 'notice_banner.dart';
+import '../fonts.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key, required this.controller, required this.scale});
@@ -231,6 +232,7 @@ class _Readout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = TextStyle(
+      fontFamily: kFontMono,
       fontSize: 10 * scale,
       fontWeight: FontWeight.w500,
       color: Palette.readout,

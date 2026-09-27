@@ -13,6 +13,7 @@ import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
+import '../fonts.dart';
 
 /// One row of the design's list.
 class SettingRow {
@@ -158,6 +159,7 @@ class SettingsScreen extends StatelessWidget {
           versionLine,
           key: const Key('settings-version'),
           style: TextStyle(
+            fontFamily: kFontMono,
             fontSize: 9.5 * s,
             height: 1.6,
             letterSpacing: 0.14 * 9.5 * s,

@@ -24,6 +24,7 @@ import 'new_klondike_screen.dart';
 import 'new_spider_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
+import '../fonts.dart';
 
 const menuGradient = RadialGradient(
   center: Alignment(-0.52, -0.76),
@@ -257,6 +258,7 @@ class _Wordmark extends StatelessWidget {
                       ],
                     ),
                     style: TextStyle(
+                      fontFamily: kFontOutfit,
                       fontSize: 27 * s,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.81 * s,
@@ -269,6 +271,7 @@ class _Wordmark extends StatelessWidget {
                 Text(
                   'BY HONEST ARCADE · NO ADS',
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 9 * s,
                     height: 1,
                     letterSpacing: 2.16 * s,
@@ -430,6 +433,7 @@ class _ResumeButtonState extends State<_ResumeButton> {
                   meta,
                   key: const Key('menu-resume-meta'),
                   style: TextStyle(
+                    fontFamily: kFontMono,
                     fontSize: 11 * s,
                     height: 1,
                     fontWeight: FontWeight.w500,

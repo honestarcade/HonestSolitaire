@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../content/links.dart';
+import '../fonts.dart';
 
 /// Per-screen: a second tap while a call runs is ignored.
 class LinkOpener {
@@ -37,6 +38,7 @@ class LinkOpener {
           content: Text(
             "COULDN'T OPEN ${link.display.toUpperCase()} — NO BROWSER FOUND",
             style: const TextStyle(
+              fontFamily: kFontMono,
               fontSize: 10.5,
               letterSpacing: 1.2,
               fontWeight: FontWeight.w500,
@@ -86,6 +88,7 @@ class LinkText extends StatelessWidget {
             child: Text(
               '$label ↗',
               style: TextStyle(
+                fontFamily: kFontMono,
                 fontSize: 9.5 * s,
                 height: 1.2,
                 letterSpacing: 1.1 * s,
