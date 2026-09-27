@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
 import '../format.dart';
+import '../motion.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import 'game_controller.dart';
 import 'notice_banner.dart';
 import '../fonts.dart';
@@ -90,18 +92,22 @@ class TopBar extends StatelessWidget {
                 SizedBox(width: 6 * scale),
                 Flexible(
                   flex: 3,
-                  child: NoticeBanner(
-                    key: const Key('no-moves-banner'),
-                    message: 'No moves left',
-                    scale: scale,
-                    actions: [
-                      NoticeAction(
-                        'Undo',
-                        controller.undo,
-                        enabled: controller.canUndo,
-                      ),
-                      NoticeAction('New deal', controller.newDeal),
-                    ],
+                  child: Appear(
+                    motion: AppMotion.of(context, controller.settings),
+                    duration: bannerFade,
+                    child: NoticeBanner(
+                      key: const Key('no-moves-banner'),
+                      message: 'No moves left',
+                      scale: scale,
+                      actions: [
+                        NoticeAction(
+                          'Undo',
+                          controller.undo,
+                          enabled: controller.canUndo,
+                        ),
+                        NoticeAction('New deal', controller.newDeal),
+                      ],
+                    ),
                   ),
                 ),
               ] else

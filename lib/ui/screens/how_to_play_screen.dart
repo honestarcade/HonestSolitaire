@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart' hide Card;
 
 import '../app.dart';
+import '../motion.dart';
 import '../content/rules_text.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
@@ -36,7 +37,13 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
 
   void _pick(GameType type) {
     setState(() => _tab = type);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    if (!_scroll.hasClients) return;
+    final duration = GameScope.motionOf(context).ui(bannerFade);
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(0, duration: duration, curve: Curves.easeOut);
+    }
   }
 
   @override

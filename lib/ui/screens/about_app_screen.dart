@@ -6,6 +6,7 @@ import 'package:honest_solitaire/engine/card.dart';
 
 import '../../app_version.dart';
 import '../app.dart';
+import '../navigation.dart';
 import '../brand/honest_mark.dart';
 import '../card/suit_paths.dart';
 import '../content/about_text.dart';
@@ -193,7 +194,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => scope.navigating.push(
                       Navigator.of(context),
-                      MaterialPageRoute<void>(
+                      FadePageRoute<void>(
                         builder: (_) => const AboutStudioScreen(),
                       ),
                     ),

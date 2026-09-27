@@ -1,7 +1,7 @@
 /// Card motion (#99): how the board animates from one committed layout to
 /// the next. The engine state is always the committed state; this is
 /// presentation only, driven by one board-level ticker, and nothing of it
-/// runs under [AppMotion.none].
+/// runs unless [AppMotion.cards].
 library;
 
 import 'dart:math' as math;
@@ -10,21 +10,11 @@ import 'package:flutter/widgets.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
-import '../settings/play_settings.dart';
+import '../motion.dart';
 import 'board_layout.dart';
 import 'pile_ref.dart';
 
-/// Whether the app animates at all: off when the phone asks for no
-/// animations or the Card animations setting is off (owner, round one).
-enum AppMotion {
-  full,
-  none;
-
-  static AppMotion of(BuildContext context, PlaySettings settings) =>
-      MediaQuery.disableAnimationsOf(context) || !settings.cardAnimations
-      ? AppMotion.none
-      : AppMotion.full;
-}
+export '../motion.dart' show AppMotion;
 
 const Duration slideDuration = Duration(milliseconds: 180);
 const Duration flipDuration = Duration(milliseconds: 150);

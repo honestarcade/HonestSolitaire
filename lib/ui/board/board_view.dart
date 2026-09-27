@@ -405,7 +405,7 @@ class BoardViewState extends State<BoardView> with TickerProviderStateMixin {
     } else if (_dealing && controller.isPaused) {
       // Pause, back and the pill land the deal first.
       _landDeal();
-    } else if (motion == AppMotion.none && _plan != null) {
+    } else if (!motion.cards && _plan != null) {
       // Animations turned off mid-flight: land now.
       _landDeal();
       _plan = null;
@@ -970,7 +970,7 @@ class _Board extends StatelessWidget {
               final rect = Rect.lerp(
                 s.from[i],
                 s.to[i],
-                motion == AppMotion.none ? 1.0 : springAnimation.value,
+                motion.cards ? springAnimation.value : 1.0,
               )!;
               return Positioned(left: rect.left, top: rect.top, child: child!);
             },

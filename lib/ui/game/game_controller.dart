@@ -304,8 +304,8 @@ class GameController extends ChangeNotifier {
     _syncClock();
     displayGame.value = game;
     notifyListeners();
-    // No animations: the steps are not shown one by one (#99).
-    if (motion == AppMotion.none) sweep.completeNow();
+    // No card motion: the steps are not shown one by one (#99).
+    if (!motion.cards) sweep.completeNow();
   }
 
   void _showWin() {
@@ -411,8 +411,8 @@ class GameController extends ChangeNotifier {
   DragState? _dragging;
   DragState? get dragging => _dragging;
 
-  /// Whether the board animates (#99); the board sets it each build. Under
-  /// [AppMotion.none] the finish sweep completes at once and a refused drop
+  /// Whether the board animates (#99); the board sets it each build. Without
+  /// card motion the finish sweep completes at once and a refused drop
   /// springs home instantly.
   AppMotion motion = AppMotion.full;
 
@@ -820,7 +820,7 @@ class GameController extends ChangeNotifier {
 
   void _springHome(DragState d) {
     _springTimer?.cancel();
-    if (motion == AppMotion.none) {
+    if (!motion.cards) {
       // Instant: the cards are already drawn at home.
       _springBack = null;
       return;

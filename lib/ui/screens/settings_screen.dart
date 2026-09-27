@@ -10,6 +10,7 @@ import '../app.dart';
 import '../card/card_style.dart';
 import '../card/playing_card.dart';
 import '../settings/display_options.dart';
+import '../motion.dart';
 import '../settings/play_settings.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
@@ -473,8 +474,14 @@ class _Switch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    return Container(
-      key: Key('switch-${value ? 'on' : 'off'}'),
+    // Implicit animations (#105): the first build sits still, a change
+    // slides knob and track colour from wherever they are, at the level
+    // after the toggle (the Card animations switch included).
+    final duration = GameScope.motionOf(context).ui(switchSlide);
+    return AnimatedContainer(
+      key: const Key('switch'),
+      duration: duration,
+      curve: switchCurve,
       width: 46 * s,
       height: 26 * s,
       decoration: BoxDecoration(
@@ -484,6 +491,7 @@ class _Switch extends StatelessWidget {
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
       padding: EdgeInsets.all(3 * s),
       child: Container(
+        key: const Key('switch-knob'),
         width: 20 * s,
         height: 20 * s,
         decoration: const BoxDecoration(

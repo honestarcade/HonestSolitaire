@@ -478,6 +478,12 @@ MUTATIONS: list[Mutation] = [
              sub(r"static const textMuted = Color\(0xFF93AACB\);", "static const textMuted = Color(0xFF5C7FB0);"),
              "the loading label would read 2.65:1 on the felt",
              'muted labels: #5C7FB0 on'),
+    # ---- #105: route transitions -------------------------------------------
+    Mutation("#105", "a screen is pushed with the platform's own transition",
+             "lib/ui/navigation.dart",
+             sub(r"FadePageRoute<void>\(builder: \(_\) => screen\)", "MaterialPageRoute<void>(builder: (_) => screen)"),
+             "Settings would slide up the Android way instead of cross-fading",
+             'route-transitions MaterialPageRoute in lib/ui/navigation.dart'),
 ]
 
 

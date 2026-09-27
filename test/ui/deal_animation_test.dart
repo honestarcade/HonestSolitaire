@@ -5,6 +5,7 @@ import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
+import 'package:honest_solitaire/ui/motion.dart';
 import 'package:honest_solitaire/ui/game/top_bar.dart';
 import 'package:honest_solitaire/ui/screens/new_klondike_screen.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
@@ -178,6 +179,9 @@ void main() {
       controller.pause();
       await tester.pump();
       expect(find.byKey(const Key('pause-card')), findsOneWidget);
+      // The card's own rise (#105) runs 350 ms; the deal's ticker is gone.
+      await tester.pump(cardRise);
+      await tester.pump(const Duration(milliseconds: 1));
       expect(tickers(tester), 0, reason: 'the deal landed under the card');
     },
   );
@@ -194,6 +198,8 @@ void main() {
       await tester.pump();
       expect(controller.isPaused, isTrue);
       expect(find.byKey(const Key('pause-card')), findsOneWidget);
+      await tester.pump(cardRise); // the card's rise (#105), not the deal
+      await tester.pump(const Duration(milliseconds: 1));
       expect(tickers(tester), 0);
     },
   );

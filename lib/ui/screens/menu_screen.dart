@@ -14,8 +14,10 @@ import '../brand/honest_mark.dart';
 import '../card/playing_card.dart';
 import '../card/suit_paths.dart';
 import '../format.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import '../widgets/screen_header.dart';
 import 'about_app_screen.dart';
 import 'about_studio_screen.dart';
@@ -112,10 +114,14 @@ class _MenuScreenState extends State<MenuScreen> {
             children: [
               _Wordmark(scale: s),
               if (notices.isNotEmpty)
-                _CorruptionBanner(
-                  message: corruptionMessage(notices),
-                  scale: s,
-                  onDismiss: scope.store.dismissNotices,
+                Appear(
+                  motion: GameScope.motionOf(context),
+                  duration: bannerFade,
+                  child: _CorruptionBanner(
+                    message: corruptionMessage(notices),
+                    scale: s,
+                    onDismiss: scope.store.dismissNotices,
+                  ),
                 ),
               _ResumeButton(
                 target: target,

@@ -20,6 +20,7 @@ import '../feedback/music_controller.dart';
 import '../feedback/sound_player.dart';
 import '../platform/platform_channel.dart';
 import 'game/game_event.dart';
+import 'motion.dart';
 import 'navigation.dart';
 import 'screens/loading_screen.dart';
 import 'screens/menu_screen.dart';
@@ -100,6 +101,14 @@ class HonestSolitaireApp extends StatelessWidget {
       fontFamily: kFontOutfit,
       useMaterial3: true,
       brightness: Brightness.dark,
+      // The backstop for the routes the framework makes (#105): the same
+      // cross-fade as FadePageRoute.
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in TargetPlatform.values)
+            platform: const CrossFadeTransitionsBuilder(),
+        },
+      ),
     );
     return MaterialApp(
       title: 'Honest Solitaire',
@@ -121,7 +130,13 @@ class HonestSolitaireApp extends StatelessWidget {
         child: child!,
       ),
       navigatorObservers: [boardRouteObserver],
-      home: const MenuScreen(),
+      // The menu is a FadePageRoute like every other screen, so it fades
+      // beneath a pushed one (#105): a platform route below would refuse to
+      // run its secondary animation for a route of another kind.
+      onGenerateRoute: (settings) => FadePageRoute<void>(
+        settings: settings,
+        builder: (_) => const MenuScreen(),
+      ),
     );
   }
 }
@@ -282,7 +297,8 @@ class _GameRootState extends State<GameRoot> {
       type: MaterialType.transparency,
       child: Stack(
         children: [
-          widget.child,
+          // Navy under the Navigator: a cross-fade never shows black.
+          ColoredBox(color: Palette.navy, child: widget.child),
           if (_loading)
             LoadingScreen.launch(
               key: const Key('launch-splash'),
@@ -337,6 +353,13 @@ class GameScope extends InheritedWidget {
   /// Null outside the app (the board-only widget tests).
   static GameScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<GameScope>();
+
+  /// The motion level here (#105): the Card animations setting and the
+  /// phone's switch; full where there is no scope (a bare widget test).
+  static AppMotion motionOf(BuildContext context) => AppMotion.of(
+    context,
+    maybeOf(context)?.playSettings.value ?? const PlaySettings(),
+  );
 
   static GameScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<GameScope>();

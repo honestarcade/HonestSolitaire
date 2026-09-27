@@ -8,9 +8,11 @@ import 'package:honest_solitaire/engine/scoring.dart';
 
 import '../app.dart';
 import '../format.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../screens/stats_screen.dart';
 import '../theme/palette.dart';
+import '../widgets/appear.dart';
 import 'game_controller.dart';
 import 'game_event.dart';
 import 'pause_card.dart';
@@ -229,7 +231,9 @@ class _Cell extends StatelessWidget {
   }
 }
 
-/// The scrim and card layer over the board.
+/// The scrim and card layer over the board. Each time it appears the scrim
+/// fades in and the card rises 8 px with it (#105's `hs-rise`); returning
+/// from Rules or Settings keeps it in the tree, so nothing replays.
 class GameOverlays extends StatelessWidget {
   const GameOverlays({
     super.key,
@@ -253,36 +257,44 @@ class GameOverlays extends StatelessWidget {
             // height/844, never below 0.7, and the card scrolls if it still
             // does not fit (#93).
             final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
-            return Semantics(
-              container: true,
-              child: GestureDetector(
-                // The scrim swallows taps and does nothing.
-                key: const Key('scrim'),
-                behavior: HitTestBehavior.opaque,
-                onTap: () {},
-                child: Container(
-                  color: showWin
-                      ? const Color(0xD9030E20)
-                      : const Color(0xD1030E20),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 26 * scale,
-                    vertical: 26 * scale * v,
-                  ),
-                  alignment: Alignment.center,
-                  child: SingleChildScrollView(
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: showWin
-                          ? WinCard(
-                              controller: controller,
-                              scale: scale,
-                              vScale: v,
-                            )
-                          : PauseCard(
-                              controller: controller,
-                              scale: scale,
-                              vScale: v,
-                            ),
+            return Appear(
+              key: ValueKey(showWin),
+              motion: AppMotion.of(context, controller.settings),
+              duration: cardRise,
+              rise: riseFor(constraints.maxWidth),
+              child: Semantics(
+                container: true,
+                child: GestureDetector(
+                  // The scrim swallows taps and does nothing.
+                  key: const Key('scrim'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {},
+                  child: Container(
+                    color: showWin
+                        ? const Color(0xD9030E20)
+                        : const Color(0xD1030E20),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 26 * scale,
+                      vertical: 26 * scale * v,
+                    ),
+                    alignment: Alignment.center,
+                    child: SingleChildScrollView(
+                      child: GestureDetector(
+                        onTap: () {},
+                        child: Risen(
+                          child: showWin
+                              ? WinCard(
+                                  controller: controller,
+                                  scale: scale,
+                                  vScale: v,
+                                )
+                              : PauseCard(
+                                  controller: controller,
+                                  scale: scale,
+                                  vScale: v,
+                                ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

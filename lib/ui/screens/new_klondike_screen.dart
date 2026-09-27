@@ -82,7 +82,7 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
     if (_winnable) {
       scope.navigating.push(
         Navigator.of(context),
-        MaterialPageRoute<void>(
+        FadePageRoute<void>(
           builder: (_) => LoadingScreen.search(
             options: options,
             onGame: (game) {

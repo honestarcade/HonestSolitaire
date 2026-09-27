@@ -15,6 +15,7 @@ import '../brand/honest_mark.dart';
 import '../card/suit_paths.dart';
 import '../format.dart';
 import '../game/pause_card.dart';
+import '../motion.dart';
 import '../navigation.dart';
 import '../theme/palette.dart';
 import '../widgets/screen_header.dart';
@@ -30,10 +31,6 @@ class LaunchStep {
 
 /// The splash stays at least this long from its first frame.
 const splashMinimum = Duration(milliseconds: 600);
-
-/// READY holds this long before the fade.
-const splashHold = Duration(milliseconds: 350);
-const splashFade = Duration(milliseconds: 200);
 
 /// A load that takes longer than this counts as failed and is skipped.
 const launchStepTimeout = Duration(seconds: 5);
@@ -131,10 +128,13 @@ class _LoadingScreenState extends State<LoadingScreen> {
       setState(() => _completed++);
     }
     await _minimumShown;
-    await Future<void>.delayed(splashHold);
+    if (!mounted) return;
+    // READY's hold and the fade follow the motion level (#105).
+    final motion = GameScope.motionOf(context);
+    await Future<void>.delayed(motion.splashHold);
     if (!mounted) return;
     setState(() => _fading = true);
-    await Future<void>.delayed(splashFade);
+    await Future<void>.delayed(motion.ui(splashFade));
     if (mounted) widget.onDone!();
   }
 
@@ -274,7 +274,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 key: const Key('loading-bar'),
                 width: 220 * s,
                 fraction: launch ? _completed / steps!.length : null,
-                running: !launch && !_failed,
+                // A static bar when the phone removes animations (#105).
+                running:
+                    !launch &&
+                    !_failed &&
+                    GameScope.motionOf(context) != AppMotion.none,
               ),
               SizedBox(height: 30 * s),
               Text(
@@ -314,7 +318,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     if (launch) {
       return AnimatedOpacity(
         opacity: _fading ? 0 : 1,
-        duration: splashFade,
+        duration: GameScope.motionOf(context).ui(splashFade),
         child: body,
       );
     }

@@ -7,6 +7,7 @@ import 'package:flutter/semantics.dart';
 
 import '../../data/stats.dart';
 import '../app.dart';
+import '../motion.dart';
 import '../format.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
@@ -44,7 +45,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
   void _pick(GameType type) {
     setState(() => _tab = type);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    if (!_scroll.hasClients) return;
+    final duration = GameScope.motionOf(context).ui(bannerFade);
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(0, duration: duration, curve: Curves.easeOut);
+    }
   }
 
   void _askReset() {

@@ -8,6 +8,7 @@ import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/card/playing_card.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
+import 'package:honest_solitaire/ui/motion.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
 import 'package:honest_solitaire/ui/settings/play_settings.dart';
 
@@ -197,6 +198,9 @@ void main() {
     await tester.pump();
     expect(controller.finishing, isFalse, reason: 'no stepping');
     expect(controller.game.isWon, isTrue);
+    // The win card's 100 ms fade (#105) is the only ticker left.
+    await tester.pump(reducedFade);
+    await tester.pump(const Duration(milliseconds: 1));
     expect(tickers(tester), 0);
     await tester.pump(const Duration(seconds: 1));
   });
