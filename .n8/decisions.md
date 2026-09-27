@@ -395,3 +395,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The card rings are a `RingPainter` (a solid 2 px teal stroke, a dashed 6/4 amber stroke) over the card rather than spread shadows; hinted empty slots and Spider's hinted stock (one ring around the sliver group) use the same dash from `dashPath` in `slot_painter.dart`.
   **Why:** #102's AC1 and discretion; a spread shadow cannot be dashed.
   **Issue:** #102
+- **Decision:** The deal is a #99 motion plan (`planDeal`) held at 0 until the board route's transition completes, consumed from a one-shot `pendingDeal` token the board compares with the value it saw when it was created; `replaceGame(…, dealAnimation: true)` (setup Deal, `Found`, random-instead, NEW/New deal) and `restart()` raise it, resumes never. A pointer-down during the deal lands it — consumed on the board, passed through on the bars — and pause, a layout change or another install land it too. Under reduced motion or `accessibleNavigation` there is no deal.
+  **Why:** #103's discretion; reusing the motion layer keeps one ticker and one snap rule; #105's cross-fade will be the transition the deal waits for.
+  **Issue:** #103

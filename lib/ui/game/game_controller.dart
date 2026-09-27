@@ -382,6 +382,13 @@ class GameController extends ChangeNotifier {
 
   int _installSequence = 0;
   int _newGameSequence = 0;
+  int _pendingDeal = 0;
+
+  /// A one-shot token the board consumes to deal the new game with the
+  /// animation (#103): raised by `replaceGame(…, dealAnimation: true)` and
+  /// `restart()`, never by a resume. The board compares it with the value
+  /// it last consumed.
+  int get pendingDeal => _pendingDeal;
 
   /// Bumped on a new game only (new deal, restart, a setup Deal, a found
   /// deal) — not on resume — so the music restarts from the top (#101).
@@ -432,10 +439,11 @@ class GameController extends ChangeNotifier {
   /// A new game: the old one, if it had a move, is not yet won and is of the
   /// same type, is abandoned (a loss, #85). Clears everything transient and
   /// notifies; the clock waits for a first move.
-  void replaceGame(Game game) {
+  void replaceGame(Game game, {bool dealAnimation = false}) {
     _abandonIf(GameType.of(game) == GameType.of(_game), AbandonReason.newDeal);
     _newGameSequence++;
     _install(game, hasMove: false);
+    if (dealAnimation) _pendingDeal++;
     _emit({FeedbackEvent.newDeal});
   }
 
@@ -530,6 +538,7 @@ class GameController extends ChangeNotifier {
     _abandonIf(true, AbandonReason.restart);
     _newGameSequence++;
     _install(_game.restart(), hasMove: false);
+    _pendingDeal++;
     _emit({FeedbackEvent.newDeal});
   }
 
@@ -545,7 +554,7 @@ class GameController extends ChangeNotifier {
   void newDeal() {
     var number = dealNumberSource();
     if (number == _game.dealNumber) number = dealNumberSource();
-    replaceGame(switch (_game) {
+    replaceGame(dealAnimation: true, switch (_game) {
       KlondikeGame k => KlondikeGame.deal(number, k.options),
       SpiderGame s => SpiderGame.deal(number, s.options),
     });

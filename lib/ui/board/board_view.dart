@@ -17,6 +17,7 @@ import '../theme/palette.dart';
 import 'board_layout.dart';
 import 'board_pointer.dart';
 import 'card_motion.dart';
+import 'deal_animation.dart';
 import 'pile_ref.dart';
 import 'slot_painter.dart';
 import '../game/finish_sweep.dart';
@@ -110,8 +111,85 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
   /// from there rather than from the cards' old home.
   Map<int, Rect> _dragRects = const {};
 
+  // The deal (#103): the token last consumed, and whether the running plan
+  // is a deal waiting for the route's transition before it starts.
+  int _dealConsumed = -1;
+  bool _dealing = false;
+  bool _dealWaiting = false;
+  Animation<double>? _routeAnimation;
+
+  /// Whether a deal animation is under way (waiting or flying).
+  bool get dealing => _dealing;
+
+  @override
+  void initState() {
+    super.initState();
+    // Only a token raised after this board exists deals: a cold start, a
+    // resume and a return to the board show the cards in place.
+    _dealConsumed = widget.controller.pendingDeal;
+  }
+
+  /// Lands every dealt card now: a tap, a pause, a layout change.
+  void finishDeal() {
+    if (!_dealing) return;
+    _landDeal();
+    if (mounted) setState(() {});
+  }
+
+  /// The landing itself, safe inside a build.
+  void _landDeal() {
+    _dealing = false;
+    _dealWaiting = false;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    _plan = null;
+    _motion.stop();
+  }
+
+  void _onRouteStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _startDeal();
+  }
+
+  /// Starts the held deal plan (after the route's transition, or at once
+  /// when there is none).
+  void _startDeal() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    if (!_dealWaiting) return;
+    _dealWaiting = false;
+    final plan = _plan;
+    if (plan == null) {
+      _dealing = false;
+      return;
+    }
+    _motion.duration = Duration(milliseconds: plan.totalMs);
+    _motion.forward(from: 0).whenComplete(() {
+      if (_plan == plan) _dealing = false;
+    });
+  }
+
+  /// Consumes a fresh deal token: a plan held at 0 until the route lands.
+  void _beginDeal(BoardFrames frames, BoardLayout layout, Game game) {
+    final plan = planDeal(frames, layout, game);
+    _plan = plan;
+    _motion.stop();
+    _motion.value = 0;
+    if (plan == null) return;
+    _dealing = true;
+    _dealWaiting = true;
+    final route = ModalRoute.of(context);
+    final animation = route?.animation;
+    if (animation == null || animation.status == AnimationStatus.completed) {
+      _startDeal();
+    } else {
+      _routeAnimation = animation;
+      animation.addStatusListener(_onRouteStatus);
+    }
+  }
+
   @override
   void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
     _shake.dispose();
     _spring.dispose();
     _motion.dispose();
@@ -142,6 +220,24 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
           _framesInstall == controller.installSequence &&
           _framesSize == size &&
           _framesOptions == options;
+      final freshDeal =
+          controller.pendingDeal != _dealConsumed &&
+          _framesInstall != controller.installSequence;
+      // Any change lands a running deal (a move, a pause, a resize).
+      if (_dealing) _landDeal();
+      _frames = frames;
+      _framesGame = game;
+      _framesSize = size;
+      _framesOptions = options;
+      _framesInstall = controller.installSequence;
+      if (freshDeal) {
+        _dealConsumed = controller.pendingDeal;
+        final accessible = MediaQuery.accessibleNavigationOf(context);
+        if (motion == AppMotion.full && !accessible) {
+          _beginDeal(frames, layout, game);
+          return;
+        }
+      }
       MotionPlan? plan;
       if (aMove && motion == AppMotion.full) {
         plan = planMotion(
@@ -159,13 +255,12 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
         _motion.duration = Duration(milliseconds: plan.totalMs);
         _motion.forward(from: 0);
       }
-      _frames = frames;
-      _framesGame = game;
-      _framesSize = size;
-      _framesOptions = options;
-      _framesInstall = controller.installSequence;
+    } else if (_dealing && controller.isPaused) {
+      // Pause, back and the pill land the deal first.
+      _landDeal();
     } else if (motion == AppMotion.none && _plan != null) {
       // Animations turned off mid-flight: land now.
+      _landDeal();
       _plan = null;
       _motion.stop();
     }
@@ -240,6 +335,8 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
                       plan: plan,
                       ms: ms,
                       motion: motion,
+                      dealing: _dealing,
+                      onFinishDeal: finishDeal,
                       shakeAnimation: _shake,
                       springAnimation: _springCurve,
                       topBar: topBar,
@@ -292,6 +389,8 @@ class _Board extends StatelessWidget {
     required this.plan,
     required this.ms,
     required this.motion,
+    required this.dealing,
+    required this.onFinishDeal,
     required this.shakeAnimation,
     required this.springAnimation,
     this.topBar,
@@ -306,6 +405,10 @@ class _Board extends StatelessWidget {
   final MotionPlan? plan;
   final int ms;
   final AppMotion motion;
+
+  /// A deal in flight (#103): a pointer-down on the board lands it.
+  final bool dealing;
+  final VoidCallback onFinishDeal;
   final Animation<double> shakeAnimation;
   final Animation<double> springAnimation;
 
@@ -395,6 +498,8 @@ class _Board extends StatelessWidget {
     return BoardPointer(
       controller: controller,
       layout: layout,
+      dealing: dealing,
+      onFinishDeal: onFinishDeal,
       child: Stack(clipBehavior: Clip.none, children: children),
     );
   }

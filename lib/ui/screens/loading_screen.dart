@@ -196,7 +196,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     if (!mounted || _cancelled) return;
     final scope = GameScope.of(context);
     widget.onGame?.call(game);
-    scope.controller.replaceGame(game);
+    scope.controller.replaceGame(game, dealAnimation: true);
     openBoard(context);
   }
 
@@ -233,7 +233,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     }
     final game = KlondikeGame.deal(number, widget.options!);
     widget.onGame?.call(game);
-    scope.controller.replaceGame(game);
+    scope.controller.replaceGame(game, dealAnimation: true);
     openBoard(context);
   }
 

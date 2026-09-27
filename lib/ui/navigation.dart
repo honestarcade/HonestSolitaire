@@ -134,7 +134,7 @@ Future<void> startNewGame(BuildContext context, Game game) async {
   if (scope.navigating.busy) return;
   final type = GameType.of(game);
   final abandon = scope.statsListener.abandonSaved(type);
-  scope.controller.replaceGame(game);
+  scope.controller.replaceGame(game, dealAnimation: true);
   switch (game) {
     case KlondikeGame k:
       scope.settingsStore.setLastKlondikeOptions(k.options);
