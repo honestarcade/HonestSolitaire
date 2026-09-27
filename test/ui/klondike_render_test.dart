@@ -12,6 +12,7 @@ import 'package:honest_solitaire/ui/settings/display_options.dart';
 import 'package:honest_solitaire/ui/settings/play_settings.dart';
 
 import '../engine/positions.dart';
+import 'disposing_host.dart';
 
 GameController controllerFor(Game game) => GameController(
   game,
@@ -23,7 +24,14 @@ Future<void> pumpBoard(WidgetTester tester, GameController controller) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(home: BoardView(controller: controller)));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: DisposingHost(
+        controller: controller,
+        child: BoardView(controller: controller),
+      ),
+    ),
+  );
 }
 
 /// Every keyed card on the board, compared with the engine's piles.

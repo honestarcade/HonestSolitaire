@@ -8,6 +8,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
@@ -16,6 +18,7 @@ import 'package:honest_solitaire/engine/hints.dart' as engine;
 import '../board/pile_ref.dart';
 import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
+import 'game_clock.dart';
 import 'ui_hint.dart';
 
 /// A run to shake sideways: the pile, the first card of the run, and a
@@ -123,9 +126,87 @@ class GameController extends ChangeNotifier {
     this.playSettings,
     this.displayOptions, {
     DealNumber Function()? dealNumberSource,
+    Duration Function()? clockNow,
+    bool observeLifecycle = true,
   }) : _game = game,
+       displayGame = GameNotifier(game),
        dealNumberSource = dealNumberSource ?? DealNumber.random {
     playSettings.addListener(_onSettings);
+    clock = GameClock(now: clockNow, onTick: _onClockTick);
+    if (observeLifecycle) {
+      _lifecycle = AppLifecycleListener(onStateChange: _onLifecycle);
+    }
+  }
+
+  /// The game as the top bar shows it: updated on every change, clock ticks
+  /// included, without notifying the board. (A plain `ValueNotifier` would
+  /// stay silent on a tick, because game equality ignores the clock.)
+  final GameNotifier displayGame;
+
+  late final GameClock clock;
+  AppLifecycleListener? _lifecycle;
+  bool _foreground = true;
+  bool _paused = false;
+
+  /// Whether the player has made a move since the deal: the clock waits for
+  /// the first one (owner, /n8-plan M3 round one).
+  bool _moved = false;
+
+  bool get isPaused => _paused;
+
+  /// Stops the clock and the gestures; the pause card is #80's.
+  void pause() {
+    if (_paused) return;
+    _paused = true;
+    _dragging = null;
+    _peekColumn = null;
+    _syncClock();
+    notifyListeners();
+  }
+
+  void resume() {
+    if (!_paused) return;
+    _paused = false;
+    _syncClock();
+    notifyListeners();
+  }
+
+  void _onLifecycle(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _syncClock();
+  }
+
+  /// The clock runs only after the first move, in the foreground, unpaused
+  /// and unwon.
+  void _syncClock() {
+    final shouldRun = _moved && _foreground && !_paused && !_game.isWon;
+    if (shouldRun) {
+      clock.start(_game.elapsed);
+    } else {
+      clock.stop();
+    }
+  }
+
+  void _onClockTick(Duration delta) {
+    if (_game.isWon) return;
+    _game = _game.tick(delta);
+    displayGame.value = _game;
+  }
+
+  /// Adds the clock's unflushed part to the game so a move's score uses
+  /// exact time.
+  void _flushClock() {
+    final delta = clock.flush();
+    if (delta > Duration.zero) _game = _game.tick(delta);
+  }
+
+  /// Records a new game state from a move: the display copy, the first-move
+  /// gate and the clock.
+  void _commit(Game game) {
+    _game = game;
+    displayGame.value = game;
+    if (!_moved) _moved = true;
+    _syncClock();
   }
 
   final ValueNotifier<PlaySettings> playSettings;
@@ -171,9 +252,30 @@ class GameController extends ChangeNotifier {
   PlaySettings get settings => playSettings.value;
   DisplayOptions get display => displayOptions.value;
 
-  /// Swaps the game, clearing the selection and hint; always notifies.
+  /// Swaps the game without touching the clock: an undo back to the deal
+  /// leaves time running (owner, /n8-plan M3 round one). Clears the
+  /// selection, hint and gestures; notifies.
+  void replaceGameKeepingClock(Game game) {
+    _game = game;
+    displayGame.value = game;
+    _selection = null;
+    _hint = null;
+    _lastTap = null;
+    _clearShake();
+    _dragging = null;
+    _clearSpring();
+    _peekColumn = null;
+    _syncClock();
+    notifyListeners();
+  }
+
+  /// Swaps the game, clearing the selection and hint; always notifies. The
+  /// clock goes back to waiting for a first move.
   void replaceGame(Game game) {
     _game = game;
+    displayGame.value = game;
+    _moved = false;
+    clock.reset();
     _selection = null;
     _hint = null;
     _lastTap = null;
@@ -300,9 +402,10 @@ class GameController extends ChangeNotifier {
     if (to != null && to != d.pile) {
       final m = _moveFor(d.pile, d.start, to);
       if (m != null) {
+        _flushClock();
         final result = _game.apply(m);
         if (result is Applied<Game>) {
-          _game = result.game;
+          _commit(result.game);
           _clearShake();
           onApplied(result);
           notifyListeners();
@@ -685,10 +788,11 @@ class GameController extends ChangeNotifier {
 
   /// Applies [m]; on a refusal shakes [shake] (when given) and buzzes.
   ApplyResult<Game> _apply(Move m, {required (BoardPile, int?)? shake}) {
+    _flushClock();
     final result = _game.apply(m);
     switch (result) {
       case Applied(:final game):
-        _game = game;
+        _commit(game);
         _clearShake();
         onApplied(result);
       case Refused():
@@ -714,6 +818,26 @@ class GameController extends ChangeNotifier {
     playSettings.removeListener(_onSettings);
     _shakeTimer?.cancel();
     _springTimer?.cancel();
+    _lifecycle?.dispose();
+    clock.dispose();
+    displayGame.dispose();
     super.dispose();
+  }
+}
+
+/// A `ValueListenable<Game>` that notifies on every assignment, equal or
+/// not: two games that differ only in `elapsed` are equal, and the top bar
+/// must still redraw the clock.
+class GameNotifier extends ChangeNotifier implements ValueListenable<Game> {
+  GameNotifier(this._value);
+
+  Game _value;
+
+  @override
+  Game get value => _value;
+
+  set value(Game game) {
+    _value = game;
+    notifyListeners();
   }
 }
