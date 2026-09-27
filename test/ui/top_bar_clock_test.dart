@@ -136,6 +136,12 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      // Returning from the background opens the pause card (#80); the clock
+      // runs again once the player resumes.
+      expect(controller.isPaused, isTrue);
+      await passTime(tester, const Duration(seconds: 2));
+      expect(controller.game.elapsed, const Duration(seconds: 3));
+      controller.resume();
       await passTime(tester, const Duration(seconds: 2));
       expect(controller.game.elapsed, const Duration(seconds: 5));
     });

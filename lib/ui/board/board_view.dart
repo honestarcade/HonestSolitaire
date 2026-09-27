@@ -11,6 +11,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import '../card/card_style.dart';
 import '../card/playing_card.dart';
 import '../game/game_controller.dart';
+import '../game/win_card.dart';
 import '../settings/display_options.dart';
 import '../theme/palette.dart';
 import 'board_layout.dart';
@@ -114,37 +115,46 @@ class _BoardViewState extends State<BoardView> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    return DecoratedBox(
-      decoration: const BoxDecoration(gradient: feltGradient),
-      child: Padding(
-        padding: widget.padding,
-        child: ListenableBuilder(
-          listenable: Listenable.merge([controller, controller.displayOptions]),
-          builder: (context, _) => LayoutBuilder(
-            builder: (context, constraints) {
-              final size = Size(constraints.maxWidth, constraints.maxHeight);
-              final game = controller.game;
-              final options = controller.display;
-              final layout = _layout(game, size, options);
-              final shake = controller.shake;
-              if (shake != null && shake.sequence != _shakeSequence) {
-                _shakeSequence = shake.sequence;
-                _shake.forward(from: 0);
-              }
-              final spring = controller.springBack;
-              if (spring != null && spring.sequence != _springSequence) {
-                _springSequence = spring.sequence;
-                _spring.forward(from: 0);
-              }
-              return _Board(
-                controller: controller,
-                layout: layout,
-                shakeAnimation: _shake,
-                springAnimation: _springCurve,
-                topBar: widget.topBar?.call(context),
-                toolRow: widget.toolRow?.call(context),
-              );
-            },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) controller.back();
+      },
+      child: DecoratedBox(
+        decoration: const BoxDecoration(gradient: feltGradient),
+        child: Padding(
+          padding: widget.padding,
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              controller,
+              controller.displayOptions,
+            ]),
+            builder: (context, _) => LayoutBuilder(
+              builder: (context, constraints) {
+                final size = Size(constraints.maxWidth, constraints.maxHeight);
+                final game = controller.shown;
+                final options = controller.display;
+                final layout = _layout(game, size, options);
+                final shake = controller.shake;
+                if (shake != null && shake.sequence != _shakeSequence) {
+                  _shakeSequence = shake.sequence;
+                  _shake.forward(from: 0);
+                }
+                final spring = controller.springBack;
+                if (spring != null && spring.sequence != _springSequence) {
+                  _springSequence = spring.sequence;
+                  _spring.forward(from: 0);
+                }
+                return _Board(
+                  controller: controller,
+                  layout: layout,
+                  shakeAnimation: _shake,
+                  springAnimation: _springCurve,
+                  topBar: widget.topBar?.call(context),
+                  toolRow: widget.toolRow?.call(context),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -210,7 +220,7 @@ class _Board extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final game = controller.game;
+    final game = controller.shown;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final children = <Widget>[];
     final peek = controller.peekColumn;
@@ -266,6 +276,7 @@ class _Board extends StatelessWidget {
       children.add(Positioned.fromRect(rect: layout.toolRow, child: toolRow!));
     }
     _dragLayer(children);
+    children.add(GameOverlays(controller: controller, scale: layout.scale));
     return BoardPointer(
       controller: controller,
       layout: layout,

@@ -12,6 +12,7 @@ import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
+import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
@@ -19,6 +20,7 @@ import 'package:honest_solitaire/engine/hints.dart' as engine;
 import '../board/pile_ref.dart';
 import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
+import 'finish_sweep.dart';
 import 'game_clock.dart';
 import 'ui_hint.dart';
 
@@ -155,9 +157,37 @@ class GameController extends ChangeNotifier {
 
   bool get isPaused => _paused;
 
-  /// Stops the clock and the gestures; the pause card is #80's.
+  FinishSweep? _sweep;
+  Game? _shownStep;
+  bool _winShown = false;
+  Timer? _winTimer;
+
+  /// The other game, kept while the player is on this one (owner, /n8-plan
+  /// M3 round two: switching back resumes it).
+  Game? _kept;
+  Game? get keptGame => _kept;
+
+  /// The last Klondike options seen, for "Switch to Klondike".
+  KlondikeOptions _lastKlondikeOptions = const KlondikeOptions(
+    draw: DrawMode.three,
+  );
+
+  /// Whether a finish sweep is stepping: every input is blocked meanwhile.
+  bool get finishing => _sweep != null;
+
+  /// The game the board paints: a sweep's current step, else the game.
+  Game get shown => _shownStep ?? _game;
+
+  /// The win card is up (250 ms after the winning move or the sweep's last
+  /// step).
+  bool get winShown => _winShown;
+
+  /// Stops the clock and the gestures and shows the pause card (#80). A
+  /// sweep in progress completes first, and the win card wins.
   void pause() {
     if (_paused) return;
+    _sweep?.completeNow();
+    if (_game.isWon) return;
     _paused = true;
     _dragging = null;
     _peekColumn = null;
@@ -172,9 +202,105 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// System back: on the board pauses, on the pause card resumes, on the win
+  /// card does nothing.
+  void back() {
+    if (_winShown) return;
+    if (_sweep != null) {
+      _sweep!.completeNow();
+      return;
+    }
+    if (_paused) {
+      resume();
+    } else {
+      pause();
+    }
+  }
+
+  bool _pauseOnReturn = false;
+
   void _onLifecycle(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _sweep?.completeNow();
+      if (_moved && !_game.isWon) _pauseOnReturn = true;
+    }
+    if (_foreground && _pauseOnReturn) {
+      _pauseOnReturn = false;
+      pause();
+    }
     _syncClock();
+  }
+
+  /// Puts the other game on the board, keeping this one in memory; a kept
+  /// game that is already won is replaced by a fresh deal of its type.
+  void switchGame() {
+    final current = _game;
+    if (current is KlondikeGame) _lastKlondikeOptions = current.options;
+    final other = _kept;
+    _kept = current;
+    Game next;
+    if (other != null && !other.isWon) {
+      next = other;
+    } else {
+      switch (current) {
+        case KlondikeGame():
+          next = SpiderGame.deal(
+            dealNumberSource(),
+            SpiderOptions(suits: SpiderSuits.two, autoFlip: settings.autoFlip),
+          );
+        case SpiderGame():
+          next = KlondikeGame.deal(
+            dealNumberSource(),
+            _lastKlondikeOptions.copyWith(autoFlip: settings.autoFlip),
+          );
+      }
+    }
+    replaceGame(next);
+  }
+
+  /// Starts the finish sweep over [game] (already checked with canFinish).
+  void _startSweep(KlondikeGame game) {
+    _hint = null;
+    _selection = null;
+    _dragging = null;
+    _peekColumn = null;
+    _flushClock();
+    final sweep = FinishSweep(
+      show: (step) {
+        _shownStep = step;
+        displayGame.value = step;
+        notifyListeners();
+      },
+      onDone: () {
+        _sweep = null;
+        _shownStep = null;
+        displayGame.value = _game;
+        _showWin();
+      },
+    );
+    final result = sweep.start(game);
+    if (result == null) {
+      assert(false, 'canFinish was true but the sweep did not apply');
+      return;
+    }
+    _sweep = sweep;
+    _shownStep = game;
+    // Committed now: the clock stops here, so the time bonus uses this
+    // moment; the board shows the steps.
+    _game = result;
+    _moved = true;
+    _syncClock();
+    displayGame.value = game;
+    notifyListeners();
+  }
+
+  void _showWin() {
+    _winTimer?.cancel();
+    _winTimer = null;
+    _winShown = true;
+    notifyListeners();
   }
 
   /// The clock runs only after the first move, in the foreground, unpaused
@@ -208,6 +334,15 @@ class GameController extends ChangeNotifier {
     displayGame.value = game;
     if (!_moved) _moved = true;
     _syncClock();
+    if (game.isWon) {
+      _winTimer?.cancel();
+      _winTimer = Timer(winCardDelay, _showWin);
+    } else if (settings.autoFinish &&
+        game is KlondikeGame &&
+        _sweep == null &&
+        engine.isSolved(game)) {
+      _startSweep(game);
+    }
   }
 
   final ValueNotifier<PlaySettings> playSettings;
@@ -273,6 +408,14 @@ class GameController extends ChangeNotifier {
   /// Swaps the game, clearing the selection and hint; always notifies. The
   /// clock goes back to waiting for a first move.
   void replaceGame(Game game) {
+    _sweep?.dispose();
+    _sweep = null;
+    _shownStep = null;
+    _winTimer?.cancel();
+    _winTimer = null;
+    _winShown = false;
+    _paused = false;
+    _pauseOnReturn = false;
     _game = game;
     displayGame.value = game;
     _moved = false;
@@ -296,7 +439,7 @@ class GameController extends ChangeNotifier {
   /// Steps back one move (or one finish sweep), instantly; the clock keeps
   /// running. Clears the selection, the hint and any drag.
   void undo() {
-    if (!canUndo) return;
+    if (!canUndo || _sweep != null) return;
     final result = _game.undo(unlimited: settings.unlimitedUndo);
     if (result is Applied<Game>) replaceGameKeepingClock(result.game);
   }
@@ -311,23 +454,13 @@ class GameController extends ChangeNotifier {
   /// animation; here the sweep lands at once.)
   void finish() {
     final g = _game;
-    if (g is! KlondikeGame || !canFinish) return;
-    _hint = null;
-    _selection = null;
-    _dragging = null;
-    _peekColumn = null;
-    _flushClock();
-    final result = engine.applyFinish(g);
-    if (result is Applied<KlondikeGame>) {
-      _commit(result.game);
-      onApplied(result);
-    }
-    notifyListeners();
+    if (g is! KlondikeGame || !canFinish || _sweep != null) return;
+    _startSweep(g);
   }
 
   /// Spider's DEAL: the same refusal as tapping the stock.
   void dealRow() {
-    if (_game is! SpiderGame || _game.isWon) return;
+    if (_game is! SpiderGame || _game.isWon || _sweep != null) return;
     _hint = null;
     _dragging = null;
     _peekColumn = null;
@@ -360,7 +493,7 @@ class GameController extends ChangeNotifier {
   /// left" notice; pressing it while a hint shows hides it. Clears the
   /// selection.
   void hint() {
-    if (_game.isWon) return;
+    if (_game.isWon || _sweep != null) return;
     _selection = null;
     if (_hint != null) {
       _hint = null;
@@ -441,7 +574,9 @@ class GameController extends ChangeNotifier {
   /// Whether a drag may start from card [index] of [pile]: a Klondike valid
   /// run start, waste top or foundation top; a Spider same-suit run start.
   bool canDrag(BoardPile pile, int? index) {
-    if (_game.isWon || _springBack != null) return false;
+    if (_game.isWon || _springBack != null || _sweep != null || _paused) {
+      return false;
+    }
     final cards = _pileCards(pile);
     if (cards == null || cards.isEmpty) return false;
     switch (pile) {
@@ -605,7 +740,9 @@ class GameController extends ChangeNotifier {
     return cards != null &&
         cards.any((c) => c.faceUp) &&
         _dragging == null &&
-        _springBack == null;
+        _springBack == null &&
+        _sweep == null &&
+        !_paused;
   }
 
   void startPeek(int column) {
@@ -645,7 +782,7 @@ class GameController extends ChangeNotifier {
   /// A tap on [pile] at card [index] (null: the pile itself or its empty
   /// strip) at [at] (a pointer timestamp, for the double-tap window).
   void tapPile(BoardPile? pile, int? index, {Duration at = Duration.zero}) {
-    if (_game.isWon) return;
+    if (_game.isWon || _sweep != null || _paused) return;
     _hint = null; // any tap clears a showing hint
     _tapAt = at;
     final last = _lastTap;
@@ -971,6 +1108,8 @@ class GameController extends ChangeNotifier {
     _shakeTimer?.cancel();
     _springTimer?.cancel();
     _lifecycle?.dispose();
+    _sweep?.dispose();
+    _winTimer?.cancel();
     clock.dispose();
     displayGame.dispose();
     super.dispose();
