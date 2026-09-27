@@ -55,41 +55,44 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             scale: s,
             color: const Color(0x0DFFFFFF),
             padding: EdgeInsets.all(16 * s),
-            child: Row(
-              children: [
-                IconTile(size: 62 * s),
-                SizedBox(width: 14 * s),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Honest Solitaire',
-                        style: TextStyle(
-                          fontFamily: kFontOutfit,
-                          fontSize: 20 * s,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1,
+            // The tile is a drawing: no text scaling (#106).
+            child: MediaQuery.withNoTextScaling(
+              child: Row(
+                children: [
+                  IconTile(size: 62 * s),
+                  SizedBox(width: 14 * s),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Honest Solitaire',
+                          style: TextStyle(
+                            fontFamily: kFontOutfit,
+                            fontSize: 20 * s,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 7 * s),
-                      Text(
-                        'v$appVersion · OFFLINE',
-                        key: const Key('aboutapp-version'),
-                        style: TextStyle(
-                          fontFamily: kFontMono,
-                          fontSize: 10 * s,
-                          height: 1,
-                          letterSpacing: 1.4 * s,
-                          fontWeight: FontWeight.w500,
-                          color: Palette.mist,
+                        SizedBox(height: 7 * s),
+                        Text(
+                          'v$appVersion · OFFLINE',
+                          key: const Key('aboutapp-version'),
+                          style: TextStyle(
+                            fontFamily: kFontMono,
+                            fontSize: 10 * s,
+                            height: 1,
+                            letterSpacing: 1.4 * s,
+                            fontWeight: FontWeight.w500,
+                            color: Palette.mist,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Text(

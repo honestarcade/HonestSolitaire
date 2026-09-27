@@ -788,6 +788,7 @@ class _Board extends StatelessWidget {
               child: Center(
                 child: Text(
                   'EMPTY',
+                  textScaler: TextScaler.noScaling, // a slot label (#106)
                   style: TextStyle(
                     fontSize: 9 * layout.scale,
                     fontWeight: FontWeight.w500,

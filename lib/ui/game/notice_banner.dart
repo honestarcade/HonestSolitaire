@@ -61,15 +61,21 @@ class _NoticeBannerState extends State<NoticeBanner> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Large text (#106): the message scales down to the room the
+            // buttons leave rather than clipping.
             Flexible(
-              child: Text(
-                widget.message,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13 * s,
-                  color: Colors.white,
-                  height: 1,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.message,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 13 * s,
+                    color: Colors.white,
+                    height: 1,
+                  ),
                 ),
               ),
             ),

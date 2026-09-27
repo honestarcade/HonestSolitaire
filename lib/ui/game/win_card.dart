@@ -250,58 +250,56 @@ class GameOverlays extends StatelessWidget {
     final showPause = controller.isPaused && !showWin;
     if (!showWin && !showPause) return const SizedBox.shrink();
     return Positioned.fill(
-      child: MediaQuery.withNoTextScaling(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Short phones (320×568): gaps and padding shrink by
-            // height/844, never below 0.7, and the card scrolls if it still
-            // does not fit (#93).
-            final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
-            return Appear(
-              key: ValueKey(showWin),
-              motion: AppMotion.of(context, controller.settings),
-              duration: cardRise,
-              rise: riseFor(constraints.maxWidth),
-              child: Semantics(
-                container: true,
-                child: GestureDetector(
-                  // The scrim swallows taps and does nothing.
-                  key: const Key('scrim'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {},
-                  child: Container(
-                    color: showWin
-                        ? const Color(0xD9030E20)
-                        : const Color(0xD1030E20),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 26 * scale,
-                      vertical: 26 * scale * v,
-                    ),
-                    alignment: Alignment.center,
-                    child: SingleChildScrollView(
-                      child: GestureDetector(
-                        onTap: () {},
-                        child: Risen(
-                          child: showWin
-                              ? WinCard(
-                                  controller: controller,
-                                  scale: scale,
-                                  vScale: v,
-                                )
-                              : PauseCard(
-                                  controller: controller,
-                                  scale: scale,
-                                  vScale: v,
-                                ),
-                        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Short phones (320×568): gaps and padding shrink by
+          // height/844, never below 0.7, and the card scrolls if it still
+          // does not fit (#93).
+          final v = (constraints.maxHeight / 844).clamp(0.7, 1.0);
+          return Appear(
+            key: ValueKey(showWin),
+            motion: AppMotion.of(context, controller.settings),
+            duration: cardRise,
+            rise: riseFor(constraints.maxWidth),
+            child: Semantics(
+              container: true,
+              child: GestureDetector(
+                // The scrim swallows taps and does nothing.
+                key: const Key('scrim'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+                child: Container(
+                  color: showWin
+                      ? const Color(0xD9030E20)
+                      : const Color(0xD1030E20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 26 * scale,
+                    vertical: 26 * scale * v,
+                  ),
+                  alignment: Alignment.center,
+                  child: SingleChildScrollView(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Risen(
+                        child: showWin
+                            ? WinCard(
+                                controller: controller,
+                                scale: scale,
+                                vScale: v,
+                              )
+                            : PauseCard(
+                                controller: controller,
+                                scale: scale,
+                                vScale: v,
+                              ),
                       ),
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }

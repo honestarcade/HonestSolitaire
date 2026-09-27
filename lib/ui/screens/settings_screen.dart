@@ -248,15 +248,18 @@ class _CardBackPanel extends StatelessWidget {
                               shadow: false,
                             ),
                             SizedBox(height: 8 * s),
-                            Text(
-                              back.label.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9.5 * s,
-                                fontWeight: FontWeight.w500,
-                                color: display.cardBack == back
-                                    ? Palette.teal
-                                    : Palette.textBody,
-                                height: 1,
+                            // A swatch caption is part of the drawing (#106).
+                            MediaQuery.withNoTextScaling(
+                              child: Text(
+                                back.label.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 9.5 * s,
+                                  fontWeight: FontWeight.w500,
+                                  color: display.cardBack == back
+                                      ? Palette.teal
+                                      : Palette.textBody,
+                                  height: 1,
+                                ),
                               ),
                             ),
                           ],

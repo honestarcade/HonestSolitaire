@@ -268,7 +268,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
             children: [
               _Mark(size: 132 * s),
               SizedBox(height: 30 * s),
-              _Title(scale: s),
+              // The wordmark is a drawing: no text scaling (#106).
+              MediaQuery.withNoTextScaling(child: _Title(scale: s)),
               SizedBox(height: 30 * s),
               LoadingBar(
                 key: const Key('loading-bar'),

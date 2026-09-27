@@ -28,92 +28,90 @@ class ToolRow extends StatelessWidget {
   final VoidCallback? onNew;
 
   @override
-  Widget build(BuildContext context) => MediaQuery.withNoTextScaling(
-    child: ListenableBuilder(
-      listenable: Listenable.merge([controller, controller.displayOptions]),
-      builder: (context, _) {
-        final game = controller.game;
-        final won = game.isWon;
-        // RESTART and NEW keep working through #104's cascade and end it;
-        // HINT and FINISH have nothing to do on a won board, and UNDO
-        // follows canUndo (the engine refuses an undo past a win).
-        final blocked = controller.winShown || controller.isPaused;
-        final noMoves = won || controller.isPaused;
-        final tools = <_Tool>[
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([controller, controller.displayOptions]),
+    builder: (context, _) {
+      final game = controller.game;
+      final won = game.isWon;
+      // RESTART and NEW keep working through #104's cascade and end it;
+      // HINT and FINISH have nothing to do on a won board, and UNDO
+      // follows canUndo (the engine refuses an undo past a win).
+      final blocked = controller.winShown || controller.isPaused;
+      final noMoves = won || controller.isPaused;
+      final tools = <_Tool>[
+        _Tool(
+          key: 'undo',
+          glyph: Glyph.undo,
+          label: 'UNDO',
+          semantics: 'Undo',
+          enabled: !blocked && controller.canUndo,
+          onPressed: controller.undo,
+        ),
+        _Tool(
+          key: 'hint',
+          glyph: Glyph.hint,
+          label: 'HINT',
+          semantics: 'Hint',
+          enabled: !noMoves,
+          onPressed: controller.hint,
+        ),
+        if (game is KlondikeGame)
           _Tool(
-            key: 'undo',
-            glyph: Glyph.undo,
-            label: 'UNDO',
-            semantics: 'Undo',
-            enabled: !blocked && controller.canUndo,
-            onPressed: controller.undo,
-          ),
+            key: 'finish',
+            glyph: Glyph.finish,
+            label: 'FINISH',
+            semantics: 'Finish',
+            enabled: !noMoves && controller.canFinish,
+            accent: true,
+            onPressed: controller.finish,
+          )
+        else
           _Tool(
-            key: 'hint',
-            glyph: Glyph.hint,
-            label: 'HINT',
-            semantics: 'Hint',
-            enabled: !noMoves,
-            onPressed: controller.hint,
+            key: 'deal',
+            glyph: Glyph.deal,
+            label: 'DEAL ${formatCount(controller.dealsLeft)}',
+            semantics: 'Deal, ${controller.dealsLeft} left',
+            enabled: !noMoves && controller.dealsLeft > 0,
+            accent: true,
+            onPressed: controller.dealRow,
           ),
-          if (game is KlondikeGame)
-            _Tool(
-              key: 'finish',
-              glyph: Glyph.finish,
-              label: 'FINISH',
-              semantics: 'Finish',
-              enabled: !noMoves && controller.canFinish,
-              accent: true,
-              onPressed: controller.finish,
-            )
-          else
-            _Tool(
-              key: 'deal',
-              glyph: Glyph.deal,
-              label: 'DEAL ${formatCount(controller.dealsLeft)}',
-              semantics: 'Deal, ${controller.dealsLeft} left',
-              enabled: !noMoves && controller.dealsLeft > 0,
-              accent: true,
-              onPressed: controller.dealRow,
-            ),
-          _Tool(
-            key: 'restart',
-            glyph: Glyph.restart,
-            label: 'RESTART',
-            semantics: 'Restart',
-            enabled: !blocked,
-            onPressed: controller.restart,
-          ),
-          _Tool(
-            key: 'new',
-            glyph: Glyph.newGame,
-            label: 'NEW',
-            semantics: 'New deal',
-            enabled: !blocked,
-            onPressed: onNew ?? controller.newDeal,
-          ),
-        ];
-        final ordered = controller.display.leftHanded
-            ? tools.reversed.toList()
-            : tools;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(14 * scale, 0, 14 * scale, 22 * scale),
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Row(
-              children: [
-                for (var i = 0; i < ordered.length; i++) ...[
-                  if (i > 0) SizedBox(width: 8 * scale),
-                  Expanded(
-                    child: _ToolButton(tool: ordered[i], scale: scale),
-                  ),
-                ],
+        _Tool(
+          key: 'restart',
+          glyph: Glyph.restart,
+          label: 'RESTART',
+          semantics: 'Restart',
+          enabled: !blocked,
+          onPressed: controller.restart,
+        ),
+        _Tool(
+          key: 'new',
+          glyph: Glyph.newGame,
+          label: 'NEW',
+          semantics: 'New deal',
+          enabled: !blocked,
+          onPressed: onNew ?? controller.newDeal,
+        ),
+      ];
+      final ordered = controller.display.leftHanded
+          ? tools.reversed.toList()
+          : tools;
+      return Padding(
+        padding: EdgeInsets.fromLTRB(14 * scale, 0, 14 * scale, 22 * scale),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Row(
+            children: [
+              for (var i = 0; i < ordered.length; i++) ...[
+                if (i > 0) SizedBox(width: 8 * scale),
+                Expanded(
+                  child: _ToolButton(tool: ordered[i], scale: scale),
+                ),
               ],
-            ),
+            ],
           ),
-        );
-      },
-    ),
+        ),
+      );
+    },
   );
 }
 
@@ -202,15 +200,25 @@ class _ToolButtonState extends State<_ToolButton> {
                   child: GlyphIcon(t.glyph, size: 15 * s, color: fg),
                 ),
                 SizedBox(height: 5 * s),
-                Text(
-                  t.label,
-                  style: TextStyle(
-                    fontFamily: kFontMono,
-                    fontSize: 8.5 * s,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.1 * 8.5 * s,
-                    color: fg,
-                    height: 1,
+                // Large text (#106): the label scales with the phone, fitted
+                // back down where the button is too narrow; the button
+                // keeps its height (there is room under the icon).
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 3 * s),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      t.label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontFamily: kFontMono,
+                        fontSize: 8.5 * s,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1 * 8.5 * s,
+                        color: fg,
+                        height: 1,
+                      ),
+                    ),
                   ),
                 ),
               ],

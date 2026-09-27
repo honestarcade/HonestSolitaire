@@ -118,16 +118,22 @@ class HonestSolitaireApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       // The scope sits above the Navigator so every pushed screen (Settings,
       // and the rest of M4) shares the one controller and store.
-      builder: (context, child) => GameRoot(
-        initialPlaySettings: initialPlaySettings,
-        initialDisplayOptions: initialDisplayOptions,
-        dealNumberSource: dealNumberSource ?? DealNumber.random,
-        store: store,
-        platform: platform,
-        search: search,
-        sound: sound,
-        showSplash: showSplash,
-        child: child!,
+      // The phone's text size, clamped to 1.0–1.3× (#106, owner): every
+      // screen scales its text within that; the fixed drawings opt out.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 1,
+        maxScaleFactor: 1.3,
+        child: GameRoot(
+          initialPlaySettings: initialPlaySettings,
+          initialDisplayOptions: initialDisplayOptions,
+          dealNumberSource: dealNumberSource ?? DealNumber.random,
+          store: store,
+          platform: platform,
+          search: search,
+          sound: sound,
+          showSplash: showSplash,
+          child: child!,
+        ),
       ),
       navigatorObservers: [boardRouteObserver],
       // The menu is a FadePageRoute like every other screen, so it fades
@@ -420,27 +426,28 @@ class _BoardScreenState extends State<BoardScreen> with RouteAware {
     final scope = GameScope.of(context);
     final controller = scope.controller;
     final padding = MediaQuery.viewPaddingOf(context);
+    // The board's bars scale their text with the phone (#106); the cards
+    // do not (PlayingCard opts out: Large cards is the answer there).
+    final board = LayoutBuilder(
+      builder: (context, constraints) {
+        final safeWidth = constraints.maxWidth - padding.horizontal;
+        final scale = math.min(safeWidth, maxBoardWidth) / designWidth;
+        return BoardView(
+          controller: controller,
+          padding: padding,
+          winRecord: () => scope.statsListener.lastRecord,
+          topBar: (_) => TopBar(controller: controller, scale: scale),
+          toolRow: (_) => ToolRow(
+            controller: controller,
+            scale: scale,
+            onNew: () => openSetup(context, GameType.of(controller.game)),
+          ),
+        );
+      },
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemBars,
-      child: MediaQuery.withNoTextScaling(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final safeWidth = constraints.maxWidth - padding.horizontal;
-            final scale = math.min(safeWidth, maxBoardWidth) / designWidth;
-            return BoardView(
-              controller: controller,
-              padding: padding,
-              winRecord: () => scope.statsListener.lastRecord,
-              topBar: (_) => TopBar(controller: controller, scale: scale),
-              toolRow: (_) => ToolRow(
-                controller: controller,
-                scale: scale,
-                onNew: () => openSetup(context, GameType.of(controller.game)),
-              ),
-            );
-          },
-        ),
-      ),
+      child: board,
     );
   }
 }

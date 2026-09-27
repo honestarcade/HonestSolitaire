@@ -24,6 +24,21 @@ DealerHandle defaultWinnableSearch(DealNumber base, KlondikeOptions options) =>
 
 const boardRouteName = '/board';
 
+/// Every screen the app has (#106): the large-text guard switches over it
+/// exhaustively, so a new screen without a case fails to compile there.
+enum AppRoute {
+  menu,
+  newKlondike,
+  newSpider,
+  loading,
+  board,
+  settings,
+  stats,
+  howToPlay,
+  aboutApp,
+  aboutStudio,
+}
+
 /// The menu is the app's home route (#94).
 const menuRouteName = '/';
 

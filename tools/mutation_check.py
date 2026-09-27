@@ -484,6 +484,17 @@ MUTATIONS: list[Mutation] = [
              sub(r"FadePageRoute<void>\(builder: \(_\) => screen\)", "MaterialPageRoute<void>(builder: (_) => screen)"),
              "Settings would slide up the Android way instead of cross-fading",
              'route-transitions MaterialPageRoute in lib/ui/navigation.dart'),
+    # ---- #106: large text ------------------------------------------------------
+    Mutation("#106a", "the text-size clamp loses its ceiling",
+             "lib/ui/app.dart",
+             sub(r"\n\s*maxScaleFactor: 1\.3,", ""),
+             "at the phone's largest text size every screen would overflow",
+             'large-text-clamp:', slow=True),
+    Mutation("#106b", "the board ignores the phone's text size again",
+             "lib/ui/app.dart",
+             sub(r"child: board,\n", "child: MediaQuery.withNoTextScaling(child: board),\n"),
+             "the bars would stay small for a player with large text on",
+             'large-text-board:', slow=True),
 ]
 
 

@@ -233,63 +233,66 @@ class _Wordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
+    // The wordmark is a drawing: it does not follow the text size (#106).
     return Semantics(
       label: 'Honest Solitaire, by Honest Arcade, no ads',
       excludeSemantics: true,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 52 * s,
-            height: 52 * s,
-            child: CustomPaint(
-              painter: const HonestMarkPainter(),
-              foregroundPainter: _MenuSpade(),
+      child: MediaQuery.withNoTextScaling(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 52 * s,
+              height: 52 * s,
+              child: CustomPaint(
+                painter: const HonestMarkPainter(),
+                foregroundPainter: _MenuSpade(),
+              ),
             ),
-          ),
-          SizedBox(width: 14 * s),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'Honest',
-                      children: const [
-                        TextSpan(
-                          text: 'Solitaire',
-                          style: TextStyle(color: Palette.teal),
-                        ),
-                      ],
+            SizedBox(width: 14 * s),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Honest',
+                        children: const [
+                          TextSpan(
+                            text: 'Solitaire',
+                            style: TextStyle(color: Palette.teal),
+                          ),
+                        ],
+                      ),
+                      style: TextStyle(
+                        fontFamily: kFontOutfit,
+                        fontSize: 27 * s,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.81 * s,
+                        color: Colors.white,
+                        height: 1,
+                      ),
                     ),
+                  ),
+                  SizedBox(height: 7 * s),
+                  Text(
+                    'BY HONEST ARCADE · NO ADS',
                     style: TextStyle(
-                      fontFamily: kFontOutfit,
-                      fontSize: 27 * s,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.81 * s,
-                      color: Colors.white,
+                      fontFamily: kFontMono,
+                      fontSize: 9 * s,
                       height: 1,
+                      letterSpacing: 2.16 * s,
+                      fontWeight: FontWeight.w500,
+                      color: Palette.mist,
                     ),
                   ),
-                ),
-                SizedBox(height: 7 * s),
-                Text(
-                  'BY HONEST ARCADE · NO ADS',
-                  style: TextStyle(
-                    fontFamily: kFontMono,
-                    fontSize: 9 * s,
-                    height: 1,
-                    letterSpacing: 2.16 * s,
-                    fontWeight: FontWeight.w500,
-                    color: Palette.mist,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

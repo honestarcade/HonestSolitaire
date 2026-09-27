@@ -135,55 +135,53 @@ class ScreenScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = screenScale(context);
     final insets = MediaQuery.viewPaddingOf(context);
-    return MediaQuery.withNoTextScaling(
-      child: DecoratedBox(
-        decoration: BoxDecoration(color: Palette.navy, gradient: gradient),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = math.min(constraints.maxWidth, maxBoardWidth);
-            return SingleChildScrollView(
-              controller: controller,
-              padding: EdgeInsets.only(
-                top: insets.top + 20 * s,
-                bottom: insets.bottom + 24 * s,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: width,
-                    minHeight:
-                        constraints.maxHeight -
-                        insets.top -
-                        insets.bottom -
-                        44 * s,
-                  ),
-                  // IntrinsicHeight bounds the column to the taller of the
-                  // viewport and its content, so the Spacer before the
-                  // pinned part has a finite height to fill.
-                  child: IntrinsicHeight(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20 * s),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < children.length; i++) ...[
-                            if (i > 0) SizedBox(height: gap * s),
-                            children[i],
-                          ],
-                          if (pinned != null) ...[
-                            const Spacer(),
-                            SizedBox(height: gap * s),
-                            pinned!,
-                          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(color: Palette.navy, gradient: gradient),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = math.min(constraints.maxWidth, maxBoardWidth);
+          return SingleChildScrollView(
+            controller: controller,
+            padding: EdgeInsets.only(
+              top: insets.top + 20 * s,
+              bottom: insets.bottom + 24 * s,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: width,
+                  minHeight:
+                      constraints.maxHeight -
+                      insets.top -
+                      insets.bottom -
+                      44 * s,
+                ),
+                // IntrinsicHeight bounds the column to the taller of the
+                // viewport and its content, so the Spacer before the
+                // pinned part has a finite height to fill.
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20 * s),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < children.length; i++) ...[
+                          if (i > 0) SizedBox(height: gap * s),
+                          children[i],
                         ],
-                      ),
+                        if (pinned != null) ...[
+                          const Spacer(),
+                          SizedBox(height: gap * s),
+                          pinned!,
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
