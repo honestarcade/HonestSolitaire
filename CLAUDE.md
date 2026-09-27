@@ -14,10 +14,11 @@ On the development machine a local copy sits at
 published with the repository); read that first and fall back to the MCP when
 it is absent, as on a fresh clone.
 
-The quality gate is **`tools/gate.sh`** — one command running the six steps CI
-runs, in order: dependencies against the lockfile, `dart analyze --fatal-infos`,
-format check, `flutter test` (which includes the invariant guards below), the
-release bundle build, and `tools/check_aab.sh` over that bundle. It must print
+The quality gate is **`tools/gate.sh`** — one command running the seven steps
+CI runs, in order: dependencies against the lockfile, the tools' Python unit
+tests (`tools/test_*.py`), `dart analyze --fatal-infos`, format check,
+`flutter test` (which includes the invariant guards below), the release bundle
+build, and `tools/check_aab.sh` over that bundle. It must print
 `GATE PASSED` before anything is considered done.
 
 CI runs one more thing the gate does not: **`tools/mutation_check.py`**, its own

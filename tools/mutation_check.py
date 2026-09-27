@@ -423,6 +423,22 @@ MUTATIONS: list[Mutation] = [
              "the pre-12 start screen would fail to inflate its drawable",
              'launcher-rasters: 1 offender',
              deletes="android/app/src/main/res/drawable-xhdpi/launch_mark.png"),
+    # ---- #98: the audio assets ---------------------------------------------
+    Mutation("#98a", "a clip the app plays goes missing",
+             "", None,
+             "the player would hear nothing where the chime belongs",
+             'audio-assets: 1 offender',
+             deletes="assets/audio/chime.wav"),
+    Mutation("#98b", "a clip loses its licence row",
+             "assets/audio/LICENSES.md",
+             sub(r"^\| `snap\.wav` \|[^\n]*\n", "", flags=re.M),
+             "an unrecorded clip could be swapped for anything",
+             'audio-assets: 1 offender'),
+    Mutation("#98c", "a clip drops out of the bundle",
+             "pubspec.yaml",
+             sub(r"\n    - assets/audio/flip\.wav", ""),
+             "the app would fail to load the flip at run time",
+             'audio-declared: 1 offender'),
 ]
 
 

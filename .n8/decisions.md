@@ -362,3 +362,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Epic #7's launcher-icon criterion stands as amended at planning ("Dark icon", 2026-09-24); the light tile is not shipped and nothing is added to the epic.
   **Why:** #97's AC6; the amendment is quoted in the epic's comment and delivered here.
   **Issue:** #97
+- **Decision:** The five clips were generated once each on 2026-09-27 from the prompts in `assets/audio/PROMPTS.md` (ElevenLabs `eleven_text_to_sound_v2`, Creator plan, the owner's key from `~/HonestArcadeApps/secrets/elevenlabs.env`), with no auditioning; the loop is mono at −15 dBFS peak, untrimmed.
+  **Why:** Owner, /n8-plan M5 round one ("Generate one clip from prompt for now…"); the exec session runs the generation (round two). The WAVs are the artifacts of record; the script cannot reproduce them.
+  **Issue:** #98
+- **Decision:** `tools/gate.sh` runs the tools' Python unit tests as step 2 through a shell function (`run_python_tests`, discovery finding nothing is not a failure) and finds the build step by its label; the six-step wording in CLAUDE.md and the README becomes seven.
+  **Why:** #98's discretion; `run_step` executes an array of words, and a function name is one.
+  **Issue:** #98

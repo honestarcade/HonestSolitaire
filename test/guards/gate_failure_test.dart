@@ -4,7 +4,7 @@ library;
 // tools/gate.sh must stop at the first failing step and exit non-zero (#34).
 // The CI-side mutation only proves CI honours the gate's exit code; this proves
 // the gate produces one. The real script runs in a scratch tree whose flutter,
-// dart and check_aab.sh are stubs that record each call and fail on request.
+// dart, python3 and check_aab.sh are stubs that record each call and fail on request.
 // Tagged slow: every case spawns bash.
 
 import 'dart:io';
@@ -43,7 +43,12 @@ GateRun runGate({String? failOn}) {
     Directory('${dir.path}/bin').createSync();
     File('${repoRoot.path}/tools/gate.sh')
         .copySync('${dir.path}/tools/gate.sh');
-    for (final path in ['bin/flutter', 'bin/dart', 'tools/check_aab.sh']) {
+    for (final path in [
+      'bin/flutter',
+      'bin/dart',
+      'bin/python3',
+      'tools/check_aab.sh',
+    ]) {
       File('${dir.path}/$path').writeAsStringSync(_stub);
       Process.runSync('chmod', ['+x', '${dir.path}/$path']);
     }
@@ -72,11 +77,26 @@ GateRun runGate({String? failOn}) {
 }
 
 void main() {
-  test('positive control: all six steps green prints GATE PASSED', () {
+  test('positive control: all seven steps green prints GATE PASSED', () {
     final r = runGate();
     expect(r.exitCode, 0, reason: r.output);
     expect(r.output, contains('GATE PASSED'));
-    expect(r.calls, hasLength(6), reason: r.calls.join('\n'));
+    expect(r.calls, hasLength(7), reason: r.calls.join('\n'));
+    expect(
+      r.calls[1],
+      startsWith('python3 -m unittest discover'),
+      reason: 'the python unit tests are step 2 (#98)',
+    );
+  });
+
+  test('a failing python unit test stops the gate before analysis', () {
+    final r = runGate(failOn: 'python3');
+    expect(r.exitCode, 7, reason: r.output);
+    expect(
+      r.output,
+      contains('GATE FAILED at unit-test the tools (python) (exit 7)'),
+    );
+    expect(r.calls.where((c) => c.startsWith('dart analyze')), isEmpty);
   });
 
   test('a failing step stops the gate with its exit code', () {
