@@ -74,6 +74,7 @@ class ToolRow extends StatelessWidget {
             enabled: !noMoves && controller.dealsLeft > 0,
             accent: true,
             onPressed: controller.dealRow,
+            onPressedAt: (at) => controller.dealRow(at: at),
           ),
         _Tool(
           key: 'restart',
@@ -123,6 +124,7 @@ class _Tool {
     required this.semantics,
     required this.enabled,
     required this.onPressed,
+    this.onPressedAt,
     this.accent = false,
   });
 
@@ -132,6 +134,11 @@ class _Tool {
   final String semantics;
   final bool enabled;
   final VoidCallback onPressed;
+
+  /// Set only for DEAL (#137): called instead of [onPressed], with the
+  /// pointer-down timestamp, so the debounce a following stock tap must
+  /// honour is set from the same clock a board tap uses.
+  final void Function(Duration at)? onPressedAt;
   final bool accent;
 }
 
@@ -147,6 +154,22 @@ class _ToolButton extends StatefulWidget {
 
 class _ToolButtonState extends State<_ToolButton> {
   bool _pressed = false;
+
+  /// The last real pointer-down's timestamp (#137) — null for a
+  /// Semantics-driven activation (TalkBack), which has none.
+  Duration? _downAt;
+
+  void _press(_Tool t) {
+    final at = _downAt;
+    if (t.onPressedAt != null && at != null) {
+      t.onPressedAt!(at);
+    } else {
+      t.onPressed();
+    }
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
+      if (mounted) setState(() => _pressed = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,72 +187,63 @@ class _ToolButtonState extends State<_ToolButton> {
       button: true,
       enabled: t.enabled,
       label: t.semantics,
-      onTap: t.enabled
-          ? () {
-              t.onPressed();
-              Future<void>.delayed(const Duration(milliseconds: 120), () {
-                if (mounted) setState(() => _pressed = false);
-              });
-            }
-          : null,
+      onTap: t.enabled ? () => _press(t) : null,
       excludeSemantics: true,
       child: Opacity(
         opacity: t.enabled ? 1 : Palette.disabledOpacity,
-        child: GestureDetector(
-          key: Key('tool-${t.key}'),
-          behavior: HitTestBehavior.opaque,
-          onTapDown: t.enabled ? (_) => setState(() => _pressed = true) : null,
-          onTapCancel: () => setState(() => _pressed = false),
-          onTap: t.enabled
-              ? () {
-                  t.onPressed();
-                  Future<void>.delayed(const Duration(milliseconds: 120), () {
-                    if (mounted) setState(() => _pressed = false);
-                  });
-                }
-              : null,
-          child: Container(
-            constraints: BoxConstraints(
-              minHeight: 48,
-              maxHeight: 50 * s < 48 ? 48 : 50 * s,
-            ),
-            height: 50 * s,
-            decoration: BoxDecoration(
-              color: fill,
-              border: Border.all(color: edge),
-              borderRadius: BorderRadius.circular(13 * s),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // The icon is decorative here: the button's label names it.
-                KeyedSubtree(
-                  key: Key('tool-${t.key}-glyph'),
-                  child: GlyphIcon(t.glyph, size: 15 * s, color: fg),
-                ),
-                SizedBox(height: 5 * s),
-                // Large text (#106): the label scales with the phone, fitted
-                // back down where the button is too narrow; the button
-                // keeps its height (there is room under the icon).
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 3 * s),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      t.label,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontFamily: kFontMono,
-                        fontSize: 8.5 * s,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.1 * 8.5 * s,
-                        color: fg,
-                        height: 1,
+        child: Listener(
+          onPointerDown: (e) => _downAt = e.timeStamp,
+          child: GestureDetector(
+            key: Key('tool-${t.key}'),
+            behavior: HitTestBehavior.opaque,
+            onTapDown: t.enabled
+                ? (_) => setState(() => _pressed = true)
+                : null,
+            onTapCancel: () => setState(() => _pressed = false),
+            onTap: t.enabled ? () => _press(t) : null,
+            child: Container(
+              constraints: BoxConstraints(
+                minHeight: 48,
+                maxHeight: 50 * s < 48 ? 48 : 50 * s,
+              ),
+              height: 50 * s,
+              decoration: BoxDecoration(
+                color: fill,
+                border: Border.all(color: edge),
+                borderRadius: BorderRadius.circular(13 * s),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // The icon is decorative here: the button's label names it.
+                  KeyedSubtree(
+                    key: Key('tool-${t.key}-glyph'),
+                    child: GlyphIcon(t.glyph, size: 15 * s, color: fg),
+                  ),
+                  SizedBox(height: 5 * s),
+                  // Large text (#106): the label scales with the phone,
+                  // fitted back down where the button is too narrow; the
+                  // button keeps its height (there is room under the icon).
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 3 * s),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        t.label,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: kFontMono,
+                          fontSize: 8.5 * s,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1 * 8.5 * s,
+                          color: fg,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

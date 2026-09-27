@@ -212,6 +212,42 @@ void main() {
     },
   );
 
+  testWidgets(
+    'focus returns to Reset after Cancel or Reset dismiss the confirmation (#142)',
+    (tester) async {
+      await openScreen(
+        tester,
+        const StatsScreen(),
+        store: await storeWith(seeded),
+      );
+      FocusNode resetFocus() => tester
+          .widget<Focus>(
+            find.byWidgetPredicate(
+              (w) => w is Focus && w.focusNode?.debugLabel == 'stats-reset',
+            ),
+          )
+          .focusNode!;
+
+      await tapKey(tester, 'stats-reset');
+      await tapKey(tester, 'stats-confirm-cancel');
+      await tester.pump();
+      expect(
+        resetFocus().hasFocus,
+        isTrue,
+        reason: 'Cancel returns focus to Reset',
+      );
+
+      await tapKey(tester, 'stats-reset');
+      await tapKey(tester, 'stats-confirm-reset');
+      await tester.pump();
+      expect(
+        resetFocus().hasFocus,
+        isTrue,
+        reason: 'Reset returns focus to itself',
+      );
+    },
+  );
+
   testWidgets('opened with a Spider game it starts on Spider', (tester) async {
     await openScreen(
       tester,

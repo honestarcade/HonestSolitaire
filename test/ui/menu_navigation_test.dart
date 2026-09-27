@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/data/app_store.dart';
+import 'package:honest_solitaire/data/game_saves.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/game.dart';
@@ -131,6 +132,43 @@ void main() {
       expect(find.byType(BoardView), findsOneWidget);
       expect(scope.controller.game, isA<SpiderGame>());
       expect(scope.controller.isPaused, isFalse);
+    },
+  );
+
+  testWidgets(
+    'Continue on a cold start reconstructs the saved game from disk, not the launch deal (#143)',
+    (tester) async {
+      // Nothing here comes from a live controller: this is what a real
+      // cold start looks like -- a save written by a previous session,
+      // read from disk by a controller that never touched it.
+      final store = AppStore.memory();
+      final deal = KlondikeGame.deal(
+        DealNumber(77),
+        const KlondikeOptions(draw: DrawMode.one),
+      );
+      final saved =
+          (deal.apply(deal.legalMoves().first) as Applied<KlondikeGame>).game;
+      await GameSaves(store).save(saved, start: true);
+
+      final scope = await openMenu(tester, store: store);
+      expect(
+        scope.controller.game.dealNumber,
+        isNot(saved.dealNumber),
+        reason: 'the launch deal, not the saved one -- this is the cold path',
+      );
+      expect(find.text('Continue Klondike'), findsOneWidget);
+
+      await tapKey(tester, 'menu-resume');
+      await settle(tester, transition: true);
+
+      expect(find.byType(BoardView), findsOneWidget);
+      final resumed = scope.controller.game as KlondikeGame;
+      expect(resumed.dealNumber, saved.dealNumber);
+      expect(resumed.moves, saved.moves);
+      expect(resumed.tableau, saved.tableau);
+      expect(resumed.foundations, saved.foundations);
+      expect(scope.controller.isPaused, isFalse);
+      expect(scope.controller.hasMove, isTrue);
     },
   );
 

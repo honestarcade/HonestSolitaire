@@ -335,6 +335,50 @@ void main() {
   );
 
   testWidgets(
+    'a stock tap within 300 ms of pressing DEAL is debounced (#137)',
+    (tester) async {
+      final controller = controllerFor(
+        SpiderGame.deal(
+          DealNumber(12),
+          const SpiderOptions(suits: SpiderSuits.two),
+        ),
+      );
+      await pumpBoard(tester, controller);
+
+      final dealRect = tester.getRect(find.byKey(const Key('tool-deal')));
+      final press1 = await tester.createGesture();
+      await press1.down(dealRect.center, timeStamp: const Duration(seconds: 1));
+      await press1.up(timeStamp: const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect((controller.game as SpiderGame).rowsLeft, 4);
+
+      final stockRect = tester.getRect(find.byKey(const Key('stock-sliver-0')));
+      final tap2 = await tester.createGesture();
+      await tap2.down(
+        stockRect.center,
+        timeStamp: const Duration(milliseconds: 1150),
+      );
+      await tap2.up(timeStamp: const Duration(milliseconds: 1150));
+      await tester.pump();
+      expect(
+        (controller.game as SpiderGame).rowsLeft,
+        4,
+        reason: 'too soon after DEAL, same as too soon after a stock tap',
+      );
+
+      final tap3 = await tester.createGesture();
+      await tap3.down(
+        stockRect.center,
+        timeStamp: const Duration(milliseconds: 1550),
+      );
+      await tap3.up(timeStamp: const Duration(milliseconds: 1550));
+      await tester.pump();
+      expect((controller.game as SpiderGame).rowsLeft, 3);
+    },
+  );
+
+  testWidgets(
     'NEW deals a different number with the same options; RESTART returns to the same deal',
     (tester) async {
       final controller = controllerFor(

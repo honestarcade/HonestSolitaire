@@ -93,6 +93,7 @@
     "moves": 12,
     "elapsedMs": 61000,
     "lastDrawCount": 3,
+    "lastUndone": false,
     "history": [
       {
         "kind": "draw"
@@ -296,6 +297,7 @@
     "timeBonus": 0,
     "moves": 8,
     "elapsedMs": 61000,
+    "lastUndone": false,
     "history": [
       {
         "kind": "move",

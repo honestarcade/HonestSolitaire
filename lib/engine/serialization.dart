@@ -11,6 +11,12 @@ part of 'game.dart';
 /// the same way, and keep `test/fixtures/save_v1.json` loading.
 const int saveFormat = 1;
 
+/// A generous ceiling on a single game's elapsed time (365 days), well
+/// short of where `Duration(milliseconds: elapsedMs)` could overflow its
+/// internal microseconds — a corrupted or hand-edited `elapsedMs` is
+/// refused here rather than crashing the load.
+const int _maxElapsedMs = 365 * 24 * 3600 * 1000;
+
 /// Why a saved game could not be loaded. Thrown, never a crash.
 sealed class SaveFormatError implements Exception {
   const SaveFormatError(this.message);
@@ -68,6 +74,7 @@ Map<String, Object?> _klondikeToJson(KlondikeGame g) => {
   'moves': g.moves,
   'elapsedMs': g._elapsedMs,
   'lastDrawCount': g.lastDrawCount,
+  'lastUndone': g._lastUndone,
   'history': [for (final m in g.historyMoves) m.toJson()],
   'winnable': g.winnable,
   if (g.solution != null) 'solution': [for (final m in g.solution!) m.toJson()],
@@ -85,6 +92,7 @@ Map<String, Object?> _spiderToJson(SpiderGame g) => {
   'timeBonus': g.timeBonus,
   'moves': g.moves,
   'elapsedMs': g._elapsedMs,
+  'lastUndone': g._lastUndone,
   'history': [for (final m in g.historyMoves) m.toJson()],
 };
 
@@ -93,6 +101,17 @@ Map<String, Object?> _spiderToJson(SpiderGame g) => {
 Object? _require(Map<String, Object?> json, String field) {
   if (!json.containsKey(field)) throw MissingFieldError(field);
   return json[field];
+}
+
+/// [fallback] when [field] is absent, so an older save missing a field
+/// added later still loads (#135) — present but malformed still throws.
+bool _boolOr(Map<String, Object?> json, String field, bool fallback) {
+  if (!json.containsKey(field)) return fallback;
+  final value = json[field];
+  if (value is! bool) {
+    throw InvalidValueError(field, 'must be a bool, not $value');
+  }
+  return value;
 }
 
 int _int(Map<String, Object?> json, String field, {int min = 0, int? max}) {
@@ -252,8 +271,9 @@ KlondikeGame _klondikeFromJson(Map<String, Object?> json) {
   final moveScore = _int(json, 'moveScore', min: -1000000, max: 1000000);
   final timeBonus = _int(json, 'timeBonus', max: timeBonusNumerator);
   final moves = _int(json, 'moves');
-  final elapsedMs = _int(json, 'elapsedMs');
+  final elapsedMs = _int(json, 'elapsedMs', max: _maxElapsedMs);
   final lastDrawCount = _int(json, 'lastDrawCount', max: 3);
+  final lastUndone = _boolOr(json, 'lastUndone', false);
   final history = _moves(json, 'history');
 
   // The clock is set before the replay so a won game's time bonus comes out
@@ -311,6 +331,7 @@ KlondikeGame _klondikeFromJson(Map<String, Object?> json) {
     winnable: winnable,
     solution: solution,
     clearSolution: solution == null,
+    lastUndone: lastUndone,
   );
 }
 
@@ -380,7 +401,8 @@ SpiderGame _spiderFromJson(Map<String, Object?> json) {
   final moveScore = _int(json, 'moveScore', max: 1000000);
   final timeBonus = _int(json, 'timeBonus', max: timeBonusNumerator);
   final moves = _int(json, 'moves');
-  final elapsedMs = _int(json, 'elapsedMs');
+  final elapsedMs = _int(json, 'elapsedMs', max: _maxElapsedMs);
+  final lastUndone = _boolOr(json, 'lastUndone', false);
   final history = _moves(json, 'history');
 
   final replayed = _replay(
@@ -406,7 +428,7 @@ SpiderGame _spiderFromJson(Map<String, Object?> json) {
       'the saved piles, score or moves do not follow from the saved history',
     );
   }
-  return replayed._copy(lastDelta: 0);
+  return replayed._copy(lastDelta: 0, lastUndone: lastUndone);
 }
 
 int _intField(Map<String, Object?> json, String key) {

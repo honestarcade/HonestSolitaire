@@ -7,6 +7,7 @@ import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/scoring.dart';
+import 'package:honest_solitaire/engine/solver.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
 import 'package:honest_solitaire/ui/game/game_event.dart';
@@ -380,6 +381,74 @@ void main() {
       await listener.lastRecord;
       expect(recorder.document.klondike.total.played, 1);
       listener.dispose();
+      controller.dispose();
+    });
+
+    test('a crash between a win and its record: relaunch reconciles it once, from a fresh recorder and listener (#141)', () async {
+      final store = AppStore.memory();
+      // Session 1: the game is won and saved, but the app is killed
+      // before StatsListener's own event ever records it -- no
+      // controller, no listener, nothing but the win landing on disk.
+      // A genuinely dealt-and-solved win, not a hand-built position: the
+      // saved slot must survive a real reload, which replays history
+      // from the deal number and refuses a position that does not
+      // follow from it.
+      final deal = KlondikeGame.deal(DealNumber(1));
+      final solved = solve(deal) as Solved;
+      var won = deal;
+      for (final move in solved.moves) {
+        won = (won.apply(move) as Applied<KlondikeGame>).game;
+      }
+      expect(won.isWon, isTrue);
+      final saves1 = GameSaves(store);
+      await saves1.save(won, start: true, outcome: false);
+
+      // Session 2 ("relaunch"): every object is new, reading the same
+      // store -- the real launch order in app.dart (saves.load() then
+      // reconcileSaved()), not the live-controller path #85's other
+      // tests exercise.
+      final recorder = StatsRecorder(store);
+      await recorder.load();
+      expect(
+        recorder.document.klondike.total.played,
+        0,
+        reason: 'nothing recorded yet',
+      );
+      final saves2 = GameSaves(store);
+      await saves2.load();
+      expect(saves2.value.klondike?.game.isWon, isTrue);
+      expect(saves2.value.klondike?.outcome, isFalse);
+      final controller = controllerFor(KlondikeGame.deal(DealNumber(9)));
+      final listener = StatsListener(controller, recorder, saves2);
+
+      await listener.reconcileSaved();
+
+      expect(
+        recorder.document.klondike.total.played,
+        1,
+        reason: 'the win is recorded on relaunch, not lost',
+      );
+      expect(recorder.document.klondike.total.won, 1);
+      expect(
+        saves2.value.klondike,
+        isNull,
+        reason: 'the reconciled slot is cleared',
+      );
+
+      // A second relaunch (or a second call) reconciles nothing further:
+      // the slot is gone, so there is nothing left to double-count.
+      final saves3 = GameSaves(store);
+      await saves3.load();
+      final listener2 = StatsListener(
+        controllerFor(KlondikeGame.deal(DealNumber(10))),
+        recorder,
+        saves3,
+      );
+      await listener2.reconcileSaved();
+      expect(recorder.document.klondike.total.played, 1, reason: 'once');
+
+      listener.dispose();
+      listener2.dispose();
       controller.dispose();
     });
 
