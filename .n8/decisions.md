@@ -458,3 +458,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The first release after M0-M5 is `v0.2.0`, not `v1.0.0-rc.1` as the M7 plan's round-one answer named release candidates. The owner: this build hasn't been through their own testing or a bug-fixing pass yet, and `rc` is reserved for the point M7 actually opens testing to outside testers. `v0.2.0` reflects the real capability jump (infrastructure-only to a fully playable app) without claiming release-candidate readiness.
   **Why:** owner's explicit correction during `/n8-release`, overriding the M7 planning note recorded 2026-09-26.
   **Issue:** M7 planning may assume rc versioning starts earlier than M6 (testing and bug fixing) completes -- worth an `/n8-replan M7` pass if the rc-numbering scheme needs adjusting once M6 is scoped.
+
+## /n8-release v0.2.0 -- 2026-09-27
+
+- **Decision:** Released `v0.2.0` at commit `7de2f3c3fb95ce21ca04ae70960bf6026fd5fbf0`, covering M0-M5 (infrastructure, CI, the solitaire engine, board and play, screens/persistence/statistics, brand/sound/accessibility). Created the GitHub Release before the tag (release.yml never creates it itself), which let run 36340218909's asset-attach step take its real path for the first time and close #38. Uploaded to Google Play's internal testing track by the same run.
+  **Why:** every milestone in scope was verified-closed with zero open confirmed bugs anywhere (the nine carried from `/n8-verify` were fixed first, see the `/n8-exec` fix-pass entries above), CI was green at the tip, and the owner named `v0.2.0` over the plan's `v1.0.0-rc.1` for this point in the process.
+  **Issue:** none directly; closes #38.
