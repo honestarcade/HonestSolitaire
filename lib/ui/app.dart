@@ -10,6 +10,16 @@ import 'package:flutter/services.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
+import '../data/app_store.dart';
+import '../data/game_saves.dart';
+import '../data/settings_store.dart';
+import '../data/stats.dart';
+import '../platform/platform_channel.dart';
+import 'game/game_event.dart';
+import 'navigation.dart';
+import 'screens/loading_screen.dart';
+import 'screens/menu_screen.dart';
+
 import 'board/board_layout.dart';
 import 'board/board_view.dart';
 import 'game/game_controller.dart';
@@ -41,10 +51,24 @@ class HonestSolitaireApp extends StatelessWidget {
     this.initialPlaySettings = const PlaySettings(),
     this.initialDisplayOptions = const DisplayOptions(),
     this.dealNumberSource,
+    this.store,
+    this.platform,
+    this.search,
+    this.showSplash = true,
   });
 
   final PlaySettings initialPlaySettings;
   final DisplayOptions initialDisplayOptions;
+
+  /// Production defaults when null: the platform channel, a store over its
+  /// files directory and `WinnableDealer.search`. Tests pass
+  /// `AppStore.memory()`, a mock channel and a fake search.
+  final AppStore? store;
+  final PlatformChannel? platform;
+  final WinnableSearch? search;
+
+  /// False skips the launch splash (tests of other screens).
+  final bool showSplash;
 
   /// Where the launch deal, NEW and Switch get their numbers; tests inject
   /// a fixed one. Null means `DealNumber.random`.
@@ -72,11 +96,19 @@ class HonestSolitaireApp extends StatelessWidget {
       theme: theme,
       darkTheme: theme,
       themeMode: ThemeMode.dark,
-      home: GameRoot(
+      // The scope sits above the Navigator so every pushed screen (Settings,
+      // and the rest of M4) shares the one controller and store.
+      builder: (context, child) => GameRoot(
         initialPlaySettings: initialPlaySettings,
         initialDisplayOptions: initialDisplayOptions,
         dealNumberSource: dealNumberSource ?? DealNumber.random,
+        store: store,
+        platform: platform,
+        search: search,
+        showSplash: showSplash,
+        child: child!,
       ),
+      home: const MenuScreen(),
     );
   }
 }
@@ -88,11 +120,21 @@ class GameRoot extends StatefulWidget {
     required this.initialPlaySettings,
     required this.initialDisplayOptions,
     required this.dealNumberSource,
+    this.store,
+    this.platform,
+    this.search,
+    this.showSplash = true,
+    required this.child,
   });
 
   final PlaySettings initialPlaySettings;
   final DisplayOptions initialDisplayOptions;
   final DealNumber Function() dealNumberSource;
+  final AppStore? store;
+  final PlatformChannel? platform;
+  final WinnableSearch? search;
+  final bool showSplash;
+  final Widget child;
 
   @override
   State<GameRoot> createState() => _GameRootState();
@@ -115,8 +157,56 @@ class _GameRootState extends State<GameRoot> {
     dealNumberSource: widget.dealNumberSource,
   );
 
+  late final PlatformChannel platform = widget.platform ?? PlatformChannel();
+  late final AppStore store = widget.store ?? AppStore.platform(platform);
+  late final GameSaves saves = GameSaves(store);
+  late final GamePersistence persistence = GamePersistence(controller, saves);
+  late final StatsRecorder stats = StatsRecorder(store);
+  late final StatsListener statsListener = StatsListener(
+    controller,
+    stats,
+    saves,
+  );
+  late final SettingsStore settingsStore = SettingsStore(
+    store,
+    playSettings,
+    displayOptions,
+  );
+
+  final navigating = NavigationGuard();
+  late final WinnableSearch search = widget.search ?? defaultWinnableSearch;
+  late bool _loading = widget.showSplash;
+
+  /// The launch order (#87): settings, statistics, saved games — each label
+  /// naming the step in progress. Without the splash the loads still run,
+  /// concurrently.
+  late final List<LaunchStep> launchSteps = [
+    LaunchStep('SHUFFLING', settingsStore.load),
+    LaunchStep('DEALING', stats.load),
+    LaunchStep('READY', () async {
+      await saves.load();
+      await statsListener.reconcileSaved();
+    }),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Touch the listeners so they attach from the first frame.
+    persistence;
+    statsListener;
+    if (!_loading) {
+      for (final step in launchSteps) {
+        step.run();
+      }
+    }
+  }
+
   @override
   void dispose() {
+    persistence.dispose();
+    statsListener.dispose();
+    settingsStore.dispose();
     controller.dispose();
     playSettings.dispose();
     displayOptions.dispose();
@@ -128,7 +218,26 @@ class _GameRootState extends State<GameRoot> {
     controller: controller,
     playSettings: playSettings,
     displayOptions: displayOptions,
-    child: const BoardScreen(),
+    store: store,
+    saves: saves,
+    stats: stats,
+    statsListener: statsListener,
+    settingsStore: settingsStore,
+    platform: platform,
+    search: search,
+    navigating: navigating,
+    persistence: persistence,
+    child: Stack(
+      children: [
+        widget.child,
+        if (_loading)
+          LoadingScreen.launch(
+            key: const Key('launch-splash'),
+            steps: launchSteps,
+            onDone: () => setState(() => _loading = false),
+          ),
+      ],
+    ),
   );
 }
 
@@ -140,12 +249,34 @@ class GameScope extends InheritedWidget {
     required this.controller,
     required this.playSettings,
     required this.displayOptions,
+    required this.store,
+    required this.saves,
+    required this.stats,
+    required this.statsListener,
+    required this.settingsStore,
+    required this.platform,
+    required this.search,
+    required this.navigating,
+    required this.persistence,
     required super.child,
   });
 
   final GameController controller;
   final ValueNotifier<PlaySettings> playSettings;
   final ValueNotifier<DisplayOptions> displayOptions;
+  final AppStore store;
+  final GameSaves saves;
+  final StatsRecorder stats;
+  final StatsListener statsListener;
+  final SettingsStore settingsStore;
+  final PlatformChannel platform;
+  final WinnableSearch search;
+  final NavigationGuard navigating;
+  final GamePersistence persistence;
+
+  /// Null outside the app (the board-only widget tests).
+  static GameScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GameScope>();
 
   static GameScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<GameScope>();
@@ -180,7 +311,11 @@ class BoardScreen extends StatelessWidget {
               controller: controller,
               padding: padding,
               topBar: (_) => TopBar(controller: controller, scale: scale),
-              toolRow: (_) => ToolRow(controller: controller, scale: scale),
+              toolRow: (_) => ToolRow(
+                controller: controller,
+                scale: scale,
+                onNew: () => openSetup(context, GameType.of(controller.game)),
+              ),
             );
           },
         ),

@@ -49,7 +49,14 @@ class NotFound extends DealerEvent {
 }
 
 /// A running search: a single-subscription [events] stream and [cancel].
-class DealerSearch {
+/// What the UI holds while a search runs; `DealerSearch` in production, a
+/// fake stream in tests.
+abstract interface class DealerHandle {
+  Stream<DealerEvent> get events;
+  Future<void> cancel();
+}
+
+class DealerSearch implements DealerHandle {
   DealerSearch._(this._base, this._options, this._nodeBudget, this._softLimit);
 
   final DealNumber _base;
@@ -67,10 +74,12 @@ class DealerSearch {
   int _lastProgressMs = -1000;
   int _dealsTried = 0;
 
+  @override
   Stream<DealerEvent> get events => _controller.stream;
 
   /// Stops the isolate at once and yields `Cancelled`; nothing follows. A
   /// no-op after a terminal event.
+  @override
   Future<void> cancel() async {
     if (_done) return;
     _finish(const Cancelled());

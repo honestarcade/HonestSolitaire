@@ -18,6 +18,15 @@ set -euo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")/.."
 
+# The version the app shows (#86). CI's PR gate sets HS_APP_BUILD=pr and the
+# bundle then reads pubspec.yaml's version; a local gate passes nothing and the
+# app shows "dev". release.yml passes its own defines outside this script.
+BUILD_DEFINES=""
+if [ -n "${HS_APP_BUILD:-}" ]; then
+  PUBSPEC_VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+  BUILD_DEFINES=" --dart-define=APP_VERSION=$PUBSPEC_VERSION --dart-define=APP_BUILD=$HS_APP_BUILD"
+fi
+
 LABELS=(
   "resolve dependencies"
   "analyze"
@@ -32,7 +41,7 @@ COMMANDS=(
   "dart analyze --fatal-infos"
   "dart format --output=none --set-exit-if-changed ."
   "flutter test --no-pub"
-  "flutter build appbundle --release --no-pub"
+  "flutter build appbundle --release --no-pub$BUILD_DEFINES"
   "tools/check_aab.sh"
 )
 

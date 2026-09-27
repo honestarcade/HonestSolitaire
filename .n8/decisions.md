@@ -277,3 +277,64 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The board's safe area is `MediaQuery.viewPadding` (the system bars), and both Android theme files inherit one `HonestDark` parent with a navy window background.
   **Why:** #81's discretion; one parent keeps light and dark mode identical, which the design is.
   **Issue:** #81
+
+## Ad-hoc -- 2026-09-26
+
+- **Change:** Invariant 1 now says the app itself sends player data nowhere, and that Android's own system backup, when the player has it on, may include the app's data in their Google account backup; the app does not set `android:allowBackup="false"`.
+  **Why:** Owner, /n8-plan M4 round two (2026-09-24): "We will allow google cloud backup. That's a user decision, not ours. We don't send the data anywhere else, but if the user has a system-level feature turned on that does we won't stop it." Applied by #83 as planned; `docs/privacy.md` says the same.
+  **Affects:** M7 (#121's Play data-safety answers must say the same); no other plan changes.
+
+## /n8-exec M4 -- 2026-09-26
+
+
+- **Decision:** Player data is written as versioned envelope documents (`{"format":1,"data":{...}}`) through one `AppStore` with atomic temp-file-and-rename writes, a per-document queue, and quarantine of an unreadable file to `.bad-<epochMillis>.json` (three kept) with a `corruptionNotices` list for the UI.
+  **Why:** #83's discretion; a torn write must never lose the previous good file, and a corrupt one must be kept for the player to see rather than silently replaced.
+  **Issue:** #83
+- **Decision:** The files directory and URL opening go through the app's own method channel `honestsolitaire/platform` in `MainActivity.kt`; the guard `test/guards/platform_surface_test.dart` covers the channel's handled methods and `android:allowBackup` (mutations #83a–#83d).
+  **Why:** Invariants 1 and 2 forbid a plugin for either; the owner's backup amendment (Ad-hoc above) is what the guard fixes in place.
+  **Issue:** #83
+- **Decision:** Saving is throttled to one write per 500 ms (leading and trailing) and flushed when the app pauses; `replaceGame` emits `Abandoned` only for a same-type game with a move, and the saved slot of the other type stays resumable.
+  **Why:** #84's and #85's discretion notes; a rapid undo burst should not write every step, and a switch of game type is not a loss.
+  **Issue:** #84, #85
+- **Decision:** Statistics are pure functions over an immutable `StatsDocument`; a record arriving before the load completes is queued and applied once, and a won slot whose outcome was never recorded is reconciled at launch.
+  **Why:** #85's discretion; the honest-count requirement (played once, won once) has to survive a crash between the win and the write.
+  **Issue:** #85
+- **Decision:** `GameScope` sits above the `Navigator` (MaterialApp `builder`) and carries the store, saves, stats, settings store, platform channel, winnable search and the navigation guard.
+  **Why:** The Settings route pushed over the board could not see a scope placed at `home`; every M4 screen needs the same objects.
+  **Issue:** #86, #87
+- **Decision:** Settings descriptions are corrected to what the app does (unlimited undo off is "your last move, and never a draw"; winnable-only is Klondike only) and the version line reads `--dart-define` values with `dev` as the local fallback; `ci.yml` passes `HS_APP_BUILD=pr` and `tools/gate.sh` forwards it with the pubspec version.
+  **Why:** #86's AC ask for honest copy; a version baked into source rots, so CI is the source (guard `release_version_test`, mutation #86).
+  **Issue:** #86
+- **Decision:** The splash and the search screen measure their minimum showing time with a `Future.delayed` started at init, not the wall clock; `DealerSearch` implements a `DealerHandle` interface so tests drive a fake stream.
+  **Why:** flutter_test fakes timers but not `DateTime.now`, and the dealer's constructor is library-private.
+  **Issue:** #87
+- **Decision:** System back during the launch splash is left to the route beneath (the board today, the menu after #94); no observer intercepts it.
+  **Why:** `WidgetsApp` handles `didPopRoute` before any observer registered after it, and both roots leave the app when nothing is in progress anyway.
+  **Issue:** #87
+- **Decision:** Until #94 puts the menu at the root, `openBoard` pushes the board above the launch board (`pushAndRemoveUntil(isFirst)`), so a found deal briefly stacks two boards.
+  **Why:** The navigation stack's shape is #94's; building the menu early would fork it.
+  **Issue:** #87
+- **Decision:** The setup screens' Deal, Keep playing and reroll live in `lib/ui/navigation.dart` (`startNewGame`, `keepPlaying`, `keepPlayingTarget`, `freshDealNumber`) and both screens share `OptionPanel` / `ChoiceButton` / `DealButton` with a per-game `SetupAccent`; Spider's first-run defaults are the `firstRunSpider` constant #86 already put beside the settings store, not a new `SpiderOptions.firstRun`.
+  **Why:** One home for the deal flow keeps #88 and #89 identical in behaviour; a second constant with the same value would be a fork.
+  **Issue:** #88, #89
+- **Decision:** `ScreenScaffold` bounds its pinned column with `IntrinsicHeight`, and card pairs in a scroll view (`Statistics`, the menu) sit in one too. *(Rule 1)*
+  **Why:** A `Spacer` or a stretched `Row` inside an unbounded scroll view has no height to take; the first setup screen hit it.
+  **Issue:** #88, #92, #94
+- **Decision:** The deal-number `TextField` sits in a transparent `Material`; the About screens sit in a transparent `Scaffold`.
+  **Why:** `TextField` and `SnackBar` need those ancestors and the plain `ScreenScaffold` has neither.
+  **Issue:** #58, #91
+- **Decision:** THE DEALS states the empty-column rule the engine plays (Strict: every column must hold a card before a deal; Relaxed lets you deal with one empty), not the pass-2 note's "a column can only take a run of one suit", which describes no rule the engine has.
+  **Why:** The AC ask for the built rules; the guard holds only the numbers, so the wording is a judgement call, logged.
+  **Issue:** #90
+- **Decision:** `PauseCard` and `WinCard` read `GameScope.maybeOf`: with a scope, New deal opens the setup screen and the win card shows STREAK; without one (the board-only widget tests of #80) New deal deals directly and STREAK is absent. `ToolRow` takes an optional `onNew` the same way.
+  **Why:** #80's tests pump `BoardView` alone with hand-built positions; rewriting them around the whole app would lose their precision for no behavioural gain.
+  **Issue:** #93
+- **Decision:** #93 and #94 share one commit.
+  **Why:** Main menu on the cards pops to the first route, which only means the menu once #94 makes it the root; #93's tests cannot pass on the board-as-root stack.
+  **Issue:** #93, #94
+- **Decision:** The controller still starts with a random Klondike (never saved until it changes) rather than "no game"; the menu's Continue reuses it when it is the saved game and installs the slot otherwise. The corruption banner reads `AppStore.corruptionNotices` straight from the scope.
+  **Why:** `GameController` requires a game and the board is only pushed with one; a nullable game would touch every board widget for a state that never shows.
+  **Issue:** #94
+- **Decision:** Screen tests settle route transitions with an explicit 900 ms pump (`settle(tester, transition: true)`) and `openScreen` tears the previous app down before pumping a new one.
+  **Why:** This Flutter's Android page transition runs 800 ms, and `pumpAndSettle` never settles while the search screen's bar loops; a second `HonestSolitaireApp` in one test otherwise reuses the first `GameRoot` state and store.
+  **Issue:** #87, #91

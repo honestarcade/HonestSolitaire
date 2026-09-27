@@ -79,6 +79,10 @@ jobs:
 
       - id: gate
         name: Quality gate
+        env:
+          # The PR bundle's Settings screen reads "v<pubspec> · BUILD pr"
+          # (#86); release.yml passes the real version and code instead.
+          HS_APP_BUILD: pr
         run: tools/gate.sh
 
       # Only on a pull request: a workflow_call from the release workflow

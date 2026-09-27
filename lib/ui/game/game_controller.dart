@@ -12,7 +12,6 @@ import 'package:flutter/widgets.dart'
     show AppLifecycleListener, AppLifecycleState;
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
-import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/finish.dart' as engine;
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart' as engine;
@@ -22,6 +21,7 @@ import '../settings/display_options.dart';
 import '../settings/play_settings.dart';
 import 'finish_sweep.dart';
 import 'game_clock.dart';
+import 'game_event.dart';
 import 'ui_hint.dart';
 
 /// A run to shake sideways: the pile, the first card of the run, and a
@@ -141,6 +141,20 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  /// Fired on every committed change to the game — moves, undo, restart, a
+  /// new or resumed deal — never for selection, hints, pause or clock ticks.
+  /// Persistence saves on it (#84).
+  final Signal gameChanged = Signal();
+
+  /// Typed events for statistics (#85): a game abandoned or won.
+  final ValueNotifier<GameEvent?> events = ValueNotifier(null);
+
+  /// Whether the current game has ever had a move applied — sticky across
+  /// undo back to the deal, restored from a saved game on resume. Distinct
+  /// from the clock's first-move gate.
+  bool _hasMove = false;
+  bool get hasMove => _hasMove;
+
   /// The game as the top bar shows it: updated on every change, clock ticks
   /// included, without notifying the board. (A plain `ValueNotifier` would
   /// stay silent on a tick, because game equality ignores the clock.)
@@ -164,13 +178,8 @@ class GameController extends ChangeNotifier {
 
   /// The other game, kept while the player is on this one (owner, /n8-plan
   /// M3 round two: switching back resumes it).
-  Game? _kept;
-  Game? get keptGame => _kept;
 
   /// The last Klondike options seen, for "Switch to Klondike".
-  KlondikeOptions _lastKlondikeOptions = const KlondikeOptions(
-    draw: DrawMode.three,
-  );
 
   /// Whether a finish sweep is stepping: every input is blocked meanwhile.
   bool get finishing => _sweep != null;
@@ -231,33 +240,6 @@ class GameController extends ChangeNotifier {
       pause();
     }
     _syncClock();
-  }
-
-  /// Puts the other game on the board, keeping this one in memory; a kept
-  /// game that is already won is replaced by a fresh deal of its type.
-  void switchGame() {
-    final current = _game;
-    if (current is KlondikeGame) _lastKlondikeOptions = current.options;
-    final other = _kept;
-    _kept = current;
-    Game next;
-    if (other != null && !other.isWon) {
-      next = other;
-    } else {
-      switch (current) {
-        case KlondikeGame():
-          next = SpiderGame.deal(
-            dealNumberSource(),
-            SpiderOptions(suits: SpiderSuits.two, autoFlip: settings.autoFlip),
-          );
-        case SpiderGame():
-          next = KlondikeGame.deal(
-            dealNumberSource(),
-            _lastKlondikeOptions.copyWith(autoFlip: settings.autoFlip),
-          );
-      }
-    }
-    replaceGame(next);
   }
 
   /// Starts the finish sweep over [game] (already checked with canFinish).
@@ -333,8 +315,11 @@ class GameController extends ChangeNotifier {
     _game = game;
     displayGame.value = game;
     if (!_moved) _moved = true;
+    _hasMove = true;
     _syncClock();
+    gameChanged.fire();
     if (game.isWon) {
+      events.value = Won(game);
       _winTimer?.cancel();
       _winTimer = Timer(winCardDelay, _showWin);
     } else if (settings.autoFinish &&
@@ -402,12 +387,30 @@ class GameController extends ChangeNotifier {
     _clearSpring();
     _peekColumn = null;
     _syncClock();
+    gameChanged.fire();
     notifyListeners();
   }
 
-  /// Swaps the game, clearing the selection and hint; always notifies. The
-  /// clock goes back to waiting for a first move.
+  /// A new game: the old one, if it had a move, is not yet won and is of the
+  /// same type, is abandoned (a loss, #85). Clears everything transient and
+  /// notifies; the clock waits for a first move.
   void replaceGame(Game game) {
+    _abandonIf(GameType.of(game) == GameType.of(_game), AbandonReason.newDeal);
+    _install(game, hasMove: false);
+  }
+
+  /// The same game again after a restart or the app closing: nothing is
+  /// recorded; [hasMove] says whether it already counts as played.
+  void resumeGame(Game game, {required bool hasMove}) =>
+      _install(game, hasMove: hasMove);
+
+  void _abandonIf(bool sameType, AbandonReason reason) {
+    if (_hasMove && sameType && !_game.isWon) {
+      events.value = Abandoned(_game, reason);
+    }
+  }
+
+  void _install(Game game, {required bool hasMove}) {
     _sweep?.dispose();
     _sweep = null;
     _shownStep = null;
@@ -419,6 +422,7 @@ class GameController extends ChangeNotifier {
     _game = game;
     displayGame.value = game;
     _moved = false;
+    _hasMove = hasMove;
     clock.reset();
     _selection = null;
     _hint = null;
@@ -428,6 +432,7 @@ class GameController extends ChangeNotifier {
     _dragging = null;
     _clearSpring();
     _peekColumn = null;
+    gameChanged.fire();
     notifyListeners();
   }
 
@@ -475,8 +480,19 @@ class GameController extends ChangeNotifier {
     KlondikeGame() => 0,
   };
 
-  /// The same deal again, at once, waiting for a first move.
-  void restart() => replaceGame(_game.restart());
+  /// The same deal again, at once, waiting for a first move; a game with a
+  /// move is abandoned first (#85).
+  void restart() {
+    _abandonIf(true, AbandonReason.restart);
+    _install(_game.restart(), hasMove: false);
+  }
+
+  /// Adds the clock's unflushed part to the game (before a save or a stats
+  /// record) and updates the display copy; no listeners fire.
+  void flushClockIntoGame() {
+    _flushClock();
+    displayGame.value = _game;
+  }
 
   /// A new random deal with the same options; the number is rerolled if it
   /// matches the current one.
@@ -1112,6 +1128,8 @@ class GameController extends ChangeNotifier {
     _winTimer?.cancel();
     clock.dispose();
     displayGame.dispose();
+    gameChanged.dispose();
+    events.dispose();
     super.dispose();
   }
 }

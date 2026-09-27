@@ -4,6 +4,7 @@ import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/ui/app.dart';
+import 'package:honest_solitaire/ui/navigation.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/card/card_style.dart';
 import 'package:honest_solitaire/ui/card/playing_card.dart';
@@ -27,8 +28,16 @@ Future<GameController> pumpApp(WidgetTester tester, Size logical) async {
   tester.view.viewPadding = insets;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    HonestSolitaireApp(dealNumberSource: () => DealNumber(17)),
+    HonestSolitaireApp(
+      showSplash: false,
+      dealNumberSource: () => DealNumber(17),
+    ),
   );
+  await tester.pump();
+  // The menu is the root (#94); the board is a route.
+  tester.state<NavigatorState>(find.byType(Navigator)).push(boardRoute());
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
   return tester.widget<GameScope>(find.byType(GameScope)).controller;
 }
 

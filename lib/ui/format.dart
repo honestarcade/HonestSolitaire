@@ -80,3 +80,15 @@ String? spokenScore(Game game) => switch (game) {
     'Score ${k.score < 0 ? 'minus ' : ''}${formatCount(k.score.abs())} dollar${k.score.abs() == 1 ? '' : 's'}',
   _ => 'Score ${formatCount(game.score)}',
 };
+
+/// Total play time as `<h>h <mm>m`, hours with separators, floored to
+/// minutes: "11h 20m", "0h 05m", "1,234h 05m".
+String formatPlayTime(int ms) {
+  final minutes = ms ~/ 60000;
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return '${formatCount(h)}h ${m.toString().padLeft(2, '0')}m';
+}
+
+/// Whole percent, rounded to nearest: 26 of 88 is "30%".
+String formatPercent(int part, int whole) => '${(part * 100 / whole).round()}%';

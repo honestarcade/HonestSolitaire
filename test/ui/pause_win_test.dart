@@ -16,8 +16,8 @@ import 'package:honest_solitaire/ui/game/win_card.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
 import 'package:honest_solitaire/ui/settings/play_settings.dart';
 
-import '../engine/positions.dart';
 import 'disposing_host.dart';
+import 'win_fixtures.dart';
 
 var nextDeal = 700;
 
@@ -48,36 +48,6 @@ Future<void> pumpBoard(WidgetTester tester, GameController controller) async {
     ),
   );
 }
-
-/// All face up, stock empty, one card on the waste: moving it makes the
-/// board solved.
-final oneMoveFromSolved = klondike(
-  tableau: [
-    cards('KC QD JC 10D'),
-    cards('KD QC JD 10C 9D 8C'),
-    cards('9C 8D 7C 6D'),
-    [],
-    cards('7D 6C 5D 4C 3D 2C'),
-    cards('5C 4D 3C 2D'),
-    cards('AD'),
-  ],
-  waste: cards('AC'),
-  foundations: [suitRun(Suit.spades, 13), suitRun(Suit.hearts, 13), [], []],
-);
-
-KlondikeGame nearWin(KlondikeOptions options) => klondike(
-  tableau: [cards('KC'), [], [], [], [], [], []],
-  foundations: [
-    suitRun(Suit.spades, 13),
-    suitRun(Suit.hearts, 13),
-    suitRun(Suit.diamonds, 13),
-    suitRun(Suit.clubs, 12),
-  ],
-  options: options,
-  moveScore: options.scoring == ScoringMode.vegas ? 40 : 100,
-  elapsed: const Duration(seconds: 120),
-  dealNumber: 48213,
-);
 
 Future<void> back(WidgetTester tester) async {
   await tester.binding.handlePopRoute();
@@ -112,13 +82,13 @@ void main() {
           'Resume',
           'Restart this deal',
           'New deal',
-          'Switch to Spider (2 suits)',
+          'Rules',
+          'Settings',
+          'Main menu',
         ]) {
           expect(find.text(label), findsOneWidget, reason: label);
         }
-        for (final absent in ['Rules', 'Settings', 'Main menu']) {
-          expect(find.text(absent), findsNothing, reason: absent);
-        }
+        expect(find.textContaining('Switch to'), findsNothing);
         expect(
           controller.clock.running,
           isFalse,
@@ -190,47 +160,6 @@ void main() {
         await tester.pump();
         expect(controller.game.dealNumber.value, isNot(9));
         expect(controller.isPaused, isFalse);
-      },
-    );
-
-    testWidgets(
-      'Switch to Spider deals a 2-suit Spider, keeps Klondike, and switches back to it',
-      (tester) async {
-        final controller = controllerFor(
-          KlondikeGame.deal(
-            DealNumber(9),
-            const KlondikeOptions(draw: DrawMode.three),
-          ),
-        );
-        await pumpBoard(tester, controller);
-        controller.tapPile(const StockPile(), null);
-        final played = controller.game;
-        controller.pause();
-        await tester.pump();
-        await tester.tap(find.byKey(const Key('pause-switch')));
-        await tester.pump();
-        final spider = controller.game;
-        expect(spider, isA<SpiderGame>());
-        expect((spider as SpiderGame).options.suits, SpiderSuits.two);
-        expect(spider.options.relaxed, isFalse);
-        expect(controller.isPaused, isFalse);
-        expect(controller.keptGame, played);
-        controller.tapPile(const StockPile(), null);
-        await tester.pump();
-        final spiderPlayed = controller.game;
-        controller.pause();
-        await tester.pump();
-        expect(find.text('Switch to Klondike'), findsOneWidget);
-        await tester.tap(find.byKey(const Key('pause-switch')));
-        await tester.pump();
-        expect(controller.game, played, reason: 'the kept Klondike resumes');
-        expect(controller.game.moves, 1);
-        expect(controller.keptGame, spiderPlayed);
-        expect(
-          controller.clock.running,
-          isFalse,
-          reason: 'waits for the next move',
-        );
       },
     );
 
@@ -405,8 +334,13 @@ void main() {
           findsOneWidget,
         );
         expect(find.byKey(const Key('win-new')), findsOneWidget);
-        expect(find.text('See statistics'), findsNothing);
-        expect(find.text('Main menu'), findsNothing);
+        expect(find.text('See statistics'), findsOneWidget);
+        expect(find.text('Main menu'), findsOneWidget);
+        expect(
+          find.text('STREAK'),
+          findsNothing,
+          reason: 'no statistics without the app scope',
+        );
         expect(controller.clock.running, isFalse);
       },
     );
