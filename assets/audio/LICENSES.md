@@ -10,18 +10,18 @@
 
 Every clip in `assets/audio/` is listed here. The audio guard
 (`test/guards/audio_assets_test.dart`) fails the build if a clip the app plays
-is missing, is not 44.1 kHz mono 16-bit PCM, or has no row below. This file
-and `PROMPTS.md` do not ship inside the app: `pubspec.yaml` bundles the clips
-one by one.
+is missing, is not 44.1 kHz mono 16-bit PCM, or has no dated row below. This
+file and `PROMPTS.md` do not ship inside the app: `pubspec.yaml` bundles the
+clips one by one.
 
 ## Licensed
 
-| File | Source | Licence |
-|---|---|---|
-| `music.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence |
-| `chime.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence |
-| `snap.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence |
-| `flip.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence |
-| `deal.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence |
+| File | Source | Licence | Date |
+|---|---|---|---|
+| `music.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence | 2026-09-27 |
+| `chime.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence | 2026-09-27 |
+| `snap.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence | 2026-09-27 |
+| `flip.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence | 2026-09-27 |
+| `deal.wav` | ElevenLabs text-to-sound-effects | ElevenLabs Creator plan, commercial licence | 2026-09-27 |
 
-**Generated:** 2026-09-27, on an ElevenLabs **Creator** subscription, model `eleven_text_to_sound_v2` via `POST /v1/sound-generation`.
+**Generated** on an ElevenLabs **Creator** subscription, model `eleven_text_to_sound_v2` via `POST /v1/sound-generation`; each row's date is the day that clip was generated.

@@ -5,12 +5,23 @@ five clip names, post-processed to the lengths and levels the game expects.
 Ported from Honest Sudoku's tools/sfx.py (its #49) with Honest Frog Across's
 loop path and relevel added back. It is NOT reproducible -- the model returns
 something new on every call -- so the committed WAVs are the artifacts of
-record. One clip per prompt, no auditioning (owner, /n8-plan M5 round one).
-It is never run by CI and needs the owner's key.
+record. M5 took one clip per prompt (owner, /n8-plan M5 round one); #115
+adds rounds of variants for the owner to choose from. It is never run by CI
+and needs the owner's key.
 
 Usage:
   python3 tools/sfx.py generate [--only deal,flip] [--force] [--dry-run]
+  python3 tools/sfx.py generate --only chime --prompt "<text>" --variants 3
+  python3 tools/sfx.py --install chime build/sfx/chime-r1-v2.wav
   python3 tools/sfx.py relevel            # set the installed loop to MUSIC_DBFS
+
+A plain `generate` installs one take per clip straight into assets/audio/.
+With --variants N it installs nothing: it stages N takes of one new round as
+build/sfx/<clip>-r<R>-v<N>.wav, each with a sidecar .json (prompt, request
+settings, date), and adds the round to PROMPTS.md with the verdict pending.
+--prompt replaces the built-in prompt and is refused with more than one
+clip. --install copies the chosen take into assets/audio/, reading its
+sidecar for the LICENSES.md date and the PROMPTS.md round it accepts.
 
 The key comes from ELEVENLABS_API_KEY, or the script loads
 ~/HonestArcadeApps/secrets/elevenlabs.env itself (KEY=value lines, `export`
@@ -200,14 +211,15 @@ def load_key() -> str:
     return ""
 
 
-def request_for(name: str) -> dict:
-    """The JSON body one clip is generated with."""
+def request_for(name: str, prompt: str = "") -> dict:
+    """The JSON body one clip is generated with; [prompt] replaces the
+    built-in one when given."""
     if name in MUSIC:
-        prompt, seconds = MUSIC[name]
-        return {"text": prompt, "duration_seconds": min(30.0, seconds),
+        default, seconds = MUSIC[name]
+        return {"text": prompt or default, "duration_seconds": min(30.0, seconds),
                 "prompt_influence": 0.5, "loop": True, "model_id": MODEL}
-    prompt, seconds = SOUNDS[name]
-    return {"text": prompt,
+    default, seconds = SOUNDS[name]
+    return {"text": prompt or default,
             # the API floor is 0.5s; anything shorter gets trimmed here instead
             "duration_seconds": max(0.5, round(seconds + 0.2, 2)),
             "prompt_influence": 0.6, "model_id": MODEL}
@@ -250,48 +262,175 @@ LICENSES_HEAD = """# Audio provenance
 
 Every clip in `assets/audio/` is listed here. The audio guard
 (`test/guards/audio_assets_test.dart`) fails the build if a clip the app plays
-is missing, is not 44.1 kHz mono 16-bit PCM, or has no row below. This file
-and `PROMPTS.md` do not ship inside the app: `pubspec.yaml` bundles the clips
-one by one.
+is missing, is not 44.1 kHz mono 16-bit PCM, or has no dated row below. This
+file and `PROMPTS.md` do not ship inside the app: `pubspec.yaml` bundles the
+clips one by one.
 
 ## Licensed
 
-| File | Source | Licence |
-|---|---|---|
+| File | Source | Licence | Date |
+|---|---|---|---|
 """
 
+TABLE_HEAD = "| File | Source | Licence | Date |\n|---|---|---|---|\n"
 
-def record_licence(name: str, today: str) -> None:
+
+def record_licence(name: str, date: str) -> None:
+    """The clip's row, dated the day its take was generated; one row per
+    clip, the newest first."""
     text = LICENSES.read_text() if LICENSES.exists() else LICENSES_HEAD
+    if TABLE_HEAD not in text:
+        raise SystemExit(f"sfx: {LICENSES} has no dated Licensed table")
     row = (f"| `{name}.wav` | ElevenLabs text-to-sound-effects | "
-           f"ElevenLabs {PLAN} plan, commercial licence |\n")
+           f"ElevenLabs {PLAN} plan, commercial licence | {date} |\n")
     text = re.sub(rf"^\| `{re.escape(name)}\.wav` \|.*\n", "", text, flags=re.M)
-    text = text.replace("| File | Source | Licence |\n|---|---|---|\n",
-                        "| File | Source | Licence |\n|---|---|---|\n" + row, 1)
-    generated = (f"**Generated:** {today}, on an ElevenLabs **{PLAN}** "
-                 f"subscription, model `{MODEL}` via `{ENDPOINT}`.\n")
-    if "**Generated:**" in text:
-        text = re.sub(r"^\*\*Generated:\*\*.*\n", generated, text, flags=re.M)
+    text = text.replace(TABLE_HEAD, TABLE_HEAD + row, 1)
+    generated = (f"**Generated** on an ElevenLabs **{PLAN}** subscription, "
+                 f"model `{MODEL}` via `{ENDPOINT}`; each row's date is the "
+                 f"day that clip was generated.\n")
+    if re.search(r"^\*\*Generated", text, flags=re.M):
+        text = re.sub(r"^\*\*Generated.*\n", generated, text, flags=re.M)
     else:
         text = text.rstrip("\n") + "\n\n" + generated
     LICENSES.write_text(text)
 
 
-def record_prompt(name: str, body: dict, today: str) -> None:
-    target = MUSIC[name][1] if name in MUSIC else SOUNDS[name][1]
-    section = (f"## {name}\n\n"
-               f"- Prompt: {body['text']}\n"
-               f"- Requested: {body['duration_seconds']} s; target {target} s"
-               f"{' (loop, untrimmed)' if body.get('loop') else ''}\n"
-               f"- prompt_influence: {body['prompt_influence']}; loop: "
-               f"{'yes' if body.get('loop') else 'no'}; model: {MODEL}\n"
-               f"- Generated: {today}\n\n")
-    head = ("# Prompts\n\nWhat each clip in this directory was generated from, "
-            "by `tools/sfx.py` (#98). One take per prompt, no auditioning.\n\n")
-    text = PROMPTS.read_text() if PROMPTS.exists() else head
-    text = re.sub(rf"^## {re.escape(name)}\n.*?(?=^## |\Z)", "", text,
-                  flags=re.M | re.S)
-    PROMPTS.write_text(text.rstrip("\n") + "\n\n" + section)
+PROMPTS_HEAD = """# Prompts
+
+What each clip in this directory was generated from, by `tools/sfx.py`, one
+table per clip. Round 0 is M5's single take (#98); each later round is one
+prompt generated as a set of variants for the owner to choose from (#115),
+with the owner's verdict. Only an accepted variant is installed.
+"""
+
+ROUND_HEAD = ("| Round | Prompt | Settings | Date | Variants | Verdict |\n"
+              "|---|---|---|---|---|---|\n")
+
+
+def _cell(text) -> str:
+    return str(text).replace("|", "\\|").replace("\n", " ")
+
+
+def settings_of(body: dict) -> str:
+    """The request's settings as one table cell."""
+    return (f"{body['duration_seconds']} s, prompt_influence "
+            f"{body['prompt_influence']}, loop "
+            f"{'yes' if body.get('loop') else 'no'}, {body['model_id']}")
+
+
+def _section(text: str, name: str):
+    """The (start, end) of clip [name]'s section in [text], or None."""
+    m = re.search(rf"^## {re.escape(name)}\n", text, flags=re.M)
+    if not m:
+        return None
+    nxt = re.search(r"^## ", text[m.end():], flags=re.M)
+    return m.start(), (m.end() + nxt.start()) if nxt else len(text)
+
+
+def rounds_of(name: str) -> dict:
+    """Round number -> its table row, for clip [name] in PROMPTS.md."""
+    if not PROMPTS.exists():
+        return {}
+    text = PROMPTS.read_text()
+    span = _section(text, name)
+    if span is None:
+        return {}
+    out = {}
+    for line in text[span[0]:span[1]].splitlines():
+        m = re.match(r"^\| (\d+) \|", line)
+        if m:
+            out[int(m.group(1))] = line
+    return out
+
+
+def next_round(name: str) -> int:
+    """One past the highest round recorded in PROMPTS.md or staged."""
+    seen = list(rounds_of(name))
+    if STAGE.exists():
+        for side in STAGE.glob(f"{name}-r*-v*.json"):
+            m = re.fullmatch(rf"{re.escape(name)}-r(\d+)-v\d+\.json", side.name)
+            if m:
+                seen.append(int(m.group(1)))
+    return max(seen, default=-1) + 1
+
+
+def record_round(name: str, rnd: int, body: dict, date: str,
+                 variants: int, verdict: str) -> None:
+    """Writes, or rewrites, round [rnd] of clip [name]'s table."""
+    text = PROMPTS.read_text() if PROMPTS.exists() else PROMPTS_HEAD
+    row = (f"| {rnd} | {_cell(body['text'])} | {_cell(settings_of(body))} | "
+           f"{date} | {variants} | {_cell(verdict)} |")
+    span = _section(text, name)
+    if span is None:
+        text = text.rstrip("\n") + f"\n\n## {name}\n\n{ROUND_HEAD}{row}\n"
+    else:
+        lines = text[span[0]:span[1]].rstrip("\n").split("\n")
+        at = [i for i, ln in enumerate(lines) if ln.startswith(f"| {rnd} |")]
+        if at:
+            lines[at[0]] = row
+        elif any(ln.startswith("|---") for ln in lines):
+            last = max(i for i, ln in enumerate(lines) if ln.startswith("|"))
+            lines.insert(last + 1, row)
+        else:
+            lines += ["", *ROUND_HEAD.rstrip("\n").split("\n"), row]
+        rest = text[span[1]:]
+        text = text[:span[0]] + "\n".join(lines) + "\n" + ("\n" + rest if rest else "")
+    PROMPTS.write_text(text.rstrip("\n") + "\n")
+
+
+def set_verdict(name: str, rnd: int, verdict: str) -> bool:
+    """Rewrites the verdict cell of round [rnd]; False when there is no
+    such row."""
+    row = rounds_of(name).get(rnd)
+    if row is None:
+        return False
+    head, _ = row.rstrip().rstrip("|").rstrip().rsplit(" | ", 1)
+    text = PROMPTS.read_text().replace(row, f"{head} | {_cell(verdict)} |", 1)
+    PROMPTS.write_text(text)
+    return True
+
+
+def stage_variants(name: str, body: dict, count: int, key: str,
+                   today: str) -> list:
+    """Generates [count] takes of one new round into build/sfx/, each with
+    its sidecar, and records the round as pending. Returns the WAV paths."""
+    rnd = next_round(name)
+    STAGE.mkdir(parents=True, exist_ok=True)
+    written = []
+    for n in range(1, count + 1):
+        pcm = finish(name, generate(body, key))
+        wav = STAGE / f"{name}-r{rnd}-v{n}.wav"
+        write_wav(wav, pcm)
+        wav.with_suffix(".json").write_text(json.dumps({
+            "clip": name, "round": rnd, "variant": n, "prompt": body["text"],
+            "settings": body, "date": today}, indent=2) + "\n")
+        written.append(wav)
+        print(f"  {wav.name}  {len(pcm) / 2 / RATE:.2f}s  staged")
+    record_round(name, rnd, body, today, count, "pending")
+    return written
+
+
+def install(name: str, wav: Path) -> int:
+    """Installs a staged take the owner chose, from its sidecar."""
+    side = wav.with_suffix(".json")
+    if not wav.is_file() or not side.is_file():
+        print(f"sfx: {wav} and its sidecar {side.name} must both exist",
+              file=sys.stderr)
+        return 2
+    meta = json.loads(side.read_text())
+    if meta.get("clip") != name:
+        print(f"sfx: {wav.name} is a take of {meta.get('clip')!r}, not {name!r}",
+              file=sys.stderr)
+        return 2
+    DEST.mkdir(parents=True, exist_ok=True)
+    (DEST / f"{name}.wav").write_bytes(wav.read_bytes())
+    record_licence(name, meta["date"])
+    verdict = f"accepted: v{meta['variant']}"
+    if not set_verdict(name, meta["round"], verdict):
+        record_round(name, meta["round"], meta["settings"], meta["date"], 1,
+                     verdict)
+    print(f"  {name}.wav  round {meta['round']} v{meta['variant']}  installed")
+    return 0
 
 
 def relevel() -> None:
@@ -308,33 +447,58 @@ def relevel() -> None:
         print(f"  {name}.wav  {before:.1f} -> {dbfs:.1f} dBFS  {frames / RATE:.1f}s")
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["generate", "relevel"])
+    ap.add_argument("command", nargs="?", choices=["generate", "relevel"])
     ap.add_argument("--only", default="")
     ap.add_argument("--force", action="store_true",
                     help="overwrite a clip already in assets/audio/")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the requests and stop")
-    args = ap.parse_args()
+    ap.add_argument("--prompt", default="",
+                    help="replace the built-in prompt (one clip only)")
+    ap.add_argument("--variants", type=int, default=0,
+                    help="stage N takes as one round instead of installing")
+    ap.add_argument("--install", nargs=2, metavar=("CLIP", "FILE"),
+                    help="install a staged take, reading its sidecar")
+    args = ap.parse_args(argv)
 
+    names = list(SOUNDS) + list(MUSIC)
+    if args.install:
+        if args.command:
+            print("sfx: --install takes no command", file=sys.stderr)
+            return 2
+        clip, path = args.install
+        if clip not in names:
+            print(f"unknown clip: {clip}", file=sys.stderr)
+            return 2
+        return install(clip, Path(path))
+    if args.command is None:
+        print("sfx: a command (generate, relevel) or --install is required",
+              file=sys.stderr)
+        return 2
     if args.command == "relevel":
         relevel()
         return 0
 
-    names = list(SOUNDS) + list(MUSIC)
     wanted = [k.strip() for k in args.only.split(",") if k.strip()] or names
     unknown = [k for k in wanted if k not in names]
     if unknown:
         print(f"unknown clip(s): {', '.join(unknown)}", file=sys.stderr)
         return 2
-    bodies = {name: request_for(name) for name in wanted}
+    if args.prompt and len(wanted) != 1:
+        print("sfx: --prompt needs exactly one clip in --only", file=sys.stderr)
+        return 2
+    if args.variants < 0:
+        print("sfx: --variants must be at least 1", file=sys.stderr)
+        return 2
+    bodies = {name: request_for(name, args.prompt) for name in wanted}
     if args.dry_run:
         for name, body in bodies.items():
             print(f"{name}: {json.dumps(body)}")
         return 0
     present = [n for n in wanted if (DEST / f"{n}.wav").exists()]
-    if present and not args.force:
+    if present and not args.force and not args.variants:
         print(f"sfx: already installed: {', '.join(present)} (use --force)", file=sys.stderr)
         return 2
     key = load_key()
@@ -347,21 +511,28 @@ def main() -> int:
     failed = []
     for name in wanted:
         try:
+            if args.variants:
+                stage_variants(name, bodies[name], args.variants, key, today)
+                continue
             pcm = finish(name, generate(bodies[name], key))
-        except Exception as exc:  # noqa: BLE001 - report, install the rest
+        except Exception as exc:  # noqa: BLE001 - report, do the rest
             print(f"  {name}: FAILED ({exc})")
             failed.append(name)
             continue
         write_wav(STAGE / f"{name}.wav", pcm)
         write_wav(DEST / f"{name}.wav", pcm)
-        record_prompt(name, bodies[name], today)
+        record_round(name, next_round(name), bodies[name], today, 1,
+                     "installed, not yet heard by the owner")
         record_licence(name, today)
         print(f"  {name}.wav  {len(pcm) / 2 / RATE:.2f}s  installed")
     if failed:
         print(f"\n{len(failed)} failed; rerun with --only {','.join(failed)}",
               file=sys.stderr)
         return 1
-    print(f"\n{len(wanted)} clips installed to {DEST}")
+    if args.variants:
+        print(f"\nstaged in {STAGE}; install the chosen take with --install")
+    else:
+        print(f"\n{len(wanted)} clips installed to {DEST}")
     return 0
 
 

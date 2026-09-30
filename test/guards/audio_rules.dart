@@ -99,8 +99,11 @@ List<String> wavProblems(List<int> bytes, {required bool loop}) {
   return out;
 }
 
-/// The Licensed table's clips, each with a source and a licence: rows of the
-/// first markdown table under `## Licensed` whose three cells are non-empty.
+final _isoDate = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+
+/// The Licensed table's clips, each with a source, a licence and the date
+/// it was generated (#115): rows of the first markdown table under
+/// `## Licensed` whose four cells are non-empty, the last a `YYYY-MM-DD`.
 Set<String> licensedClips(String licences) {
   // Sliced by hand: Dart's RegExp has no \Z, and a lookahead for the next
   // heading fails when Licensed is the last section.
@@ -126,9 +129,10 @@ Set<String> licensedClips(String licences) {
         .split('|')
         .map((c) => c.trim())
         .toList();
-    if (parts.length != 3 || parts.any((c) => c.isEmpty)) continue;
+    if (parts.length != 4 || parts.any((c) => c.isEmpty)) continue;
     final name = parts[0].replaceAll('`', '');
     if (name == 'File' || name.startsWith('---')) continue;
+    if (!_isoDate.hasMatch(parts[3])) continue;
     out.add(name);
   }
   return out;
@@ -162,7 +166,7 @@ List<Offender> audioOffenders(
     if (!licensed.contains(name)) {
       out.add((
         path: name,
-        message: 'no source and licence in the Licensed table',
+        message: 'no dated source and licence in the Licensed table',
       ));
     }
     for (final problem in wavProblems(bytes, loop: clip.loop)) {
