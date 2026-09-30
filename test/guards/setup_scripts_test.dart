@@ -42,18 +42,63 @@ cat > /dev/null
 exit 0
 ''';
 
+// One argument per line, so an argument holding a space stays one argument
+// and the exact argv can be compared.
 const _keytool = r'''#!/bin/sh
-echo "keytool $*" >> "$STUB_LOG"
+{
+  echo "== call"
+  for a in "$@"; do printf '%s\n' "$a"; done
+  [ -n "${HS_PASS_PROBE+set}" ] && printf '== env HS_PASS_PROBE=%s\n' "$HS_PASS_PROBE"
+} >> "$KEYTOOL_LOG"
 case "$*" in *-help*) echo "Key and Certificate Management Tool"; exit 0 ;; esac
 [ -n "${KEYTOOL_FAIL:-}" ] && exit 1
 exit 0
 ''';
 
+class KeytoolCall {
+  KeytoolCall(this.argv, this.passProbe);
+  final List<String> argv;
+
+  /// `HS_PASS_PROBE` as keytool saw it, or null when it was not set.
+  final String? passProbe;
+}
+
 class ScriptRun {
-  ScriptRun(this.exitCode, this.output, this.calls);
+  ScriptRun(
+    this.exitCode,
+    this.output,
+    this.calls,
+    this.keytool,
+    this.keystore,
+  );
   final int exitCode;
   final String output;
   final List<String> calls;
+  final List<KeytoolCall> keytool;
+  final String keystore;
+}
+
+List<KeytoolCall> _keytoolCalls(List<String> lines) {
+  final calls = <KeytoolCall>[];
+  List<String>? argv;
+  String? probe;
+  void flush() {
+    if (argv != null) calls.add(KeytoolCall(argv, probe));
+  }
+
+  for (final line in lines) {
+    if (line == '== call') {
+      flush();
+      argv = [];
+      probe = null;
+    } else if (line.startsWith('== env HS_PASS_PROBE=')) {
+      probe = line.substring('== env HS_PASS_PROBE='.length);
+    } else {
+      argv?.add(line);
+    }
+  }
+  flush();
+  return calls;
 }
 
 /// Runs tools/[script] with [stubs] (a subset of gcloud, gh, keytool) and a
@@ -90,6 +135,7 @@ ScriptRun runScript(
       ).writeAsStringSync(credentials.replaceAll('@KEYSTORE@', keystore.path));
     }
     final log = File('${dir.path}/calls.log')..writeAsStringSync('');
+    final keytoolLog = File('${dir.path}/keytool.log')..writeAsStringSync('');
     final r = Process.runSync(
       '${bin.path}/bash',
       ['${repoRoot.path}/tools/$script'],
@@ -100,6 +146,7 @@ ScriptRun runScript(
         'HS_SECRETS_DIR': secrets.path,
         'HS_KEYTOOL': '${bin.path}/keytool',
         'STUB_LOG': log.path,
+        'KEYTOOL_LOG': keytoolLog.path,
         ...env,
       },
     );
@@ -107,6 +154,8 @@ ScriptRun runScript(
       r.exitCode,
       '${r.stdout}${r.stderr}',
       log.readAsLinesSync().where((l) => l.isNotEmpty).toList(),
+      _keytoolCalls(keytoolLog.readAsLinesSync()),
+      keystore.path,
     );
   } finally {
     dir.deleteSync(recursive: true);
@@ -117,7 +166,7 @@ String creds({String pass = 'same-pass', String keyPass = 'same-pass'}) =>
     '''
 export HS_KEYSTORE_PATH="@KEYSTORE@"
 export HS_KEYSTORE_PASS="$pass"
-export HS_KEY_ALIAS="upload"
+export HS_KEY_ALIAS="upload key"
 export HS_KEY_PASS="$keyPass"
 ''';
 
@@ -181,6 +230,46 @@ void main() {
       expect(r.output, isNot(contains('same-pass')));
     });
 
+    test('the pre-flight asks keytool for the alias, password by env', () {
+      final r = runScript('set_ci_secrets.sh', credentials: creds());
+      expect(r.exitCode, 0, reason: r.output);
+      final argvs = [for (final c in r.keytool) c.argv];
+      expect(
+        argvs.where((a) => a.any((w) => w.contains('same-pass'))),
+        isEmpty,
+        reason:
+            "setup-scripts: the keystore password is on keytool's command "
+            'line\n$argvs',
+      );
+      final list = r.keytool.where((c) => c.argv.contains('-list')).toList();
+      expect(list, hasLength(1), reason: 'setup-scripts: no keytool -list');
+      final argv = list.single.argv;
+      final alias = argv.indexOf('-alias');
+      expect(
+        alias >= 0 && alias + 1 < argv.length ? argv[alias + 1] : null,
+        'upload key',
+        reason: 'setup-scripts: keytool -list does not check the alias\n$argv',
+      );
+      expect(
+        list.single.passProbe,
+        'same-pass',
+        reason:
+            'setup-scripts: keytool -list did not get the password in '
+            'HS_PASS_PROBE',
+      );
+      expect(argv, [
+        '-list',
+        '-keystore',
+        r.keystore,
+        '-storetype',
+        'PKCS12',
+        '-storepass:env',
+        'HS_PASS_PROBE',
+        '-alias',
+        'upload key',
+      ], reason: 'setup-scripts: keytool -list argv drifted');
+    });
+
     test('a key password that differs is refused before any upload', () {
       final r = runScript(
         'set_ci_secrets.sh',
@@ -224,7 +313,14 @@ void main() {
         'set_ci_secrets.sh',
         credentials: creds().replaceAll('@KEYSTORE@', '/nonexistent/k.p12'),
       );
-      expect([r.exitCode, r.output], [2, contains('is not readable')]);
+      expect(
+        [r.exitCode, r.calls.where((c) => c.startsWith('gh ')).toList()],
+        [2, isEmpty],
+        reason:
+            'setup-scripts: an unreadable keystore reached gh\n'
+            '${r.output}',
+      );
+      expect(r.output, contains('is not readable'));
     });
 
     test('an unreadable credentials file is refused', () {
