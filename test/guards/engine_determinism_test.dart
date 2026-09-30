@@ -22,6 +22,7 @@ import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 
+import '../../integration_test/golden_deals.g.dart';
 import 'engine_golden.dart';
 import 'repo_files.dart';
 
@@ -197,6 +198,26 @@ void main() {
         );
       });
     }
+
+    test('the on-device copy matches the golden file', () {
+      final drifted = <String>[
+        for (final r in records)
+          if (goldenDealPiles[r['mode']]?[r['deal']] != jsonEncode(r['piles']))
+            '${r['mode']} deal ${r['deal']}',
+        for (final MapEntry(key: mode, value: deals) in goldenDealPiles.entries)
+          for (final deal in deals.keys)
+            if (!records.any((r) => r['mode'] == mode && r['deal'] == deal))
+              '$mode deal $deal (not in the JSON)',
+      ];
+      expect(
+        drifted,
+        isEmpty,
+        reason:
+            'engine-determinism: integration_test/golden_deals.g.dart drifted '
+            'from test/fixtures/golden_deals.json at $drifted; regenerate both '
+            'with tools/generate_golden_deals.dart',
+      );
+    });
 
     test('draw 1 and draw 3 pin the same cards', () {
       for (final deal in goldenDeals) {
