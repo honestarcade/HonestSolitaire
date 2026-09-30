@@ -7,6 +7,7 @@ import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/ui/game/game_event.dart';
 import 'package:honest_solitaire/ui/screens/how_to_play_screen.dart';
 import 'package:honest_solitaire/ui/screens/stats_screen.dart';
+import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/widgets/game_tabs.dart';
 
 import '../engine/positions.dart';
@@ -48,4 +49,43 @@ void main() {
       expect(tabOf(tester), GameType.klondike);
     });
   }
+
+  for (final (name, screen) in [
+    ('Statistics', const StatsScreen(game: GameType.klondike) as Widget),
+    ('How to play', const HowToPlayScreen(game: GameType.klondike)),
+  ]) {
+    testWidgets(
+      '$name opened for a named game uses it over the last played (#170)',
+      (tester) async {
+        await openScreen(tester, screen, store: await spiderPlayedLast());
+        expect(
+          tabOf(tester),
+          GameType.klondike,
+          reason: '$name let the last game played override the named game',
+        );
+      },
+    );
+  }
+
+  testWidgets(
+    'the controller\'s game with a move beats the last played (#170)',
+    (tester) async {
+      final scope = await openScreen(tester, const SizedBox());
+      final c = scope.controller;
+      c.replaceGame(KlondikeGame.deal(DealNumber(5)));
+      c.tapPile(const StockPile(), null);
+      await tester.pump();
+      final spider = SpiderGame.deal(DealNumber(3));
+      await scope.saves.save(
+        applied(spider, spider.legalMoves().first),
+        start: true,
+      );
+      expect(scope.saves.value.lastPlayed, GameType.spider);
+      expect(
+        openingTab(scope, null),
+        GameType.klondike,
+        reason: 'the last game played overrode the game in play',
+      );
+    },
+  );
 }
