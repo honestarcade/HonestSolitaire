@@ -544,3 +544,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The replay sends TalkBack's taps as the board's semantics send them, with no time, and every double-tap line — the staged stock refusals included — must do what it says; a line that needs the Actions menu instead is a `[TalkBack]` bug. The replay's first run found two misfires, which #162 fixed on 2026-09-30 (fbde1b6). Announcement kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
   **Why:** the replay should match what TalkBack really sends, so a regression of #162 fails it.
   **Issue:** #116, #162
+- **Decision:** Filed and fixed #160 (sev:medium) from #114's layout sweep. `LinkText` sizes to its label, and the About screens' `·` separator sits in one `Row` with the link after it. The defect was on every width, not only 320 dp.
+  **Why:** the design has both link rows inline; the fix is small, and a medium bug left in M6 blocks `tools/m6_gate.sh`.
+  **Issue:** #160, #114
+- **Decision:** Filed and fixed #162 (sev:high) from #116's replay. Board semantics taps and TalkBack's DEAL activation carried time zero, so a second activation read as a double tap and Spider's stock was debounced. Tap time is now `Duration?`, and null never pairs or debounces. A device check on the emulator's Google TalkBack with v0.2.0 did **not** reproduce the stock half: both activations dealt. Recorded on #162; the Samsung TalkBack check is part of the owner's #116 sweep.
+  **Why:** the fix is correct for every activation that arrives as a semantics tap, and it leaves pointer taps unchanged.
+  **Issue:** #162, #116
+- **Decision:** Filed #161 (`needs-triage`, not fixed in M6). In a debug build on the API 24 emulator, the winnable search's 5 s choice never appeared while one solve ran over 90 s. The v0.2.0 release build found a deal within 3 s on the same emulator. #114's sweep now screenshots the loading screen and cancels it.
+  **Why:** not reproduced in a release build, and outside #114's scope (layout).
+  **Issue:** #161, #114
+- **Decision:** #114's API 24 core-check walk-through (release v0.2.0 by adb) was delegated to a background agent in its own worktree. My own runs cover the rest: `tools/e2e.sh` (PASSED on API 24), `tools/layout.sh` (both fonts PASSED on 320 dp after #160 was found), and the release install and cold start.
+  **Why:** the walk-through is long and screenshot-heavy; delegating it kept this run's context for the fixes.
+  **Issue:** #114
+- **Decision:** `tools/m6_gate.sh` counts an open bug with no severity label as a blocker ("not known to be minor"), in addition to the plan's three kinds. #136 (M2, sev:low, not `confirmed`) was not moved into M6, since the plan moves confirmed M2–M5 bugs only.
+  **Why:** the same rule as `/n8-verify`'s gate: an unrated bug is not known to be minor.
+  **Issue:** #118
