@@ -84,7 +84,9 @@ class Mutation:
     set and blinded the very guard the mutation exists to exercise (#213).
 
     `deletes` names one file removed for the run and `replaces_with` is a
-    `(target, fixture)` pair whose fixture bytes overwrite the target (#97):
+    `(target, fixture)` pair whose fixture bytes overwrite the target (#97)
+    -- or, when the target is also in `creates`, become a file that was not
+    there before and is removed afterwards (#111: a misnamed run record):
     the defects a text substitution cannot express -- a missing raster, the
     template's icon back in place. Both are byte snapshots restored in the
     same try/finally as the text edits; tools/test_mutation_check.py holds
@@ -538,7 +540,37 @@ MUTATIONS: list[Mutation] = [
              sub(r'if \[ -n "\$INTEGRATION_SEEN" \]; then\n  exit 5\nfi\n', ""),
              "a release bundle carrying the test harness would pass the scan",
              'bundle-scan: the integration_test plugin shipped unrefused', slow=True),
+    # ---- #111: the test plan ------------------------------------------------
+    Mutation("#111a", "the sampling table loses its only Vegas run",
+             "qa/test-plan.md",
+             sub(r"^\| R\d+ \| Klondike \|[^\n]*\| Vegas \|[^\n]*\n", "", flags=re.M),
+             "Vegas scoring would never be played on the phone",
+             'test-plan: sampling table lacks scoring=Vegas'),
+    Mutation("#111b", "the run-record template drops a header field",
+             "qa/runs/TEMPLATE.md",
+             sub(r"^- Runs: [^\n]*\n", "", flags=re.M),
+             "a record would not say which sampling rows it covered",
+             'test-plan: TEMPLATE.md lacks the header field "Runs:"'),
+    Mutation("#111c", "a run record is committed under the wrong name",
+             "", None,
+             "the record would be missed by anyone listing a device's runs",
+             'test-plan: misnamed run record',
+             replaces_with=(("qa/runs/2026-09-29-s26-owner.md",
+                             "test/fixtures/qa_run_misnamed.md"),),
+             creates=("qa/runs/2026-09-29-s26-owner.md",)),
+    Mutation("#111d", "a check loses its expected result",
+             "qa/test-plan.md",
+             sub(r"(### T001 — [^\n]*\nSteps:\n(?:- [^\n]*\n)+)Expected: [^\n]*\n", r"\1"),
+             "the owner would run a check with nothing to compare against",
+             'test-plan: T001 has no Expected:'),
 ]
+
+
+def missing_targets(m: Mutation, binary: list) -> list:
+    """The binary targets that should exist and do not: a `replaces_with`
+    target named in `creates` is a new file, so its absence is expected."""
+    new = {ROOT / made for made in m.creates}
+    return [p for p in binary if not p.exists() and p not in new]
 
 
 def snapshot_bytes(paths: list) -> dict:
@@ -845,14 +877,15 @@ def main() -> int:
             broken.append((m, str(exc)))
             print(f"  BROKEN  {label}\n          {exc}")
             continue
-        missing = [p for p in binary if not p.exists()]
+        missing = missing_targets(m, binary)
         if missing:
             broken.append((m, f"binary target missing: {missing[0]}"))
             print(f"  BROKEN  {label}\n          {missing[0]} does not exist")
             continue
         fixtures = {ROOT / target: (ROOT / fixture).read_bytes()
                     for target, fixture in m.replaces_with}
-        same = [p for p, data in fixtures.items() if p.read_bytes() == data]
+        same = [p for p, data in fixtures.items()
+                if p.exists() and p.read_bytes() == data]
         if (mutated == originals and not binary) or same:
             broken.append((m, "changed nothing"))
             print(f"  BROKEN  {label}\n          changed nothing")
@@ -883,7 +916,7 @@ def main() -> int:
             + "".join(f"  {path}\n" for path, _ in edits)
             + "".join(f"  {p.relative_to(ROOT)}\n" for p in binary)
         )
-        snapshot = snapshot_bytes(binary)
+        snapshot = snapshot_bytes([p for p in binary if p.exists()])
         for target, text in zip(targets, mutated):
             target.write_text(text)
         if m.deletes:
