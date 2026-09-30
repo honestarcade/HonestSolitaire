@@ -53,6 +53,10 @@ void main() {
     for (final e in ellipsized()) {
       problems.add('$name: $e ellipsized');
     }
+    // The first capture after a change can return the previous frame; the
+    // second is the screen as it is now.
+    await binding.takeScreenshot('discard');
+    await wait(t, 300);
     await binding.takeScreenshot('$fontTag-$name');
   }
 
@@ -133,15 +137,22 @@ void main() {
     await tapKey(t, 'menu-klondike');
     await tapKey(t, 'ksetup-deal-winnable');
     await tapKey(t, 'ksetup-deal');
-    if (find.byKey(const Key('loading-count')).evaluate().isNotEmpty) {
+    // Cancel, not wait: a debug build's solver can take minutes on a slow
+    // emulator, and the search itself is #117's to measure.
+    if (find.byKey(const Key('loading-cancel')).evaluate().isNotEmpty) {
       await shot(t, 'loading');
-    } else {
-      problems.add('loading: the search finished before a screenshot');
     }
-    await waitFor(t, find.byKey(const Key('board-title')), seconds: 90);
-    await tapKey(t, 'pause-pill');
-    await tapKey(t, 'pause-menu');
-    await waitFor(t, find.byKey(const Key('menu-resume')));
+    if (find.byKey(const Key('loading-cancel')).evaluate().isNotEmpty) {
+      await tapAt(t, t.getCenter(find.byKey(const Key('loading-cancel'))));
+      await waitFor(t, find.byKey(const Key('ksetup-deal')).hitTestable());
+      await back(t);
+    } else {
+      // The search won the race with Cancel: the board is open.
+      await waitFor(t, find.byKey(const Key('board-title')), seconds: 60);
+      await tapKey(t, 'pause-pill');
+      await tapKey(t, 'pause-menu');
+    }
+    await waitFor(t, find.byKey(const Key('menu-resume')).hitTestable());
     await tapKey(t, 'menu-settings');
     await setSetting(t, 'winnableOnly', false);
     await back(t);

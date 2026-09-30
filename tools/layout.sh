@@ -81,8 +81,10 @@ for font in 1.0 "$LARGEST"; do
     --driver test_driver/screenshot_driver.dart \
     --target integration_test/layout_sweep_test.dart \
     --dart-define=LAYOUT_FONT="$font" >>"$LOG" 2>&1; then
+    rm -f "$OUT/$font/discard.png"
     echo "layout: font $font passed ($(find "$OUT/$font" -name '*.png' | wc -l | tr -d ' ') screenshots)" | tee -a "$LOG"
   else
+    rm -f "$OUT/$font/discard.png"
     echo "layout: font $font FAILED (log: $LOG)" | tee -a "$LOG"
     status=1
   fi
