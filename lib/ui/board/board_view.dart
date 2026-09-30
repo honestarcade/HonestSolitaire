@@ -27,6 +27,7 @@ import 'win_cascade.dart';
 import 'pile_ref.dart';
 import 'slot_painter.dart';
 import '../game/finish_sweep.dart';
+import '../fonts.dart';
 
 /// The design's felt: radial-gradient(120% 80% at 50% 0%, #0a3a80, #05285F
 /// 52%, #031634).
@@ -1078,26 +1079,24 @@ class _Board extends StatelessWidget {
                 radius: tr,
                 edgeColor: _slotEdge(const StockPile(), _spiderEmptyEdge),
               ),
-              // One word on one line, shrunk to the slot where it is wider
-              // than the slot (#164).
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 2 * layout.scale),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'EMPTY',
-                      maxLines: 1,
-                      softWrap: false,
-                      textScaler: TextScaler.noScaling, // a slot label (#106)
-                      style: TextStyle(
-                        fontSize: 9 * layout.scale,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.06 * 9 * layout.scale,
-                        // The placeholder alpha #102 proves on the felt (#109).
-                        color: Palette.placeholderSuit,
-                        height: 1,
-                      ),
+              // The design's mono caps, one word on one line, shrunk only by
+              // what they overhang the slot (#164, #171).
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'EMPTY',
+                    maxLines: 1,
+                    softWrap: false,
+                    textScaler: TextScaler.noScaling, // a slot label (#106)
+                    style: TextStyle(
+                      fontFamily: kFontMono,
+                      fontSize: 8.5 * layout.scale,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.06 * 8.5 * layout.scale,
+                      // The placeholder alpha #102 proves on the felt (#109).
+                      color: Palette.placeholderSuit,
+                      height: 1,
                     ),
                   ),
                 ),

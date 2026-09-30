@@ -69,8 +69,17 @@ List<String> releaseOrderViolations(String releaseYaml) {
   final attach = indexWhere((s) => s['id'] == 'asset');
   if (create < 0) {
     violations.add('create step missing');
-  } else if (attach >= 0 && create > attach) {
-    violations.add('create step after attach');
+  } else {
+    if (attach >= 0 && create > attach) {
+      violations.add('create step after attach');
+    }
+    // Only a bundle that passed every check gets a release page (#169).
+    if (scan >= 0 && create < scan) {
+      violations.add('create step before the scan');
+    }
+    if (cert >= 0 && create < cert) {
+      violations.add('create step before the certificate check');
+    }
   }
   if (attach < 0) {
     violations.add('attach step missing');
@@ -209,6 +218,7 @@ jobs:
           '      - run: tools/check_aab.sh\n';
       expect(releaseOrderViolations(late), [
         'the permission scan runs before the Play upload',
+        'create step before the scan',
       ]);
     });
   });
@@ -235,6 +245,20 @@ jobs:
           .replaceFirst(play, '$createStep$play');
       expect(releaseOrderViolations(late), ['create step after attach']);
     });
+
+    test(
+      'a create step before the scan or the certificate check is caught (#169)',
+      () {
+        const scan = '      - run: tools/check_aab.sh\n';
+        final early = good
+            .replaceFirst(createStep, '')
+            .replaceFirst(scan, '$createStep$scan');
+        expect(releaseOrderViolations(early), [
+          'create step before the scan',
+          'create step before the certificate check',
+        ], reason: 'release-order: a release page before the checks passed');
+      },
+    );
 
     test('an attach after the Play upload is caught', () {
       final late = '${good.replaceFirst(attachStep, '')}$attachStep';

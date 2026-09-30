@@ -40,6 +40,17 @@ void main() {
             greaterThanOrEqualTo(0),
             reason: 'the field left the top',
           );
+          // An invalid number raises the error under the field; it shows too.
+          await tester.enterText(
+            find.descendant(of: field, matching: find.byType(EditableText)),
+            '0',
+          );
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(find.byKey(const Key('deal-number-error'))).bottom,
+            lessThanOrEqualTo(size.height - keyboard),
+            reason: 'the deal number error is under the keyboard on $name',
+          );
           tester.view.resetViewInsets();
         },
       );

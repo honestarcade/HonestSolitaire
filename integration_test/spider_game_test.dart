@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/deck.dart';
 import 'package:honest_solitaire/engine/game.dart';
+import 'package:honest_solitaire/ui/game/game_event.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'support/e2e.dart';
@@ -57,10 +58,12 @@ void main() {
       for (final m in line.take(5)) {
         await playMove(t, m);
       }
-      await tapKey(t, 'tool-undo');
+      await wait(t, 700);
+      await tapAt(t, t.getCenter(find.byKey(const Key('tool-undo'))));
       expect(state(c.game), state(four), reason: 'e2e: undo took back move 5');
-      await playMove(t, line[4]);
-      phaseOneDone(await background(t));
+      // Straight into the background, inside the replay's save window.
+      await playMove(t, line[4], settle: false);
+      phaseOneDone(await background(t, saved: GameType.spider));
       return;
     }
 
@@ -96,7 +99,7 @@ void main() {
         // Strict Spider refuses a deal onto an empty column: the board and
         // the saved slot are unchanged.
         await wait(t, 700);
-        final savedBefore = scope(t).saves.value.spider!.game.toJson();
+        final savedBefore = await savedState(t, GameType.spider);
         final boardBefore = state(c.game);
         await wait(t, 350);
         await tapAt(t, rectOfKey(t, 'stock-sliver-0').center);
@@ -107,7 +110,7 @@ void main() {
           reason: 'e2e: a refused deal changed the board',
         );
         expect(
-          scope(t).saves.value.spider!.game.toJson(),
+          await savedState(t, GameType.spider),
           savedBefore,
           reason: 'e2e: a refused deal changed the save',
         );
@@ -131,6 +134,16 @@ void main() {
     );
     await tapKey(t, 'win-stats');
     await waitFor(t, find.byKey(const Key('stats-back')));
+    await wait(t, 500);
+    expect(
+      [
+        textOf(t, 'stats-value-played'),
+        textOf(t, 'stats-sub-winrate'),
+        textOf(t, 'stats-value-streak'),
+      ],
+      ['1', '1 won', '1'],
+      reason: 'e2e: the Statistics screen does not show the win',
+    );
     await tapKey(t, 'stats-back');
     await waitFor(t, find.byKey(const Key('win-card')));
     await tapKey(t, 'win-menu');

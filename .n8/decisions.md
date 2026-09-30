@@ -572,3 +572,30 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** PR #167's `mutations` job was left to finish past `/n8-exec`'s 30-minute pending limit, not treated as a blocker. It had taken 41m37s on PR #158 (2026-09-30), the workflow's own timeout is 60 minutes, and it passed at 12:20 on 2026-09-30, 52 minutes after starting.
   **Why:** the limit exists to catch a stuck check, and this one's length was known and bounded.
   **Issue:** #167 (the M6 PR)
+
+## /n8-exec M6 (fix pass 1) -- 2026-09-30
+
+- **Decision:** `/n8-verify M6` found #169–#175. This pass fixes all seven on `milestone/m6-fixes-1`, and its PR carries `Refs`, not `Closes`, as #118's plan says: bugs close after their re-check on the final internal build. PR #167 broke that rule, and its ten casualties were reopened by the verification.
+  **Why:** #118's Claude's Discretion: "no `Closes` in PRs; each bug closed with its own comment naming the re-checked build".
+  **Issue:** #118, #169–#175
+- **Decision:** `test/ui/tab_choice_test.dart` is tagged `guard`, so mutations `#170a` and `#170b` can reach it. `tools/mutation_check.py` runs only guard-tagged tests, and before the tag both mutations went unrun.
+  **Why:** "Adding a guard means adding its mutation" (CLAUDE.md) only works when the mutated tests run.
+  **Issue:** #170
+- **Decision:** #171 draws Spider's EMPTY in the design's face and size (IBM Plex Mono, 8.5 × scale, 0.06 em), fitted to the slot's full width, instead of Outfit shrunk into an inset slot. The design's own label overhangs its 26 px slot, so a small shrink remains; the test holds it at no more than 15 %.
+  **Why:** the verifier measured the #164 version at 5–6 dp, against the design's 8.5.
+  **Issue:** #171, #164
+- **Decision:** #172 adds a 10 s periodic clock save while a game is in play, and flushes on `inactive`.
+  **Why:** a kill without warning (power loss, ANR, a kill from `inactive`) should lose at most that much play time. The flush writes only when time was played since the last write, so an idle or untouched game costs nothing.
+  **Issue:** #172
+- **Decision:** #174's level floor is −50 dBFS RMS, far below the recorded clips (−21.5 to −36.6 dBFS, measured 2026-09-30); byte-identical clips are also refused. The owner's ear stays the judge of quality (#115).
+  **Why:** placeholders are silence or copies; a floor near the real clips' levels would refuse a legitimately quiet clip.
+  **Issue:** #174
+- **Decision:** #169's create-step behaviours are proven by running the real `run:` scripts from `release.yml` under bash with a stubbed `gh` (`test/guards/release_scripts_test.dart`). The create step's empty-array expansion became `${flags[@]+…}`, which is safe on bash 3.2 under `set -u`. #175 adds a `clear_release_mark` step after the Play upload, and `mark_release` removes an earlier mark before adding its own.
+  **Why:** the create step can only run for real on a tag; the stub run is the closest proof that exists before one.
+  **Issue:** #169, #175
+- **Decision:** #173 ends phase 1 with an undo and the same move again straight into the background. The suite first checks that the move is still unsaved, then that backgrounding saved it. A run with the flush disabled fails at "e2e: backgrounding did not save the board".
+  **Why:** the first version of this check passed with the flush disabled: the tap helpers' waits let the throttle's trailing write land first. The precondition turns a too-slow run into a loud failure rather than a vacuous pass.
+  **Issue:** #173
+- **Decision (Rule 1, my own error):** the first commit of #169's tests wrote them over `test/guards/release_scripts_test.dart`, an M1 guard (#37: `ci_version.sh` and `verify_upload_cert.sh` refusals, 13 tests). The gate stayed green, since a removed guard fails nothing. A per-file count against e233e08 (JSON reporter) found it before the PR. The original is restored unchanged, and #169's tests live in `test/guards/release_steps_test.dart` with the prefix `release-steps:`.
+  **Why:** a guard silently deleted is the failure the mutation battery exists to catch; the full battery is re-run on this branch.
+  **Issue:** #169, #37
