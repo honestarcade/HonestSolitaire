@@ -541,6 +541,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `test/qa/a11y_sweep_test.dart` reads the move lines back out of `qa/a11y-sweep.md` and matches each against the legal moves, instead of re-running the searches as `listening_test.dart` does; it is tagged `guard` with mutations #116a–e. `spider_search.dart` stays in `integration_test/support/` and is imported from `test/qa/`.
   **Why:** a beam search per test run would add seconds to every mutation in the battery; reading the script also makes it the single source of the deal numbers.
   **Issue:** #116
-- **Decision:** The replay models TalkBack taps a second apart (the #108 intent), and the lines where the app's timeless semantic taps misfire — a re-tap of the card node tapped last, and Spider stock taps after the first stock deal (#137's debounce) — are listed as `Watch:` lines with Actions fallbacks, not routed around. Staged kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
-  **Why:** the sweep exists to find these on the phone; the script keeps the win playable either way. Filing is left to the owner's run.
-  **Issue:** #116
+- **Decision:** The replay sends TalkBack's taps as the board's semantics send them, with no time, and every double-tap line — the staged stock refusals included — must do what it says; a line that needs the Actions menu instead is a `[TalkBack]` bug. The replay's first run found two misfires, which #162 fixed on 2026-09-30 (fbde1b6). Announcement kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
+  **Why:** the replay should match what TalkBack really sends, so a regression of #162 fails it.
+  **Issue:** #116, #162

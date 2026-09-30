@@ -89,15 +89,13 @@ List<String> hear(GameController c, void Function() act) {
 }
 
 /// Plays [step] as the owner will: the source node, then the destination
-/// node, by double-tap; or the source's custom action by its label. Taps
-/// are [at] and a second later: an owner, not a double tap.
-void perform(GameController c, TalkBackStep step, Duration at) {
+/// node, by double-tap; or the source's custom action by its label. A
+/// TalkBack double-tap reaches the board as a semantics tap, with no time.
+void perform(GameController c, TalkBackStep step) {
   switch (step) {
     case DoubleTapStep(:final target, :final targetIndex):
-      c.tapPile(step.source, step.sourceIndex, at: at);
-      if (target != null) {
-        c.tapPile(target, targetIndex, at: at + const Duration(seconds: 1));
-      }
+      c.tapPile(step.source, step.sourceIndex);
+      if (target != null) c.tapPile(target, targetIndex);
     case ActionStep(:final action):
       final offered = step.source is StockPile
           ? stockActions(c.game)
@@ -130,14 +128,11 @@ List<Card> selectedRun(Game g, TalkBackStep step) {
   };
 }
 
-/// Replays [b]'s lines on [c] from its deal. Returns the numbers of the
-/// double-tap lines whose first node is the node double-tapped last (a
-/// card's node, not the stock): the lines the script warns about.
-List<int> replay(GameController c, Block b, String game) {
+/// Replays [b]'s lines on [c] from its deal, with the staged stock taps
+/// where the script places them.
+void replay(GameController c, Block b, String game) {
   expect(b.lines, isNotEmpty, reason: 'a11y-sweep: $game lists no moves');
   var g = c.game;
-  final steps = <TalkBackStep>[];
-  final fallbacks = <int, String>{};
   for (final (i, (n, text)) in b.lines.indexed) {
     expect(n, i + 1, reason: 'a11y-sweep: $game lines are not numbered 1..');
     final step = matchLine(g, text, n);
@@ -148,14 +143,12 @@ List<int> replay(GameController c, Block b, String game) {
           'a11y-sweep: $game line $n is not a move from the position before '
           'it, worded as TalkBack says it:\n$text',
     );
-    steps.add(step!);
-    if (step is DoubleTapStep) {
-      fallbacks[n] =
-          'On "${step.sourceLabel}", Actions → "${actionLabel(g, step.move)}"';
-    }
-    final said = hear(
-      c,
-      () => perform(c, step, Duration(seconds: 10 * (i + 1))),
+    final history = c.game.historyLength;
+    final said = hear(c, () => perform(c, step!));
+    expect(
+      [c.game.historyLength, c.game.historyMoves.lastOrNull],
+      [history + 1, step!.move],
+      reason: 'a11y-sweep: $game line $n does not make its move on the board',
     );
     final expected = [
       if (step case DoubleTapStep(target: _?))
@@ -176,14 +169,7 @@ List<int> replay(GameController c, Block b, String game) {
         label,
         reason: 'a11y-sweep: $game\'s stock after line $n is not "$label"',
       );
-      final heard = hear(
-        c,
-        () => c.tapPile(
-          const StockPile(),
-          null,
-          at: Duration(seconds: 10 * (i + 1) + 5),
-        ),
-      );
+      final heard = hear(c, () => c.tapPile(const StockPile(), null));
       expect(
         [
           heard,
@@ -199,24 +185,6 @@ List<int> replay(GameController c, Block b, String game) {
       );
     }
   }
-  final again = watchLines(steps);
-  for (final n in again) {
-    expect(
-      b.body,
-      contains(fallbacks[n]),
-      reason: 'a11y-sweep: $game line $n has no Actions fallback in the script',
-    );
-  }
-  return again;
-}
-
-/// The script's `Watch: lines 5, 25` (or `none`) for [b].
-List<int> watchInScript(Block b) {
-  final m = RegExp(r'^Watch: (.+)$', multiLine: true).firstMatch(b.body);
-  if (m == null || m[1]!.trim() == 'none') return const [];
-  return [
-    for (final n in RegExp(r'\d+').allMatches(m[1]!)) int.parse(n.group(0)!),
-  ];
 }
 
 /// The block's staged stock taps: `- After line N … Double-tap "label" —
@@ -275,13 +243,17 @@ void main() {
       }),
       ...hear(c, () => c.tapPile(const StockPile(), null)),
       ...hear(c, c.undo),
+      ...hear(c, () {
+        c.tapPile(ace.$1, ace.$2);
+        c.tapPile(ace.$1, ace.$2); // the same card again
+      }),
     ];
     expect(
       c.game.historyLength,
       0,
       reason: 'a11y-sweep: the staged steps do not leave the deal as dealt',
     );
-    expect(said, hasLength(7), reason: 'a11y-sweep: staged steps: $said');
+    expect(said, hasLength(9), reason: 'a11y-sweep: staged steps: $said');
     quoted(klondike.body, [
       ...said,
       nodeLabel(deal, ace.$1, ace.$2),
@@ -294,13 +266,7 @@ void main() {
 
   test('the Klondike lines play by TalkBack to the end the script names', () {
     final c = talkBackController(klondikeDeal());
-    expect(
-      replay(c, klondike, 'klondike'),
-      watchInScript(klondike),
-      reason:
-          'a11y-sweep: klondike\'s "Watch:" lines are not the ones '
-          'TalkBack may misfire on',
-    );
+    replay(c, klondike, 'klondike');
     final g = c.game as KlondikeGame;
     switch (klondike.ends) {
       case 'FINISH':
@@ -383,13 +349,7 @@ void main() {
     );
     final deal = SpiderGame.deal(DealNumber(spider.deal!), a11ySpiderOptions);
     final c = talkBackController(deal);
-    expect(
-      replay(c, spider, 'spider'),
-      watchInScript(spider),
-      reason:
-          'a11y-sweep: spider\'s "Watch:" lines are not the ones '
-          'TalkBack may misfire on',
-    );
+    replay(c, spider, 'spider');
     expect(spider.ends, 'the win', reason: 'a11y-sweep: spider "Ends with:"');
     expect(
       c.game.isWon,

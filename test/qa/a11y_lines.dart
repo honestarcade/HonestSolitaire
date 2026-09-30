@@ -255,30 +255,6 @@ TalkBackStep? matchLine(Game g, String text, int n) {
   return null;
 }
 
-/// The double-tap steps TalkBack may misfire on, by number: a step whose
-/// first node is the card node double-tapped last, and a Spider stock
-/// double-tap after an earlier one that dealt. A replay of the sweep's lines
-/// through the game controller with TalkBack's taps, which carry no time
-/// (agent, 2026-09-30), found the first taken as a double tap on that card
-/// and the second as the stray tap the deal debounce ignores. The script
-/// warns about these lines and gives each an Actions fallback.
-List<int> watchLines(List<TalkBackStep> steps) {
-  final out = <int>[];
-  (BoardPile, int?)? last;
-  var dealtByTap = false;
-  for (final (i, step) in steps.indexed) {
-    if (step is! DoubleTapStep) continue;
-    final first = (step.source, step.sourceIndex);
-    final isStock = step.source is StockPile;
-    if ((!isStock && last == first) || (step.move is DealRow && dealtByTap)) {
-      out.add(i + 1);
-    }
-    if (step.move is DealRow) dealtByTap = true;
-    last = step.target == null ? first : (step.target!, step.targetIndex);
-  }
-  return out;
-}
-
 List<List<Card>> _tableau(Game g) => switch (g) {
   KlondikeGame k => k.tableau,
   SpiderGame s => s.tableau,

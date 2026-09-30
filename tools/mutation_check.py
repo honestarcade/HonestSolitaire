@@ -671,7 +671,7 @@ MUTATIONS: list[Mutation] = [
              'a11y-sweep: the Klondike staging does not quote what the app says'),
     Mutation("#116e", "the Spider win stops one move short",
              "qa/a11y-sweep.md",
-             sub(r"\n\d+\. [^\n]*\n\n(Watch: [^\n]*\nEnds with: the win)", r"\n\n\1"),
+             sub(r"\n\d+\. [^\n]*\n\n(Ends with: the win)", r"\n\n\1"),
              "the owner would be left one move short of the win the check promises",
              'a11y-sweep: spider does not end in a win'),
 ]

@@ -79,14 +79,9 @@ Future<(int, int)?> _scan(
 
 void _print(String title, Game deal, List<Move> line) {
   stdout.writeln('\n$title — ${line.length} moves');
-  final steps = talkBackSteps(deal, line);
-  for (final (i, step) in steps.indexed) {
+  for (final (i, step) in talkBackSteps(deal, line).indexed) {
     stdout.writeln(step.line(i + 1));
   }
-  final watch = watchLines(steps);
-  stdout.writeln(
-    'Watch: ${watch.isEmpty ? 'none' : 'line${watch.length == 1 ? '' : 's'} ${watch.join(', ')}'}',
-  );
 }
 
 Future<void> main(List<String> args) async {

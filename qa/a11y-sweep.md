@@ -124,8 +124,8 @@ Steps:
 - Double-tap "Ace of spades, column 7, top card": hear "Ace of spades selected". Double-tap "Column 7, 6 face-down cards": hear "Selection cleared".
 - Double-tap "Ace of spades, column 7, top card", then "Column 2, 1 face-down card": hear "Can't move there"; nothing moves.
 - Double-tap "Stock, 24 cards": hear "Drew eight of hearts". Double-tap "Undo": hear "Undone".
-- Double-tap "Ace of spades, column 7, top card" to select it, then double-tap the same card again. If the ace moved, double-tap "Undo" so the board is back at the deal.
-Expected: Each quoted phrase is heard at its step and the board changes only where a step says so. The last step says "Selection cleared" and leaves the ace in column 7 — the re-tap that clears a selection (#108). A replay of that step through the game controller with TalkBack's taps (agent, 2026-09-30) sent the ace to its foundation instead; if the phone does the same, it is a `[TalkBack]` bug.
+- Double-tap "Ace of spades, column 7, top card": hear "Ace of spades selected". Double-tap the same card again: hear "Selection cleared".
+Expected: Each quoted phrase is heard at its step and the board changes only where a step says so; the ace is still in column 7 at the end and the board is as dealt.
 Related: T204, T212, T213
 Where: phone
 
@@ -133,8 +133,7 @@ Where: phone
 Steps:
 - From the deal, play each line below in order. "Double-tap A, then B" means put focus on A and double-tap (you hear A's run "… selected"), then on B and double-tap. "On A, Actions → B" means put focus on A, open Actions and choose B. A line with a single double-tap is a stock tap.
 - After each line, check the words you hear.
-- Line 25 starts on the card node you double-tapped last (line 23's destination). If its first double-tap does anything but select "Five of spades and 1 more", note what happened, double-tap "Undo" if a card moved, and make the move by Actions instead: On "Five of spades, column 7, 2nd from top", Actions → "Move to column 2".
-Expected: Every line does what it says and TalkBack says the words after "hear" (move, then any card turned). Line 25's first double-tap selects, as any other would: the board takes two TalkBack activations of the same node as one double tap however far apart they are, which a replay through the game controller found would misfire there (agent, 2026-09-30), and that is a `[TalkBack]` bug. After line 35 every tableau card is face up and "Finish" reads as enabled; Auto-finish does not start by itself, because the stock still holds cards.
+Expected: Every line does what it says and TalkBack says the words after "hear" (move, then any card turned). Every double-tap line works by double-tap alone; a line that can only be made from the Actions menu is a `[TalkBack]` bug. After line 35 every tableau card is face up and "Finish" reads as enabled; Auto-finish does not start by itself, because the stock still holds cards.
 
 1. Double-tap "Ace of spades, column 7, top card", then "Spades foundation, empty" — hear "Ace of spades to spades foundation. Card turned: jack of diamonds"
 2. On "Eight of spades, column 6, top card", Actions → "Move to column 4" — hear "Eight of spades to column 4. Card turned: six of diamonds"
@@ -172,7 +171,6 @@ Expected: Every line does what it says and TalkBack says the words after "hear" 
 34. On "Four of hearts, column 6, top card", Actions → "Move to hearts foundation" — hear "Four of hearts to hearts foundation"
 35. Double-tap "Eight of diamonds, column 4, top card", then "Nine of spades, column 7, top card" — hear "Eight of diamonds to column 7. Card turned: three of spades"
 
-Watch: line 25
 Ends with: FINISH
 Related: T204, T205, T203
 Where: phone
@@ -216,15 +214,7 @@ Steps:
 - Swipe once through the board, then play each line below as in A07. A single double-tap on the stock deals a row.
 - After line 28 column 8 is empty with rows still to deal. Double-tap "Stock, 2 deals left" — hear "Can't deal: fill every column"; nothing changes. Then go on with line 29.
 - After line 35 every row is dealt. Double-tap "Stock, no deals left" — hear "No deals left"; nothing changes. Then go on with line 36.
-- Lines 23, 33 and 35 deal a row by double-tapping the stock after line 11 already did. The board ignores a second stock tap within 0.3 s of a deal (#137), and a TalkBack double-tap reaches the app with no time, so it may take each of these as that second tap and do nothing — and the two staged stock taps above with them. If a stock double-tap is silent and the count does not drop, note it and deal by Actions instead:
-  - line 23: On "Stock, 3 deals left", Actions → "Deal a row"
-  - line 33: On "Stock, 2 deals left", Actions → "Deal a row"
-  - line 35: On "Stock, 1 deal left", Actions → "Deal a row"
-- Lines 53, 65 and 81 start on the card node you double-tapped last, as line 25 of the Klondike win does (A07). If a first double-tap does anything but select, note it, double-tap "Undo" if a card moved, and make that move by Actions instead:
-  - line 53: On "Queen of spades, column 2, 11th from top", Actions → "Move to column 1"
-  - line 65: On "Queen of spades, column 4, 12th from top", Actions → "Move to column 7"
-  - line 81: On "Eight of spades, column 4, 2nd from top", Actions → "Move to column 3"
-Expected: The setup options read with their states, as in A04. The board opening says "New deal", the stock reads "Stock, 5 deals left", the completed slot "Completed runs, 0 of 8", and the tool row's deal button "Deal, 5 left". Every line does what it says and TalkBack says the words after "hear"; a completed run adds "Run completed, spades", and the completed slot then reads one more of 8. The two staged stock taps are refused with the words given and change nothing. Lines 23, 33 and 35 each deal a row, and lines 53, 65 and 81 select on their first double-tap (see A07); a line that needed its Actions fallback is a `[TalkBack]` bug. Spider has no FINISH: the last line completes the last run by hand and wins.
+Expected: The setup options read with their states, as in A04. The board opening says "New deal", the stock reads "Stock, 5 deals left", the completed slot "Completed runs, 0 of 8", and the tool row's deal button "Deal, 5 left". Every line does what it says and TalkBack says the words after "hear"; a completed run adds "Run completed, spades", and the completed slot then reads one more of 8. The two staged stock taps are refused with the words given and change nothing. Every double-tap line works by double-tap alone, each stock double-tap dealing its row; a line that can only be made from the Actions menu is a `[TalkBack]` bug. Spider has no FINISH: the last line completes the last run by hand and wins.
 
 1. Double-tap "Jack of spades, column 2, top card", then "Queen of spades, column 10, top card" — hear "Jack of spades to column 10. Card turned: ten of spades"
 2. On "Ten of spades, column 2, top card", Actions → "Move to column 10" — hear "Ten of spades to column 10. Card turned: seven of spades"
@@ -315,7 +305,6 @@ Expected: The setup options read with their states, as in A04. The board opening
 87. Double-tap "Ace of spades, column 10, top card", then "Two of spades, column 5, top card" — hear "Ace of spades to column 5"
 88. On "Queen of spades, column 5, 12th from top", Actions → "Move to column 4" — hear "Queen of spades and 11 more to column 4. Run completed, spades"
 
-Watch: lines 23, 33, 35, 53, 65, 81
 Ends with: the win
 Related: T120, T303, T304, T306, T307
 Where: phone
