@@ -227,6 +227,80 @@ void main() {
       },
     );
 
+    testWidgets(
+      'a background event with no move pending still writes the time played since the last write (#159)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        var now = Duration.zero;
+        final controller = GameController(
+          KlondikeGame.deal(DealNumber(7)),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(const DisplayOptions()),
+          clockNow: () => now,
+        );
+        final persistence = GamePersistence(controller, saves);
+        controller.tapPile(const StockPile(), null);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(persistence.writes, 1, reason: 'one move, its window closed');
+        now = const Duration(seconds: 30);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(
+          saves.value.klondike!.game.elapsed,
+          const Duration(seconds: 30),
+          reason: 'backgrounding writes the clock even with no move pending',
+        );
+        final written = persistence.writes;
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(
+          persistence.writes,
+          written,
+          reason: 'a second background with no time played writes nothing',
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
+    testWidgets(
+      'a background event before the first move writes no slot (#159)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        final controller = controllerFor(KlondikeGame.deal(DealNumber(7)));
+        final persistence = GamePersistence(controller, saves);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(persistence.writes, 0, reason: 'an untouched deal is not saved');
+        expect(saves.value.klondike, isNull);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
     testWidgets('a win clears the slot and nothing resurrects it', (
       tester,
     ) async {
