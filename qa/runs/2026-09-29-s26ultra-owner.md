@@ -6,8 +6,9 @@
 - **Device:** Samsung Galaxy S26 Ultra
 - **Android / One UI:** not recorded
 - **Hardware or emulator:** hardware
-- **Who:** the owner, reporting in chat; transcribed by the agent (#115)
+- **AVD and image:** n/a
 - **Runs:** interim checklist (before qa/test-plan.md existed)
+- **Run by:** owner, reporting in chat; transcribed by the agent (#115)
 
 The owner's first play-through, run from an interim checklist page before
 `qa/test-plan.md` (#111) was written, so the checks below cite that
