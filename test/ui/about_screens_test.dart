@@ -111,7 +111,11 @@ void main() {
     await tapKey(tester, 'about-link-site');
     await tapKey(tester, 'about-link-source');
     expect(spy.urls, [contributeLink.url, siteLink.url, studioSourceLink.url]);
-    expect(studioSourceLink.url, 'https://github.com/honestarcade');
+    expect(
+      studioSourceLink.url,
+      'https://github.com/honestarcade/HonestSolitaire',
+      reason: 'About Honest Arcade opens this game\'s repository',
+    );
     for (final url in spy.urls) {
       expect(url, startsWith('https://'));
     }

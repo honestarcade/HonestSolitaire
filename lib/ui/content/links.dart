@@ -28,9 +28,10 @@ const appSourceLink = Link(
   'github.com/honestarcade/HonestSolitaire',
 );
 
-/// About Honest Arcade's source link: the studio page (owner, gate default).
+/// About Honest Arcade's source link: this app's repository too (owner,
+/// 2026-09-29 device play-through, #153 — it was the studio page).
 const studioSourceLink = Link(
   'source',
-  'https://github.com/honestarcade',
-  'github.com/honestarcade',
+  'https://github.com/honestarcade/HonestSolitaire',
+  'github.com/honestarcade/HonestSolitaire',
 );
