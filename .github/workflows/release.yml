@@ -156,7 +156,10 @@ jobs:
           HS_RELEASE: "1"
         run: |
           set -euo pipefail
-          flutter build appbundle --release --no-pub \
+          # No --no-pub: the build's own pub get regenerates the plugin
+          # registrant for release, leaving out the dev-only integration_test
+          # plugin (#112); `deps` above already enforced the lockfile.
+          flutter build appbundle --release \
             --build-name="${{ steps.version.outputs.name }}" \
             --build-number="${{ steps.version.outputs.code }}" \
             --dart-define=APP_VERSION="${{ steps.version.outputs.name }}" \

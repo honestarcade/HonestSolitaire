@@ -14,6 +14,7 @@
 #         1  one or more permissions declared
 #         2  package id missing or wrong
 #         3  file unreadable, not an .aab, or no manifest entry in the zip
+#         5  the integration_test plugin is compiled into the bundle
 #
 # Needs unzip, tr, grep, sort, awk and dirname. Written for bash 3.2 (macOS
 # default).
@@ -360,6 +361,22 @@ fi
 
 if [ "$STATUS" -ne 0 ]; then
   exit "$STATUS"
+fi
+
+# The end-to-end harness is a dev dependency (#112) and must never ship: a
+# bundle whose dex names its plugin class was built from the test entrypoint
+# or with the dependency in the wrong section. grep -c, not -q (see above).
+INTEGRATION_TEST_CLASS='Ldev/flutter/plugins/integration_test/IntegrationTestPlugin;'
+INTEGRATION_SEEN=""
+for DEX in $(unzip -Z1 "$AAB" 2>/dev/null | grep -E '^base/dex/classes[0-9]*\.dex$' || true); do
+  HITS="$(unzip -p "$AAB" "$DEX" 2>/dev/null | grep -acF "$INTEGRATION_TEST_CLASS" || true)"
+  if [ "${HITS:-0}" -gt 0 ]; then
+    echo "INTEGRATION TEST: $DEX carries $INTEGRATION_TEST_CLASS" >&2
+    INTEGRATION_SEEN=1
+  fi
+done
+if [ -n "$INTEGRATION_SEEN" ]; then
+  exit 5
 fi
 
 if [ -n "$ALLOWED_SEEN" ]; then

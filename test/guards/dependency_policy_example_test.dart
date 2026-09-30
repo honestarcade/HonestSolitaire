@@ -104,6 +104,37 @@ List<String> unjustifiedDependencies(String pubspec) {
   return offenders;
 }
 
+/// SDK test harnesses allowed only as `sdk: flutter` dev dependencies: in
+/// `dependencies` they would ship in the app, and pinned to a version they
+/// would come from pub.dev rather than the SDK (#112).
+const devOnlySdkPackages = {'integration_test'};
+
+/// Each [devOnlySdkPackages] entry in [pubspec] that sits outside
+/// `dev_dependencies` or is not `sdk: flutter`.
+List<String> misplacedDevOnlyPackages(String pubspec) {
+  final doc = loadYaml(pubspec);
+  if (doc is! YamlMap) return const [];
+  final offenders = <String>[];
+  for (final section in const ['dependencies', 'dependency_overrides']) {
+    final map = doc[section];
+    if (map is! YamlMap) continue;
+    for (final name in devOnlySdkPackages) {
+      if (map.containsKey(name)) offenders.add('$name in $section');
+    }
+  }
+  final dev = doc['dev_dependencies'];
+  if (dev is YamlMap) {
+    for (final name in devOnlySdkPackages) {
+      if (!dev.containsKey(name)) continue;
+      final spec = dev[name];
+      if (spec is! YamlMap || spec['sdk'] != 'flutter') {
+        offenders.add('$name is not sdk: flutter');
+      }
+    }
+  }
+  return offenders;
+}
+
 /// pubspec shapes that are valid YAML and used to slip past both rules.
 const bypassShapes = {
   'a comment on the header': '''
@@ -174,6 +205,40 @@ void main() {
         offenders,
         isEmpty,
         reason: describeOffenders('dependency-policy', offenders),
+      );
+    });
+  });
+
+  group('SDK test harnesses stay dev-only', () {
+    test('an sdk dev dependency passes', () {
+      const pubspec = """
+dev_dependencies:
+  integration_test: # why: on-device runs
+    sdk: flutter
+""";
+      expect(misplacedDevOnlyPackages(pubspec), isEmpty);
+    });
+
+    test('one in dependencies, or from pub.dev, is caught', () {
+      const pubspec = """
+dependencies:
+  integration_test:
+    sdk: flutter
+dev_dependencies:
+  integration_test: ^1.0.0 # why: pinned
+""";
+      expect(misplacedDevOnlyPackages(pubspec), [
+        'integration_test in dependencies',
+        'integration_test is not sdk: flutter',
+      ]);
+    });
+
+    test('the real pubspec.yaml', () {
+      final offenders = misplacedDevOnlyPackages(readFile('pubspec.yaml'));
+      expect(
+        offenders,
+        isEmpty,
+        reason: describeOffenders('dev-only-sdk', offenders),
       );
     });
   });

@@ -527,6 +527,17 @@ MUTATIONS: list[Mutation] = [
              sub(r"(const Key\('menu-stats'\),\n(?:.*\n){1,3}?\s*minHeight: )kMinTapTarget", r"\g<1>40"),
              "Statistics would be a 40 dp target on the menu",
              'expected tap target size of at least', slow=True),
+    # ---- #112: end-to-end suite ------------------------------------------------
+    Mutation("#112a", "the end-to-end harness moves into shipped dependencies",
+             "pubspec.yaml",
+             sub(r"^dependencies:\n", "dependencies:\n  integration_test:\n    sdk: flutter\n", flags=re.M),
+             "the SDK test harness would compile into the app",
+             'dev-only-sdk integration_test in dependencies'),
+    Mutation("#112b", "the bundle scan stops looking for the integration_test plugin",
+             "tools/check_aab.sh",
+             sub(r'if \[ -n "\$INTEGRATION_SEEN" \]; then\n  exit 5\nfi\n', ""),
+             "a release bundle carrying the test harness would pass the scan",
+             'bundle-scan: the integration_test plugin shipped unrefused', slow=True),
 ]
 
 

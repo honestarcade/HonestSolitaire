@@ -78,7 +78,10 @@ class ScanResult {
   final String output;
 }
 
-ScanResult scan(List<String> strings) {
+ScanResult scan(
+  List<String> strings, {
+  Map<String, List<String>> entries = const {},
+}) {
   final dir = Directory.systemTemp.createTempSync('hs-bundle-scan');
   try {
     final entry = File('${dir.path}/base/manifest/AndroidManifest.xml')
@@ -87,6 +90,13 @@ ScanResult scan(List<String> strings) {
     entry.writeAsBytesSync([
       for (final s in strings) ...[...s.codeUnits, 0],
     ]);
+    for (final MapEntry(key: path, value: runs) in entries.entries) {
+      File('${dir.path}/$path')
+        ..createSync(recursive: true)
+        ..writeAsBytesSync([
+          for (final s in runs) ...[...s.codeUnits, 0],
+        ]);
+    }
     final zip = Process.runSync('zip', [
       '-q',
       '-r',
@@ -113,6 +123,35 @@ void main() {
     final r = scan(manifest());
     expect(r.exitCode, 0, reason: r.output);
     expect(r.output, contains('no permissions declared (package $_pkg)'));
+  });
+
+  test('a bundle with ordinary dex passes', () {
+    final r = scan(
+      manifest(),
+      entries: {
+        'base/dex/classes.dex': ['Lcom/honestarcade/solitaire/MainActivity;'],
+      },
+    );
+    expect(r.exitCode, 0, reason: r.output);
+  });
+
+  test('the integration_test plugin in any dex fails the scan (exit 5)', () {
+    final r = scan(
+      manifest(),
+      entries: {
+        'base/dex/classes.dex': ['Lcom/honestarcade/solitaire/MainActivity;'],
+        'base/dex/classes2.dex': [
+          'Ldev/flutter/plugins/integration_test/IntegrationTestPlugin;',
+        ],
+      },
+    );
+    expect(
+      [r.exitCode, r.output.contains('INTEGRATION TEST: base/dex/classes2.dex')],
+      [5, true],
+      reason:
+          'bundle-scan: the integration_test plugin shipped unrefused\n'
+          '${r.output}',
+    );
   });
 
   test('a requested android permission fails the scan', () {
