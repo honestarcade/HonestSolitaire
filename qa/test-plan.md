@@ -87,6 +87,8 @@ tableau in Draw 1 and Draw 3.
 | D7 | Spider | One suit | 48213 | tops: 7♠ K♠ 3♠ 8♠ 9♠ 9♠ 6♠ 4♠ 10♠ 5♠; first hint: 7♠ onto 8♠ |
 | D8 | Spider | Two suits | 48213 | tops: 7♠ K♥ 3♥ 8♥ 9♥ 9♠ 6♠ 4♠ 10♥ 5♠; first hint: 8♥ onto 9♥ |
 | D9 | Spider | Four suits | 48213 | tops: 7♠ K♦ 3♦ 8♣ 9♣ 9♥ 6♠ 4♥ 10♦ 5♥; first hint: 8♣ onto 9♣ |
+| D10 | Klondike | Draw 1 | 8 | first hint: stock |
+| D11 | Spider | One suit | 349 | first hint: stock |
 
 D5 is proven winnable by the same solver the app uses, with Auto-flip cards
 on; playing it to a win still takes play.

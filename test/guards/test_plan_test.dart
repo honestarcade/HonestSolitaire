@@ -434,4 +434,36 @@ void main() {
     ];
     expect(missing, isEmpty, reason: missing.join('\n'));
   }, skip: pathExists(a11yPath) ? false : '$a11yPath is not written yet');
+
+  test('every A-check cites live T-checks in its Related line', () {
+    final sweep = readFile(a11yPath);
+    final aChecks = checksIn(
+      sweep.split('\n'),
+      RegExp(r'^### (A\d{2}) — (.+)$'),
+    );
+    final live = {
+      for (final c in checks)
+        if (!c.retired) c.id,
+    };
+    final wrong = <String>[];
+    for (final c in aChecks) {
+      if (c.retired) continue;
+      final related = c.lines.where((l) => l.startsWith('Related:')).toList();
+      final cited = [
+        for (final line in related)
+          for (final m in RegExp(r'T\d{3}').allMatches(line)) m.group(0)!,
+      ];
+      if (cited.isEmpty) {
+        wrong.add('test-plan: ${c.id} in $a11yPath cites no T-check');
+      }
+      for (final t in cited) {
+        if (!live.contains(t)) {
+          wrong.add(
+            'test-plan: ${c.id} in $a11yPath cites $t, not a live check',
+          );
+        }
+      }
+    }
+    expect(wrong, isEmpty, reason: wrong.join('\n'));
+  });
 }

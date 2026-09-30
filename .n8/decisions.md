@@ -530,3 +530,17 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `release.yml` now creates the GitHub release for a pushed tag when none exists, in a step (`id: release`) after the bundle scan and certificate check and before the attach: title "Honest Solitaire <version name>", notes generated from the previous tag (the previous final tag for a final release), and a prerelease not marked Latest for a tag with a `-` suffix such as `v1.0.0-rc.N`. An existing release -- as `/n8-release` creates one with the tag -- is reused untouched. The attach step's not-found branch is now a failure, the `no-release-note` summary note is gone (the summary shows the release URL and prerelease flag, `n/a` if the release step never ran), and a failure after the release step prepends "did not reach Play" to the release notes. `tools/check_aab.sh` also refuses any `debuggable` string in the bundle manifest (exit 6, `DEBUGGABLE:`).
   **Why:** a tag pushed without `/n8-release` used to go green with the bundle attached nowhere and its hash never re-checked; #113 makes that impossible rather than relying on the release being made first. `/n8-release` does not need to change: it may keep creating the release, and the workflow leaves it alone.
   **Issue:** #113 (mutations `#38`, `#113` in `tools/mutation_check.py`)
+## #116 accessibility sweep -- 2026-09-30
+
+- **Decision:** The Spider scan in `tools/find_a11y_deals.dart` was run over deals 1–1000, not 1–5000; it chose deal 924 (88 moves). The Klondike scan covered 1–5000 and chose deal 2982 (35 moves before FINISH).
+  **Why:** the #112 beam search took 14–30 s a deal and the 1–1000 run took 1965 s with 10 workers on the development machine (agent, 2026-09-30, `/usr/bin/time` over the tool); 1–5000 would have taken hours. The tool still defaults to 5000 for anyone with the time.
+  **Issue:** #116
+- **Decision:** The Klondike TalkBack win ends with the owner double-tapping FINISH, not with Auto-finish starting by itself.
+  **Why:** the fewest-moves-before-`canFinish` deal leaves cards in the stock, and Auto-finish starts itself only on an empty stock and waste (`isSolved`); FINISH runs the same sweep. The script says which, and the test holds it to that (`Ends with: FINISH`).
+  **Issue:** #116
+- **Decision:** `test/qa/a11y_sweep_test.dart` reads the move lines back out of `qa/a11y-sweep.md` and matches each against the legal moves, instead of re-running the searches as `listening_test.dart` does; it is tagged `guard` with mutations #116a–e. `spider_search.dart` stays in `integration_test/support/` and is imported from `test/qa/`.
+  **Why:** a beam search per test run would add seconds to every mutation in the battery; reading the script also makes it the single source of the deal numbers.
+  **Issue:** #116
+- **Decision:** The replay models TalkBack taps a second apart (the #108 intent), and the lines where the app's timeless semantic taps misfire — a re-tap of the card node tapped last, and Spider stock taps after the first stock deal (#137's debounce) — are listed as `Watch:` lines with Actions fallbacks, not routed around. Staged kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
+  **Why:** the sweep exists to find these on the phone; the script keeps the win playable either way. Filing is left to the owner's run.
+  **Issue:** #116
