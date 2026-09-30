@@ -559,3 +559,13 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** `tools/m6_gate.sh` counts an open bug with no severity label as a blocker ("not known to be minor"), in addition to the plan's three kinds. #136 (M2, sev:low, not `confirmed`) was not moved into M6, since the plan moves confirmed M2–M5 bugs only.
   **Why:** the same rule as `/n8-verify`'s gate: an unrated bug is not known to be minor.
   **Issue:** #118
+- **Decision:** Filed and fixed four more bugs from #114's API 24 walk-through, each with a failing-first test:
+  - #163 (sev:high): a game resumed with a move now runs its clock and pauses on return. #84's resume test had pinned the clock as stopped, and the amendment is noted on #84.
+  - #164 (sev:high): Spider's "EMPTY" stays on one line and scales to its slot. It broke at 384 dp too, so it visibly broke the design on the S26 Ultra.
+  - #165 (sev:high): `ScreenScaffold` lays out above the keyboard. The deal number field was hidden at 384×824 as well.
+  - #166 (sev:medium): Statistics and How to play pick their tab through `openingTab`, where the controller's game counts only once it has a move.
+  **Why:** M6's rule: every finding filed in M6 and fixed with a test that failed first. None was carried, so no owner OK was needed.
+  **Issue:** #163, #164, #165, #166, #114
+- **Decision:** #114's screenshots stay on the development machine (`build/layout/`, `build/qa114-walk/`) instead of going to a never-published `qa-artifacts` draft release as its pass-2 notes planned. The record cites them by file name.
+  **Why:** the evidence that decides pass or fail is in the record and on the issues; publishing a release object, even a draft, is an outward-facing step not needed for any criterion.
+  **Issue:** #114
