@@ -4,11 +4,13 @@
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:honest_solitaire/data/app_store.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/main.dart' as app;
 import 'package:honest_solitaire/ui/app.dart';
+import 'package:honest_solitaire/ui/game/game_event.dart';
 
 /// Which half of a two-phase run this is: 1 plays and backgrounds, 2
 /// restores after the script has force-stopped the app.
@@ -154,8 +156,8 @@ Game after(Game g, Move m) => switch (g.apply(m)) {
 /// Plays [m] on the board by real taps and checks the board took exactly
 /// that move. Waits past the double-tap window first, so two moves on one
 /// pile are never read as a double tap.
-Future<void> playMove(WidgetTester t, Move m) async {
-  await wait(t, 350);
+Future<void> playMove(WidgetTester t, Move m, {bool settle = true}) async {
+  if (settle) await wait(t, 350);
   final c = scope(t).controller;
   final g = c.game;
   final expected = state(after(g, m));
@@ -192,7 +194,7 @@ Future<void> playMove(WidgetTester t, Move m) async {
     default:
       fail('e2e: no taps for $m on ${g.runtimeType}');
   }
-  await wait(t, 150);
+  await wait(t, settle ? 150 : 0);
   expect(
     state(c.game),
     expected,
@@ -216,7 +218,22 @@ Future<void> clearSelection(WidgetTester t) async {
 /// the app to the foreground so the test can end. Nothing pumps while the
 /// app is paused: a paused app draws no frames, and a pump would wait for
 /// one forever. Returns the game's elapsed time at backgrounding.
-Future<int> background(WidgetTester t) async {
+/// The saved slot of [type] as the app's store holds it (a write it has
+/// issued counts, landed or not), compared the way [state] compares games.
+Future<Map<String, Object?>?> savedState(WidgetTester t, GameType type) async {
+  final doc = type == GameType.klondike
+      ? StoreDoc.gameKlondike
+      : StoreDoc.gameSpider;
+  final r = await scope(t).store.read(doc);
+  if (r is! Loaded) return null;
+  final json = (r.data['game'] as Map).cast<String, Object?>();
+  return state(Game.fromJson(json));
+}
+
+String textOf(WidgetTester t, String key) =>
+    t.widget<Text>(find.byKey(Key(key))).data ?? '';
+
+Future<int> background(WidgetTester t, {GameType? saved}) async {
   Future<void> send(AppLifecycleState s) async {
     await t.binding.defaultBinaryMessenger.handlePlatformMessage(
       SystemChannels.lifecycle.name,
@@ -226,13 +243,27 @@ Future<int> background(WidgetTester t) async {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
 
-  for (final s in [
-    AppLifecycleState.inactive,
-    AppLifecycleState.hidden,
-    AppLifecycleState.paused,
-  ]) {
-    await send(s);
+  if (saved != null) {
+    // The proof below means something only while the last move is still
+    // waiting in its save window.
+    expect(
+      await savedState(t, saved),
+      isNot(state(scope(t).controller.game)),
+      reason: 'e2e: the last move was saved before backgrounding, too slow to test the flush',
+    );
   }
+  await send(AppLifecycleState.inactive);
+  if (saved != null) {
+    // Inside the save window of the last move: only the flush on
+    // backgrounding can have written it.
+    expect(
+      await savedState(t, saved),
+      state(scope(t).controller.game),
+      reason: 'e2e: backgrounding did not save the board',
+    );
+  }
+  await send(AppLifecycleState.hidden);
+  await send(AppLifecycleState.paused);
   await Future<void>.delayed(const Duration(seconds: 2));
   final elapsed = scope(t).controller.game.elapsed.inMilliseconds;
   for (final s in [

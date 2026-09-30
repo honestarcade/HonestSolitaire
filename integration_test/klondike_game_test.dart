@@ -9,6 +9,7 @@ import 'package:honest_solitaire/engine/deal_number.dart';
 import 'package:honest_solitaire/engine/game.dart';
 import 'package:honest_solitaire/engine/hints.dart';
 import 'package:honest_solitaire/engine/solver.dart';
+import 'package:honest_solitaire/ui/game/game_event.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'support/e2e.dart';
@@ -80,9 +81,6 @@ void main() {
       for (final m in solution.take(5)) {
         await playMove(t, m);
       }
-      await tapKey(t, 'tool-undo');
-      expect(state(c.game), state(four), reason: 'e2e: undo took back move 5');
-      await playMove(t, solution[4]);
 
       // A refused move changes nothing, on the board or in the save.
       final k = c.game as KlondikeGame;
@@ -96,7 +94,7 @@ void main() {
             ),
       );
       await wait(t, 700);
-      final savedBefore = scope(t).saves.value.klondike!.game.toJson();
+      final savedBefore = await savedState(t, GameType.klondike);
       final boardBefore = state(c.game);
       await wait(t, 350);
       await tapCard(t, 't$from', k.tableau[from].length - 1);
@@ -108,7 +106,7 @@ void main() {
         reason: 'e2e: a refused move changed the board',
       );
       expect(
-        scope(t).saves.value.klondike!.game.toJson(),
+        await savedState(t, GameType.klondike),
         savedBefore,
         reason: 'e2e: a refused move changed the save',
       );
@@ -130,7 +128,14 @@ void main() {
         reason: 'e2e: a second HINT did not hide it',
       );
 
-      phaseOneDone(await background(t));
+      // Undo, then the same move again at once and straight into the
+      // background: the replay is still inside its save window, so only the
+      // flush on backgrounding can save it.
+      await wait(t, 700);
+      await tapAt(t, t.getCenter(find.byKey(const Key('tool-undo'))));
+      expect(state(c.game), state(four), reason: 'e2e: undo took back move 5');
+      await playMove(t, solution[4], settle: false);
+      phaseOneDone(await background(t, saved: GameType.klondike));
       return;
     }
 
@@ -182,6 +187,16 @@ void main() {
     );
     await tapKey(t, 'win-stats');
     await waitFor(t, find.byKey(const Key('stats-back')));
+    await wait(t, 500);
+    expect(
+      [
+        textOf(t, 'stats-value-played'),
+        textOf(t, 'stats-sub-winrate'),
+        textOf(t, 'stats-value-streak'),
+      ],
+      ['1', '1 won', '1'],
+      reason: 'e2e: the Statistics screen does not show the win',
+    );
     await tapKey(t, 'stats-back');
     await waitFor(t, find.byKey(const Key('win-card')));
     await tapKey(t, 'win-menu');
