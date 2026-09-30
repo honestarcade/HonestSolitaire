@@ -9,6 +9,7 @@ import 'package:honest_solitaire/ui/board/board_view.dart';
 import 'package:honest_solitaire/ui/board/pile_ref.dart';
 import 'package:honest_solitaire/ui/card/card_style.dart';
 import 'package:honest_solitaire/ui/card/playing_card.dart';
+import 'package:honest_solitaire/ui/fonts.dart';
 import 'package:honest_solitaire/ui/game/game_controller.dart';
 import 'package:honest_solitaire/ui/settings/display_options.dart';
 import 'package:honest_solitaire/ui/settings/play_settings.dart';
@@ -411,6 +412,20 @@ void main() {
           slot.left <= label.left && label.right <= slot.right,
           isTrue,
           reason: 'EMPTY spills out of its slot at $name (#164)',
+        );
+        expect(
+          render.text.style?.fontFamily,
+          kFontMono,
+          reason: 'EMPTY is not in the design\'s mono face (#171)',
+        );
+        // The FittedBox's drawn width over the paragraph's own width is the
+        // shrink it applies.
+        final shrink = label.width / render.size.width;
+        expect(
+          shrink,
+          greaterThanOrEqualTo(0.85),
+          reason:
+              'EMPTY is shrunk to ${shrink.toStringAsFixed(2)} of its size at $name (#171)',
         );
       });
     }
