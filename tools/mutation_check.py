@@ -358,6 +358,33 @@ MUTATIONS: list[Mutation] = [
              "a commented-out `# set -x` would fail every workflow that "
              "explains why tracing is off",
              'workflow-secrets: clean line flagged'),
+    Mutation("#57a", "set_ci_secrets stops checking the alias",
+             "tools/set_ci_secrets.sh",
+             sub(r' \\\n    -alias "\$KEY_ALIAS" > /dev/null 2>&1 \|\| \{',
+                 ' > /dev/null 2>&1 || {'),
+             "an alias the keystore does not hold would be uploaded",
+             'setup-scripts: keytool -list does not check the alias',
+             slow=True),
+    Mutation("#57b", "set_ci_secrets puts the password on keytool's command line",
+             "tools/set_ci_secrets.sh",
+             sub(r'-storepass:env HS_PASS_PROBE', '-storepass "$KEYSTORE_PASS"'),
+             "the keystore password would be visible in the process table",
+             "setup-scripts: the keystore password is on keytool's command line",
+             slow=True),
+    Mutation("#57c", "set_ci_secrets checks the keystore is readable after uploading",
+             "tools/set_ci_secrets.sh",
+             chain(
+                 sub(r'\[ -r "\$KEYSTORE_PATH" \] \|\| \{\n(?:[^\n]*\n)*?\}\n\n', ""),
+                 sub(r'(printf \'%s\' "\$KEY_PASS" \| gh secret set HS_KEY_PASS -R "\$REPO"\n)',
+                     r'\1[ -r "$KEYSTORE_PATH" ] || {\n'
+                     r'  echo "set_ci_secrets: the keystore named in the credentials file is not readable:" >&2\n'
+                     r'  echo "  $KEYSTORE_PATH" >&2\n'
+                     r'  exit 2\n'
+                     r'}\n'),
+             ),
+             "secrets naming a keystore that is not there would be uploaded",
+             'setup-scripts: an unreadable keystore reached gh',
+             slow=True),
     Mutation("#59", "the engine imports Flutter", "lib/engine/card.dart",
              sub(r"^library;\n", "library;\n\nimport 'package:flutter/foundation.dart';\n",
                  flags=re.M),
