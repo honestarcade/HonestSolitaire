@@ -2,7 +2,8 @@
 # The on-device measurement (#117): integration_test/perf_test.dart in
 # profile mode through flutter drive. It checks every golden deal against the
 # host's pins, then times the winnable search for each Klondike draw mode, and
-# writes build/perf/<date>-<device>[-n].json and qa/perf/<date>-<device>[-n].md.
+# writes qa/perf/<date>-<device>[-n].md with its .json beside it (the raw
+# report, also in build/perf/ with the drive's log).
 #
 # Usage:  tools/perf.sh [--avd solitaire-dev|solitaire-api24] [--searches N] [--no-idle]
 #         tools/perf.sh --device <serial> --yes-wipe [--searches N] [--no-idle]
@@ -89,6 +90,8 @@ level="$(printf '%s\n' "$battery" | awk -F': ' '/ level:/ {print $2; exit}')"
 powered="$(printf '%s\n' "$battery" | awk -F': ' '/(AC|USB|Wireless) powered: true/ {print "yes"; exit}')"
 oneui="$(prop ro.build.version.oneui)"
 
+# Read before the build, so a commit made during the run is not credited.
+BUILD="profile build of $(git rev-parse --short HEAD)$([ -z "$(git status --porcelain)" ] || echo ' with uncommitted changes')"
 echo "perf: flutter drive --profile on $SERIAL, $SEARCHES searches per draw mode" | tee -a "$LOG"
 PERF_OUT="$JSON" flutter drive --profile -d "$SERIAL" \
   --driver test_driver/perf_driver.dart --target integration_test/perf_test.dart \
@@ -100,12 +103,13 @@ python3 tools/perf_report.py "$JSON" "$MD" \
   "Device=$(prop ro.product.manufacturer) $(prop ro.product.model)" \
   "Android=$(prop ro.build.version.release) (API $(prop ro.build.version.sdk))${oneui:+, One UI $oneui}" \
   "Hardware or emulator=$KIND" \
-  "Build=profile build of $(git rev-parse --short HEAD)$([ -z "$(git status --porcelain)" ] || echo ' with uncommitted changes')" \
+  "Build=$BUILD" \
   "Flutter=$(flutter --version 2>/dev/null | head -1)" \
   "Battery=${level:-?} %, charging: ${powered:-no}" \
   "Date=$(date '+%F %T %Z')"
 report_rc=$?
-echo "perf: $MD (json: $JSON, log: $LOG)"
+cp "$JSON" "qa/perf/$name.json"
+echo "perf: $MD (json: qa/perf/$name.json, log: $LOG)"
 if [ "$report_rc" -ne 0 ] || [ "$drive_rc" -ne 0 ]; then
   echo "perf: FAILED (drive rc=$drive_rc, report rc=$report_rc)" >&2
   exit 1

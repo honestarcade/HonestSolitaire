@@ -1,0 +1,1610 @@
+{
+  "golden": {
+    "checked": 35,
+    "mismatches": []
+  },
+  "searches": [
+    {
+      "draw": 1,
+      "base": 1000,
+      "found": 1000,
+      "ms": 4,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 1997,
+      "found": 1997,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 2994,
+      "found": 2994,
+      "ms": 7,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 3991,
+      "found": 3992,
+      "ms": 1695,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 4988,
+      "found": 4989,
+      "ms": 1281,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 5985,
+      "found": 5986,
+      "ms": 1767,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 6982,
+      "found": 6983,
+      "ms": 1603,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 7979,
+      "found": 7979,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 8976,
+      "found": 8976,
+      "ms": 9,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 9973,
+      "found": 9974,
+      "ms": 1134,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 10970,
+      "found": 10970,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 11967,
+      "found": 11967,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 12964,
+      "found": 12964,
+      "ms": 270,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 13961,
+      "found": 13962,
+      "ms": 1355,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 14958,
+      "found": 14959,
+      "ms": 1141,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 15955,
+      "found": 15956,
+      "ms": 1260,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 16952,
+      "found": 16953,
+      "ms": 1405,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 17949,
+      "found": 17949,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 18946,
+      "found": 18946,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 19943,
+      "found": 19943,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 20940,
+      "found": 20940,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 21937,
+      "found": 21937,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 22934,
+      "found": 22935,
+      "ms": 1438,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 23931,
+      "found": 23931,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 24928,
+      "found": 24928,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 25925,
+      "found": 25926,
+      "ms": 1348,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 26922,
+      "found": 26922,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 27919,
+      "found": 27919,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 28916,
+      "found": 28916,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 29913,
+      "found": 29913,
+      "ms": 7,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 30910,
+      "found": 30912,
+      "ms": 3049,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 31907,
+      "found": 31907,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 32904,
+      "found": 32904,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 33901,
+      "found": 33902,
+      "ms": 1579,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 34898,
+      "found": 34899,
+      "ms": 851,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 35895,
+      "found": 35896,
+      "ms": 1203,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 36892,
+      "found": 36892,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 37889,
+      "found": 37897,
+      "ms": 10954,
+      "dealsTried": 9,
+      "verdict": "late"
+    },
+    {
+      "draw": 1,
+      "base": 38886,
+      "found": 38886,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 39883,
+      "found": 39883,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 40880,
+      "found": 40882,
+      "ms": 2653,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 41877,
+      "found": 41878,
+      "ms": 2191,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 42874,
+      "found": 42874,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 43871,
+      "found": 43871,
+      "ms": 21,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 44868,
+      "found": 44868,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 45865,
+      "found": 45867,
+      "ms": 3186,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 46862,
+      "found": 46862,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 47859,
+      "found": 47859,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 48856,
+      "found": 48856,
+      "ms": 4,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 49853,
+      "found": 49853,
+      "ms": 4,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 50850,
+      "found": 50850,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 51847,
+      "found": 51847,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 52844,
+      "found": 52846,
+      "ms": 3043,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 53841,
+      "found": 53841,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 54838,
+      "found": 54838,
+      "ms": 6,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 55835,
+      "found": 55835,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 56832,
+      "found": 56832,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 57829,
+      "found": 57830,
+      "ms": 1163,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 58826,
+      "found": 58828,
+      "ms": 2535,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 59823,
+      "found": 59824,
+      "ms": 1126,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 60820,
+      "found": 60820,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 61817,
+      "found": 61817,
+      "ms": 59,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 62814,
+      "found": 62814,
+      "ms": 247,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 63811,
+      "found": 63811,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 64808,
+      "found": 64814,
+      "ms": 6254,
+      "dealsTried": 7,
+      "verdict": "late"
+    },
+    {
+      "draw": 1,
+      "base": 65805,
+      "found": 65805,
+      "ms": 384,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 66802,
+      "found": 66804,
+      "ms": 2613,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 67799,
+      "found": 67799,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 68796,
+      "found": 68796,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 69793,
+      "found": 69794,
+      "ms": 1059,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 70790,
+      "found": 70791,
+      "ms": 1090,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 71787,
+      "found": 71789,
+      "ms": 2938,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 72784,
+      "found": 72784,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 73781,
+      "found": 73781,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 74778,
+      "found": 74778,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 75775,
+      "found": 75775,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 76772,
+      "found": 76772,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 77769,
+      "found": 77769,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 78766,
+      "found": 78767,
+      "ms": 1393,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 79763,
+      "found": 79763,
+      "ms": 520,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 80760,
+      "found": 80761,
+      "ms": 1045,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 81757,
+      "found": 81757,
+      "ms": 272,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 82754,
+      "found": 82755,
+      "ms": 2014,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 83751,
+      "found": 83751,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 84748,
+      "found": 84748,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 85745,
+      "found": 85745,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 86742,
+      "found": 86742,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 87739,
+      "found": 87739,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 88736,
+      "found": 88737,
+      "ms": 1210,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 89733,
+      "found": 89734,
+      "ms": 1283,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 90730,
+      "found": 90730,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 91727,
+      "found": 91727,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 92724,
+      "found": 92724,
+      "ms": 14,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 93721,
+      "found": 93721,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 94718,
+      "found": 94719,
+      "ms": 1180,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 95715,
+      "found": 95716,
+      "ms": 1517,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 96712,
+      "found": 96712,
+      "ms": 10,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 97709,
+      "found": 97709,
+      "ms": 36,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 98706,
+      "found": 98706,
+      "ms": 5,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 1,
+      "base": 99703,
+      "found": 99704,
+      "ms": 1509,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 1000,
+      "found": 1000,
+      "ms": 7,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 1997,
+      "found": 1998,
+      "ms": 1535,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 2994,
+      "found": 2994,
+      "ms": 19,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 3991,
+      "found": 3991,
+      "ms": 62,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 4988,
+      "found": 4994,
+      "ms": 6005,
+      "dealsTried": 7,
+      "verdict": "late"
+    },
+    {
+      "draw": 3,
+      "base": 5985,
+      "found": 5985,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 6982,
+      "found": 6982,
+      "ms": 64,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 7979,
+      "found": 7980,
+      "ms": 974,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 8976,
+      "found": 8976,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 9973,
+      "found": 9974,
+      "ms": 1020,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 10970,
+      "found": 10970,
+      "ms": 4,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 11967,
+      "found": 11967,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 12964,
+      "found": 12964,
+      "ms": 15,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 13961,
+      "found": 13964,
+      "ms": 4397,
+      "dealsTried": 4,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 14958,
+      "found": 14961,
+      "ms": 1724,
+      "dealsTried": 4,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 15955,
+      "found": 15957,
+      "ms": 2185,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 16952,
+      "found": 16954,
+      "ms": 1924,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 17949,
+      "found": 17950,
+      "ms": 215,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 18946,
+      "found": 18947,
+      "ms": 1337,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 19943,
+      "found": 19943,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 20940,
+      "found": 20942,
+      "ms": 2343,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 21937,
+      "found": 21937,
+      "ms": 64,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 22934,
+      "found": 22935,
+      "ms": 1235,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 23931,
+      "found": 23931,
+      "ms": 708,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 24928,
+      "found": 24929,
+      "ms": 1359,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 25925,
+      "found": 25926,
+      "ms": 845,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 26922,
+      "found": 26922,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 27919,
+      "found": 27919,
+      "ms": 61,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 28916,
+      "found": 28916,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 29913,
+      "found": 29914,
+      "ms": 1485,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 30910,
+      "found": 30913,
+      "ms": 3850,
+      "dealsTried": 4,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 31907,
+      "found": 31907,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 32904,
+      "found": 32904,
+      "ms": 10,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 33901,
+      "found": 33901,
+      "ms": 41,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 34898,
+      "found": 34899,
+      "ms": 696,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 35895,
+      "found": 35898,
+      "ms": 2487,
+      "dealsTried": 4,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 36892,
+      "found": 36892,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 37889,
+      "found": 37891,
+      "ms": 2910,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 38886,
+      "found": 38886,
+      "ms": 117,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 39883,
+      "found": 39884,
+      "ms": 1288,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 40880,
+      "found": 40882,
+      "ms": 6,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 41877,
+      "found": 41878,
+      "ms": 1282,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 42874,
+      "found": 42874,
+      "ms": 190,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 43871,
+      "found": 43872,
+      "ms": 1914,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 44868,
+      "found": 44868,
+      "ms": 5,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 45865,
+      "found": 45870,
+      "ms": 7610,
+      "dealsTried": 6,
+      "verdict": "late"
+    },
+    {
+      "draw": 3,
+      "base": 46862,
+      "found": 46862,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 47859,
+      "found": 47859,
+      "ms": 44,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 48856,
+      "found": 48863,
+      "ms": 12298,
+      "dealsTried": 8,
+      "verdict": "late"
+    },
+    {
+      "draw": 3,
+      "base": 49853,
+      "found": 49853,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 50850,
+      "found": 50850,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 51847,
+      "found": 51847,
+      "ms": 219,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 52844,
+      "found": 52846,
+      "ms": 1263,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 53841,
+      "found": 53841,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 54838,
+      "found": 54838,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 55835,
+      "found": 55837,
+      "ms": 2973,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 56832,
+      "found": 56832,
+      "ms": 135,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 57829,
+      "found": 57830,
+      "ms": 1676,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 58826,
+      "found": 58826,
+      "ms": 1070,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 59823,
+      "found": 59824,
+      "ms": 1017,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 60820,
+      "found": 60820,
+      "ms": 148,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 61817,
+      "found": 61817,
+      "ms": 219,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 62814,
+      "found": 62816,
+      "ms": 2545,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 63811,
+      "found": 63812,
+      "ms": 1869,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 64808,
+      "found": 64812,
+      "ms": 2987,
+      "dealsTried": 5,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 65805,
+      "found": 65805,
+      "ms": 1054,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 66802,
+      "found": 66802,
+      "ms": 4,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 67799,
+      "found": 67799,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 68796,
+      "found": 68796,
+      "ms": 3,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 69793,
+      "found": 69794,
+      "ms": 106,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 70790,
+      "found": 70791,
+      "ms": 596,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 71787,
+      "found": 71789,
+      "ms": 2384,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 72784,
+      "found": 72784,
+      "ms": 190,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 73781,
+      "found": 73781,
+      "ms": 5,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 74778,
+      "found": 74778,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 75775,
+      "found": 75775,
+      "ms": 9,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 76772,
+      "found": 76772,
+      "ms": 126,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 77769,
+      "found": 77769,
+      "ms": 27,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 78766,
+      "found": 78767,
+      "ms": 1656,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 79763,
+      "found": 79765,
+      "ms": 3079,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 80760,
+      "found": 80761,
+      "ms": 1028,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 81757,
+      "found": 81759,
+      "ms": 3581,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 82754,
+      "found": 82755,
+      "ms": 1362,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 83751,
+      "found": 83752,
+      "ms": 1372,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 84748,
+      "found": 84749,
+      "ms": 3,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 85745,
+      "found": 85745,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 86742,
+      "found": 86742,
+      "ms": 5,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 87739,
+      "found": 87740,
+      "ms": 2036,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 88736,
+      "found": 88737,
+      "ms": 1549,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 89733,
+      "found": 89734,
+      "ms": 667,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 90730,
+      "found": 90730,
+      "ms": 2,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 91727,
+      "found": 91732,
+      "ms": 7445,
+      "dealsTried": 6,
+      "verdict": "late"
+    },
+    {
+      "draw": 3,
+      "base": 92724,
+      "found": 92724,
+      "ms": 79,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 93721,
+      "found": 93722,
+      "ms": 4,
+      "dealsTried": 2,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 94718,
+      "found": 94720,
+      "ms": 2792,
+      "dealsTried": 3,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 95715,
+      "found": 95715,
+      "ms": 162,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 96712,
+      "found": 96712,
+      "ms": 97,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 97709,
+      "found": 97709,
+      "ms": 182,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 98706,
+      "found": 98706,
+      "ms": 1,
+      "dealsTried": 1,
+      "verdict": "within"
+    },
+    {
+      "draw": 3,
+      "base": 99703,
+      "found": 99704,
+      "ms": 2172,
+      "dealsTried": 2,
+      "verdict": "within"
+    }
+  ],
+  "searchesPerDraw": 100,
+  "nodeBudget": 40000
+}
