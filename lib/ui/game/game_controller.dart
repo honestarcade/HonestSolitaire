@@ -406,10 +406,12 @@ class GameController extends ChangeNotifier {
 
   /// The last tap, for double-tap detection: pile, index, when, and the card
   /// it touched (followed to wherever it now is).
-  (BoardPile, int?, Duration, Card?)? _lastTap;
+  (BoardPile, int?, Duration?, Card?)? _lastTap;
 
-  /// The timestamp of the tap being handled, and of the last Spider deal.
-  Duration _tapAt = Duration.zero;
+  /// The pointer timestamp of the tap being handled, and of the last Spider
+  /// deal. Null for a TalkBack activation, which has no pointer: it never
+  /// pairs into a double tap and is never debounced (#162).
+  Duration? _tapAt;
   Duration? _lastDealAt;
 
   DragState? _dragging;
@@ -578,8 +580,8 @@ class GameController extends ChangeNotifier {
   /// post-deal debounce a following stock tap must honour (#137). [at] is
   /// the tool row's own pointer-down timestamp, the same clock a board tap
   /// supplies to [tapPile] — so a stock tap right after this one is
-  /// debounced against it correctly.
-  void dealRow({Duration at = Duration.zero}) {
+  /// debounced against it correctly. Null for a TalkBack activation.
+  void dealRow({Duration? at}) {
     if (_game is! SpiderGame || _game.isWon || _sweep != null) return;
     _hint = null;
     _dragging = null;
@@ -924,8 +926,9 @@ class GameController extends ChangeNotifier {
   // ------------------------------------------------------------------ taps
 
   /// A tap on [pile] at card [index] (null: the pile itself or its empty
-  /// strip) at [at] (a pointer timestamp, for the double-tap window).
-  void tapPile(BoardPile? pile, int? index, {Duration at = Duration.zero}) {
+  /// strip) at [at] (a pointer timestamp, for the double-tap window; null
+  /// for a TalkBack activation).
+  void tapPile(BoardPile? pile, int? index, {Duration? at}) {
     if (_game.isWon || _sweep != null || _paused) return;
     final said = _said;
     final was = _selection;
@@ -943,7 +946,7 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  void _tap(BoardPile? pile, int? index, Duration at) {
+  void _tap(BoardPile? pile, int? index, Duration? at) {
     _hint = null; // any tap clears a showing hint
     _tapAt = at;
     final last = _lastTap;
@@ -952,7 +955,9 @@ class GameController extends ChangeNotifier {
         pile != null &&
         last.$1 == pile &&
         last.$2 == index &&
-        at - last.$3 <= doubleTapWindow &&
+        at != null &&
+        last.$3 != null &&
+        at - last.$3! <= doubleTapWindow &&
         last.$4 != null &&
         pile is! StockPile;
     if (isDouble) {
@@ -974,7 +979,7 @@ class GameController extends ChangeNotifier {
   }
 
   /// Taps on the felt clear the selection.
-  void tapFelt({Duration at = Duration.zero}) => tapPile(null, null, at: at);
+  void tapFelt({Duration? at}) => tapPile(null, null, at: at);
 
   Card? _cardAt(BoardPile pile, int? index) {
     final cards = _pileCards(pile);
@@ -1114,9 +1119,11 @@ class GameController extends ChangeNotifier {
         }
       case SpiderGame _:
         final lastDeal = _lastDealAt;
+        final tapAt = _tapAt;
         if (lastDeal != null &&
-            _tapAt - lastDeal < dealDebounce &&
-            _tapAt >= lastDeal) {
+            tapAt != null &&
+            tapAt - lastDeal < dealDebounce &&
+            tapAt >= lastDeal) {
           break; // too soon after the last deal: ignored, nothing shakes
         }
         final result = _apply(
