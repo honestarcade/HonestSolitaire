@@ -321,6 +321,43 @@ MUTATIONS: list[Mutation] = [
              "a password that cannot open the keystore would be uploaded",
              'setup-scripts: a keystore the password cannot open was uploaded',
              slow=True),
+    Mutation("#56a", "the keystore step's shell traces after a -O value",
+             ".github/workflows/release.yml",
+             sub(r'(      - id: keystore\n        name: Decode the upload keystore\n)',
+                 r'\1        shell: bash -O extglob -x {0}\n'),
+             "the keystore password would be echoed into a public log",
+             'workflow-secret-exposure .github/workflows/release.yml: '
+             'ship/keystore: shell traces'),
+    Mutation("#56b", "the keystore step's shell traces after a --long=value",
+             ".github/workflows/release.yml",
+             sub(r'(      - id: keystore\n        name: Decode the upload keystore\n)',
+                 r'\1        shell: bash --rcfile=/dev/null -x {0}\n'),
+             "the keystore password would be echoed into a public log",
+             'workflow-secret-exposure .github/workflows/release.yml: '
+             'ship/keystore: shell traces'),
+    Mutation("#56c", "the keystore step traces inside bash -c \"...\"",
+             ".github/workflows/release.yml",
+             sub(r'(      - id: keystore\n        name: Decode the upload keystore\n'
+                 r'        env:\n[^\n]*\n        run: \|\n          set -euo pipefail\n)',
+                 r'\1          bash -c "set -x; true"\n'),
+             "the keystore password would be echoed into a public log",
+             'workflow-secret-exposure .github/workflows/release.yml: '
+             'ship/keystore: shell tracing'),
+    Mutation("#56d", "the keystore step traces inside bash -c $'...'",
+             ".github/workflows/release.yml",
+             sub(r'(      - id: keystore\n        name: Decode the upload keystore\n'
+                 r'        env:\n[^\n]*\n        run: \|\n          set -euo pipefail\n)',
+                 r"\1          bash -c $'true\\nset -x'\n"),
+             "the keystore password would be echoed into a public log",
+             'workflow-secret-exposure .github/workflows/release.yml: '
+             'ship/keystore: shell tracing'),
+    Mutation("#56e", "the secret scanner reads comments as commands",
+             "test/guards/workflow_secrets_test.dart",
+             sub(r"\} else if \(c == '#' && !inWord\) \{",
+                 "} else if (c == '#' && !inWord && false) {"),
+             "a commented-out `# set -x` would fail every workflow that "
+             "explains why tracing is off",
+             'workflow-secrets: clean line flagged'),
     Mutation("#59", "the engine imports Flutter", "lib/engine/card.dart",
              sub(r"^library;\n", "library;\n\nimport 'package:flutter/foundation.dart';\n",
                  flags=re.M),
