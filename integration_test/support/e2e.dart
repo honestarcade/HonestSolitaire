@@ -88,6 +88,8 @@ Future<void> setSetting(WidgetTester t, String field, bool on) async {
     'cardAnimations' => s.playSettings.value.cardAnimations,
     'sound' => s.playSettings.value.sound,
     'music' => s.playSettings.value.music,
+    'winnableOnly' => s.playSettings.value.winnableOnly,
+    'largeCards' => s.displayOptions.value.largeCards,
     _ => throw ArgumentError(field),
   };
   if (now() == on) return;

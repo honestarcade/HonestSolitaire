@@ -1,0 +1,4 @@
+# bundletool for tools/install_build.sh. The sha256 is the jar's, and equals
+# the asset digest GitHub publishes for release 1.18.3 (checked 2026-09-30).
+version=1.18.3
+sha256=a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
