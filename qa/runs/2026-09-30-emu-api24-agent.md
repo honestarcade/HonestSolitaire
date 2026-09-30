@@ -26,7 +26,7 @@ issue in `bug`; a `blocked` names what blocked it.
 | T014 | pass | — |
 | T102 | pass | — |
 | T103 | pass | — |
-| T104 | fail | not filed yet — note 1 |
+| T104 | fail | #165 |
 | T106 | pass | — |
 | T107 | fail | #154 |
 | T108 | pass | — |
@@ -113,15 +113,15 @@ Screenshots named below were taken in this run and kept under
 
 **Failures.**
 
-1. T104 (not filed yet): with the on-screen keyboard up, the Deal number
+1. T104 (#165): with the on-screen keyboard up, the Deal number
    field sits under the keyboard and the screen does not scroll it into
    view, so the digits being typed, and T105's "Enter 1 to 999999" under
    the field, cannot be seen; the screen will not scroll further while the
    keyboard is up. The rest of T104's Expected holds: Random deal selected,
    Winnable only disabled with "A chosen deal can't be promised winnable",
    and clearing the field restores Winnable only. Seen twice, on New
-   Klondike (`t104-typed.png`, `kb-recheck.png`). Not checked on
-   `solitaire-dev`, so whether it is specific to the 568-dp height is open.
+   Klondike (`t104-typed.png`, `kb-recheck.png`). Not specific to the
+   568-dp height: #165's widget test fails the same way at 384×824 dp.
 2. T107, T124 (#154): "Keep playing the current game" is outlined and
    labelled in the default grey-blue on both setup screens, not teal or
    violet (`t107-keep.png`, `t124-keep2.png`); tapping it returns to the
@@ -155,19 +155,19 @@ Screenshots named below were taken in this run and kept under
    moves and score came back exactly, and UNDO stepped back the last move.
    v0.2.0 predates the fix (613ff1c).
 
-**Findings outside the core checks, for filing.**
+**Findings outside the core checks, filed 2026-09-30.**
 
-7. Spider's empty stock (after the last row is dealt) reads "EMPT" / "Y",
+7. #164: Spider's empty stock (after the last row is dealt) reads "EMPT" / "Y",
    the word broken across two lines and spilling out of the slot, with
    Large cards on and off (`large-spider.png`, `normal-spider-empty.png`).
    Reached after T303's deals; T218 and T621 are the non-core checks
    nearest it.
-8. After a cold start, Continue restores the saved game but treats it as
+8. #163: after a cold start, Continue restores the saved game but treats it as
    not yet started until the next move: the clock stays still (10 s held
    for 20 s, twice) and going to the home screen and back does not raise
    the pause card (`t402-return.png`). A warm Continue in the same session
    runs the clock, and after one move home-and-back pauses as T402 expects.
-9. T506 (not core): after a cold start with a Spider game saved
+9. #166, T506 (not core): after a cold start with a Spider game saved
    ("Continue Spider" on the menu), Statistics opens on the Klondike tab
    (`t506-cold.png`); before the restart it opened on Spider.
 
@@ -221,7 +221,10 @@ the score from 486 to 585. The winning lines came from the engine's solver
 ## Automated evidence
 
 - `tools/e2e.sh --avd solitaire-api24`, 2026-09-30, `build/e2e/2026-09-30-1.log`
-  in the main checkout: PASSED on a debug build of d731eea (Klondike deal
+  in the main checkout (key lines: Klondike phase 1 `E2E_ELAPSED_MS=7568`,
+  `+1: All tests passed!`; phase 2 `02:16 +1: All tests passed!`; Spider
+  phase 1 `E2E_ELAPSED_MS=4031`, `+1: All tests passed!`; phase 2
+  `01:20 +1: All tests passed!`; `PASSED`): PASSED on a debug build of d731eea (Klondike deal
   1000 and Spider deal 1000 played through undo, a refused move, HINT,
   background plus force-stop, a win and Statistics). That build carries the
   fixes for #152, #153, #154, #159 and #160, so it does not stand for
