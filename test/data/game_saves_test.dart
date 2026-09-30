@@ -301,6 +301,86 @@ void main() {
       },
     );
 
+    testWidgets(
+      'an inactive-only interruption writes the time played since the last write (#172)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        var now = Duration.zero;
+        final controller = GameController(
+          KlondikeGame.deal(DealNumber(7)),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(const DisplayOptions()),
+          clockNow: () => now,
+        );
+        final persistence = GamePersistence(controller, saves);
+        controller.tapPile(const StockPile(), null);
+        await tester.pump(const Duration(milliseconds: 600));
+        now = const Duration(seconds: 7);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        expect(
+          saves.value.klondike!.game.elapsed,
+          const Duration(seconds: 7),
+          reason: 'inactive alone writes the clock',
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
+    testWidgets(
+      'a game in play is written every 10 s with no move and no lifecycle change (#172)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        var now = Duration.zero;
+        final controller = GameController(
+          KlondikeGame.deal(DealNumber(7)),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(const DisplayOptions()),
+          clockNow: () => now,
+        );
+        final persistence = GamePersistence(controller, saves);
+        controller.tapPile(const StockPile(), null);
+        for (var i = 0; i < 25; i++) {
+          now += const Duration(seconds: 1);
+          await tester.pump(const Duration(seconds: 1));
+        }
+        expect(
+          saves.value.klondike!.game.elapsed,
+          greaterThanOrEqualTo(const Duration(seconds: 20)),
+          reason: 'the clock is written while the game sits in the foreground',
+        );
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
+    testWidgets(
+      'an untouched deal is never written by the clock saves (#172)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        final controller = controllerFor(KlondikeGame.deal(DealNumber(7)));
+        final persistence = GamePersistence(controller, saves);
+        await tester.pump(const Duration(seconds: 25));
+        expect(
+          persistence.writes,
+          0,
+          reason: 'a deal nobody moved in was saved',
+        );
+        expect(saves.value.klondike, isNull);
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
     testWidgets('a win clears the slot and nothing resurrects it', (
       tester,
     ) async {

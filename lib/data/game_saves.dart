@@ -226,6 +226,10 @@ class GameSaves extends ChangeNotifier implements ValueListenable<SavedGames> {
 /// at most one write per window with a trailing write of the latest game.
 const Duration saveThrottle = Duration(milliseconds: 500);
 
+/// How often the clock of a game in play is written without a move, so a
+/// kill that Android gives no warning of loses at most this much (#172).
+const Duration clockSaveInterval = Duration(seconds: 10);
+
 /// Saves the controller's game as it changes (#84).
 class GamePersistence {
   GamePersistence(this.controller, this.saves, {bool observeLifecycle = true}) {
@@ -235,11 +239,13 @@ class GamePersistence {
       _lifecycle = AppLifecycleListener(onStateChange: _onLifecycle);
     }
     _lastGame = controller.game;
+    _clockSaves = Timer.periodic(clockSaveInterval, (_) => flush());
   }
 
   final GameController controller;
   final GameSaves saves;
   AppLifecycleListener? _lifecycle;
+  late final Timer _clockSaves;
 
   Game? _lastGame;
   final Map<GameType, Timer> _windows = {};
@@ -305,7 +311,10 @@ class GamePersistence {
   }
 
   void _onLifecycle(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
+    // Inactive too: the clock stops there, and a kill can follow it with
+    // no hidden or paused in between (#172).
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       flush();
     }
@@ -335,6 +344,7 @@ class GamePersistence {
   void dispose() {
     flush();
     _disposed = true;
+    _clockSaves.cancel();
     for (final t in _windows.values) {
       t.cancel();
     }
