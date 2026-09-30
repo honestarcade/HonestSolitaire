@@ -62,3 +62,24 @@ Future<void> tapKey(WidgetTester tester, String key) async {
 /// Gives the controller's live game a move (a stock draw).
 void drawFromStock(GameScope scope) =>
     scope.controller.tapPile(const StockPile(), null);
+
+/// The Keep playing button's border and label colours, as drawn (#154).
+({Color border, Color text}) keepPlayingColours(
+  WidgetTester tester,
+  String key,
+) {
+  final box = tester
+      .widgetList<Container>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(Container),
+        ),
+      )
+      .map((c) => c.decoration)
+      .whereType<BoxDecoration>()
+      .first;
+  final label = tester.widget<Text>(
+    find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)),
+  );
+  return (border: (box.border! as Border).top.color, text: label.style!.color!);
+}

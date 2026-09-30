@@ -129,6 +129,7 @@ class _NewKlondikeScreenState extends State<NewKlondikeScreen> {
               if (keep != null) ...[
                 SizedBox(height: 9 * s),
                 KeepPlayingButton(
+                  accent: accent,
                   key: const Key('ksetup-keep'),
                   scale: s,
                   onPressed: () => keepPlaying(context, keep),

@@ -284,14 +284,18 @@ class _DealButtonState extends State<DealButton> {
   }
 }
 
-/// The design's "Keep playing the current game" row.
+/// The "Keep playing the current game" row, outlined in the screen's
+/// accent under the filled Deal button: the design's grey outline was easy
+/// to miss (owner, 2026-09-29 device play-through, #154).
 class KeepPlayingButton extends StatelessWidget {
   const KeepPlayingButton({
     super.key,
+    required this.accent,
     required this.scale,
     required this.onPressed,
   });
 
+  final SetupAccent accent;
   final double scale;
   final VoidCallback onPressed;
 
@@ -311,17 +315,17 @@ class KeepPlayingButton extends StatelessWidget {
           padding: EdgeInsets.all(14 * s),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0x0AFFFFFF),
+            color: accent.fill,
             borderRadius: BorderRadius.circular(14 * s),
-            border: Border.all(color: const Color(0x29FFFFFF)),
+            border: Border.all(color: accent.border, width: 1.5),
           ),
           child: Text(
             'Keep playing the current game',
             style: TextStyle(
-              fontSize: 13 * s,
-              fontWeight: FontWeight.w500,
+              fontSize: 14 * s,
+              fontWeight: FontWeight.w600,
               height: 1,
-              color: Palette.readout,
+              color: accent.text,
             ),
           ),
         ),
