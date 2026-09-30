@@ -146,7 +146,10 @@ void main() {
       },
     );
     expect(
-      [r.exitCode, r.output.contains('INTEGRATION TEST: base/dex/classes2.dex')],
+      [
+        r.exitCode,
+        r.output.contains('INTEGRATION TEST: base/dex/classes2.dex'),
+      ],
       [5, true],
       reason:
           'bundle-scan: the integration_test plugin shipped unrefused\n'
