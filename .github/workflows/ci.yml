@@ -117,8 +117,10 @@ jobs:
     # and raise this — or split the battery across jobs — before it happens
     # to you. It happened here: the 63-entry battery of PR #134 was cancelled
     # at entry 54 by the 30-minute default (run 36303295153, 2026-09-27,
-    # about 25 s per entry after a 5-minute setup), so the ceiling is 60.
-    timeout-minutes: 60
+    # about 25 s per entry after a 5-minute setup), so the ceiling was 60.
+    # Then the 99-entry battery of PR #176 finished in 59m57s (run
+    # 36767830766, 2026-09-30), so the ceiling is 90.
+    timeout-minutes: 90
     env:
       FLUTTER_SUPPRESS_ANALYTICS: "true"
     steps:

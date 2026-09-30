@@ -599,3 +599,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision (Rule 1, my own error):** the first commit of #169's tests wrote them over `test/guards/release_scripts_test.dart`, an M1 guard (#37: `ci_version.sh` and `verify_upload_cert.sh` refusals, 13 tests). The gate stayed green, since a removed guard fails nothing. A per-file count against e233e08 (JSON reporter) found it before the PR. The original is restored unchanged, and #169's tests live in `test/guards/release_steps_test.dart` with the prefix `release-steps:`.
   **Why:** a guard silently deleted is the failure the mutation battery exists to catch; the full battery is re-run on this branch.
   **Issue:** #169, #37
+- **Decision (Rule 3):** `ci.yml`'s mutations job timeout rises from 60 to 90 minutes. PR #176's 99-entry battery finished in 59m57s (run 36767830766, 2026-09-30), so the next added mutation would have been cancelled.
+  **Why:** a cancelled check is not a red one; splitting the battery across jobs remains the option when it grows again.
+  **Issue:** #176 (M6 fix pass 1)
