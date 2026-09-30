@@ -14,6 +14,7 @@
 #         1  one or more permissions declared
 #         2  package id missing or wrong
 #         3  file unreadable, not an .aab, or no manifest entry in the zip
+#         6  the manifest mentions `debuggable` (and no permission was found)
 #
 # Needs unzip, tr, grep, sort, awk and dirname. Written for bash 3.2 (macOS
 # default).
@@ -356,6 +357,22 @@ if [ -n "$OFFENDERS" ]; then
 $OFFENDERS
 EOF
   STATUS=1
+fi
+
+# A debuggable build lets other code on the device attach to the app and read
+# its data. Any mention of the attribute is refused, not only a true one: the
+# gate runs this scan over a real release bundle, which holds that a release
+# build names it nowhere, and a hand-written `android:debuggable="false"` is
+# still something a human should look at.
+DEBUGGABLE_RUNS="$(printf '%s\n' "$STRINGS" | grep -F 'debuggable' || true)"
+if [ -n "$DEBUGGABLE_RUNS" ]; then
+  while IFS= read -r line; do
+    [ -n "$line" ] && echo "DEBUGGABLE: $line" >&2
+  done <<EOF
+$DEBUGGABLE_RUNS
+EOF
+  echo "DEBUGGABLE: the manifest names debuggable; a release bundle must not" >&2
+  if [ "$STATUS" -eq 0 ]; then STATUS=6; fi
 fi
 
 if [ "$STATUS" -ne 0 ]; then

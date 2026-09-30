@@ -61,6 +61,30 @@ List<String> releaseOrderViolations(String releaseYaml) {
       violations.add('$what can neither be skipped nor forgiven');
     }
   }
+  // The bundle reaches its GitHub release before Play, and the release is
+  // created first so the attach never has a reason to skip: a tag pushed
+  // without a release would otherwise go green with the bundle attached
+  // nowhere and its hash never re-checked.
+  final create = indexWhere((s) => s['id'] == 'release');
+  final attach = indexWhere((s) => s['id'] == 'asset');
+  if (create < 0) {
+    violations.add('create step missing');
+  } else if (attach >= 0 && create > attach) {
+    violations.add('create step after attach');
+  }
+  if (attach < 0) {
+    violations.add('attach step missing');
+  } else {
+    if (attach > play) violations.add('attach step after the Play upload');
+    if (skipsMissingRelease('${steps[attach]['run']}')) {
+      violations.add('attach step skips a missing release');
+    }
+  }
+  for (final (index, what) in [(create, 'create'), (attach, 'attach')]) {
+    if (index >= 0 && lenient(steps[index])) {
+      violations.add('$what step lenient');
+    }
+  }
   final uploads = steps.where(
     (s) => '${s['uses']}'.startsWith('r0adkll/upload-google-play@'),
   );
@@ -68,6 +92,30 @@ List<String> releaseOrderViolations(String releaseYaml) {
     violations.add('every Play upload targets internal');
   }
   return violations;
+}
+
+/// Whether [script] exits successfully from inside an `if … gh release view`
+/// block: the shape of an attach that treats a missing release as nothing to
+/// do. A bare `exit` counts, since it returns the status of the command before
+/// it.
+bool skipsMissingRelease(String script) {
+  final exits = RegExp(r'(^|[;&|]\s*|\bthen\s+|\belse\s+)exit(\s+0)?\s*($|;)');
+  final closes = RegExp(r'(^|;\s*)fi$');
+  var depth = 0;
+  for (final raw in script.split('\n')) {
+    final line = raw.trim();
+    if (depth == 0) {
+      final at = line.indexOf('gh release view');
+      if (!RegExp(r'^(if|elif)\b').hasMatch(line) || at < 0) continue;
+      if (exits.hasMatch(line.substring(at))) return true;
+      if (!closes.hasMatch(line)) depth = 1;
+      continue;
+    }
+    if (exits.hasMatch(line)) return true;
+    if (RegExp(r'^if\b').hasMatch(line) && !closes.hasMatch(line)) depth++;
+    if (closes.hasMatch(line) && !RegExp(r'^if\b').hasMatch(line)) depth--;
+  }
+  return false;
 }
 
 void main() {
@@ -83,10 +131,30 @@ jobs:
     steps:
       - run: tools/check_aab.sh
       - run: tools/verify_upload_cert.sh
+      - id: release
+        run: gh release create "\$TAG"
+      - id: asset
+        run: |
+          if ! gh release view "\$TAG"; then
+            echo "no release" >&2
+            exit 1
+          fi
+          gh release upload "\$TAG" app.aab
       - uses: r0adkll/upload-google-play@v1
         with:
           track: internal
 ''';
+  const createStep =
+      '      - id: release\n'
+      '        run: gh release create "\$TAG"\n';
+  const attachStep =
+      '      - id: asset\n'
+      '        run: |\n'
+      '          if ! gh release view "\$TAG"; then\n'
+      '            echo "no release" >&2\n'
+      '            exit 1\n'
+      '          fi\n'
+      '          gh release upload "\$TAG" app.aab\n';
 
   group('the rule, proven both ways', () {
     test('the safe order passes', () {
@@ -142,6 +210,83 @@ jobs:
       expect(releaseOrderViolations(late), [
         'the permission scan runs before the Play upload',
       ]);
+    });
+  });
+
+  group('the release is created, then attached, then uploaded', () {
+    const play = '      - uses: r0adkll/upload-google-play@v1\n';
+
+    test('the fixture holds both steps verbatim', () {
+      expect(
+        [good.contains(createStep), good.contains(attachStep)],
+        [true, true],
+      );
+    });
+
+    test('a missing create step is caught', () {
+      expect(releaseOrderViolations(good.replaceFirst(createStep, '')), [
+        'create step missing',
+      ]);
+    });
+
+    test('a create step after the attach is caught', () {
+      final late = good
+          .replaceFirst(createStep, '')
+          .replaceFirst(play, '$createStep$play');
+      expect(releaseOrderViolations(late), ['create step after attach']);
+    });
+
+    test('an attach after the Play upload is caught', () {
+      final late = '${good.replaceFirst(attachStep, '')}$attachStep';
+      expect(releaseOrderViolations(late), [
+        'attach step after the Play upload',
+      ]);
+    });
+
+    test('a skipped or forgiven create or attach step is caught', () {
+      final lenient = good
+          .replaceFirst(
+            '      - id: release\n',
+            '      - id: release\n        continue-on-error: true\n',
+          )
+          .replaceFirst(
+            '      - id: asset\n',
+            "      - id: asset\n        if: github.event_name == 'push'\n",
+          );
+      expect(releaseOrderViolations(lenient), [
+        'create step lenient',
+        'attach step lenient',
+      ]);
+    });
+
+    test('an attach that skips a missing release is caught', () {
+      for (final skip in [
+        '            exit 0\n',
+        '            exit\n',
+        '            [ -n "\$x" ] || exit 0\n',
+      ]) {
+        final skipping = good.replaceFirst(
+          '            exit 1\n',
+          '$skip            exit 1\n',
+        );
+        expect(releaseOrderViolations(skipping), [
+          'attach step skips a missing release',
+        ], reason: skip);
+      }
+      expect(
+        skipsMissingRelease('if ! gh release view "\$TAG"; then exit 0; fi'),
+        isTrue,
+      );
+    });
+
+    test('an exit 0 outside the release check is not a skip', () {
+      expect(
+        skipsMissingRelease(
+          'if ! gh release view "\$TAG"; then\n  exit 1\nfi\n'
+          'if [ -z "\$x" ]; then\n  exit 0\nfi\n',
+        ),
+        isFalse,
+      );
     });
   });
 

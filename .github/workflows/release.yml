@@ -3,7 +3,8 @@
 # The order is the safety property: the identical gate re-runs on the tagged
 # commit, then the bundle is built from secrets, scanned for permissions, and
 # its signing certificate checked against the committed one — and only then
-# does anything reach Play. A failure at any earlier step uploads nothing.
+# does anything reach the GitHub release or Play. A failure at any earlier
+# step uploads nothing.
 #
 # Production is never touched here. The upload track is `internal`, and
 # promotion to closed testing is a separate, manually dispatched workflow.
@@ -44,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
-      contents: write    # release asset upload only
+      contents: write    # create the GitHub release, attach to it, edit its notes
     env:
       FLUTTER_SUPPRESS_ANALYTICS: "true"
       # Read by tools/check_aab.sh's scan step below.
@@ -53,6 +54,11 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history and every tag: the release step names the previous
+          # tag as the start of its generated notes, and a shallow clone has
+          # neither.
+          fetch-depth: 0
 
       # First, so a missing secret fails in seconds rather than after a build.
       # Each is tested for emptiness; none is printed.
@@ -170,8 +176,8 @@ jobs:
         name: Verify the signing certificate
         run: tools/verify_upload_cert.sh
 
-      # Written here rather than in the asset step, so the artifact carries it
-      # even on a tag with no GitHub release (#138).
+      # Written here rather than in the asset step, so the run artifact carries
+      # it as well as the GitHub release.
       - id: sidecar
         name: Write the checksum sidecar
         run: |
@@ -191,38 +197,71 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      # The release already exists: /n8-release creates it and the tag
-      # together. A missing release is not a failure — the bundle is still on
-      # Play and in the artifact.
-      - id: asset
-        name: Attach the bundle to the GitHub release
+      # After every check on the bundle, so a bundle that fails one never
+      # gets a release page; before the attach, so the attach always has a
+      # release to attach to — a tag pushed without /n8-release has none. A
+      # release that already exists, as /n8-release makes one, is left exactly
+      # as it is.
+      - id: release
+        name: Create the GitHub release if it does not exist
+        # TAG and NAME through env, never interpolated into the script: GitHub
+        # pastes `${{ }}` in as text before bash runs, and `v1.0.0$(id)` is a
+        # legal tag name that matches this workflow's own trigger (#142).
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NAME: ${{ steps.version.outputs.name }}
         run: |
           set -euo pipefail
-          aab=build/app/outputs/bundle/release/app-release.aab
-          # Only "not found" means skip. Treating every failure as absence let
-          # a 5xx, a rate limit or a token-scope problem silently skip both the
-          # upload and the hash re-verification, on a green run (#138).
           view_err="$RUNNER_TEMP/release-view.err"
-          if ! gh release view "$GITHUB_REF_NAME" > /dev/null 2> "$view_err"; then
-            if grep -qiE 'release not found|not found \(HTTP 404\)|could not find' "$view_err"; then
-              echo "no GitHub release for this tag; skipping asset"
-              # A note for the summary, not a write to it. This step runs
-              # before `summary`, so appending here put the line ABOVE the
-              # "### Release" heading it belongs under — and it was indented
-              # four columns out of line with its siblings, which is how it
-              # stayed unnoticed (#180).
-              echo "no GitHub release for this tag; the bundle is in the run artifact only" \
-                > "$RUNNER_TEMP/no-release-note"
-              exit 0
+          if gh release view "$TAG" > /dev/null 2> "$view_err"; then
+            echo "a GitHub release for $TAG exists; leaving it untouched"
+          elif grep -qiE 'release not found|not found \(HTTP 404\)|could not find' "$view_err"; then
+            # A `-` suffix (v1.0.0-rc.1) is a release candidate: a prerelease,
+            # never marked Latest. A final release's notes start from the last
+            # final tag, so they cover every candidate before it too.
+            flags=()
+            describe=(git describe --tags --abbrev=0)
+            case "$TAG" in
+              *-*) flags+=(--prerelease --latest=false) ;;
+              *) describe+=(--exclude '*-*') ;;
+            esac
+            previous="$("${describe[@]}" "$TAG^" 2> /dev/null || true)"
+            if [ -n "$previous" ]; then
+              flags+=(--notes-start-tag "$previous")
             fi
+            gh release create "$TAG" --verify-tag \
+              --title "Honest Solitaire $NAME" --generate-notes "${flags[@]}"
+            echo "created the GitHub release for $TAG (notes from ${previous:-the first commit})"
+          else
             echo "gh release view failed for a reason other than not-found:" >&2
             cat "$view_err" >&2
             exit 1
           fi
-          gh release upload "$GITHUB_REF_NAME" "$aab" "$aab.sha256" --clobber
-          gh release download "$GITHUB_REF_NAME" --pattern 'app-release.aab' \
+          {
+            echo "url=$(gh release view "$TAG" --json url --jq .url)"
+            echo "prerelease=$(gh release view "$TAG" --json isPrerelease --jq .isPrerelease)"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      # The release step above made sure there is a release, so a missing one
+      # here is a failure, not a skip: a skip would let the run go green with
+      # the bundle attached nowhere and its hash never re-checked.
+      - id: asset
+        name: Attach the bundle to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          aab=build/app/outputs/bundle/release/app-release.aab
+          view_err="$RUNNER_TEMP/release-view.err"
+          if ! gh release view "$TAG" > /dev/null 2> "$view_err"; then
+            echo "no readable GitHub release for $TAG after the release step:" >&2
+            cat "$view_err" >&2
+            exit 1
+          fi
+          gh release upload "$TAG" "$aab" "$aab.sha256" --clobber
+          gh release download "$TAG" --pattern 'app-release.aab' \
             --dir "$RUNNER_TEMP/verify" --clobber
           local_hash="$(sha256sum "$aab" | cut -d' ' -f1)"
           remote_hash="$(sha256sum "$RUNNER_TEMP/verify/app-release.aab" | cut -d' ' -f1)"
@@ -251,6 +290,8 @@ jobs:
         # tag name that matches this workflow's own trigger (#142).
         env:
           TAG: ${{ github.ref_name }}
+          RELEASE_URL: ${{ steps.release.outputs.url || 'n/a' }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease || 'n/a' }}
         run: |
           set -euo pipefail
           aab=build/app/outputs/bundle/release/app-release.aab
@@ -263,19 +304,36 @@ jobs:
             echo "| version code | ${{ steps.version.outputs.code }} |"
             echo "| package | com.honestarcade.solitaire |"
             echo "| track | internal |"
+            echo "| GitHub release | $RELEASE_URL |"
+            echo "| prerelease | $PRERELEASE |"
             if [ -f "$aab" ]; then
               echo "| bundle SHA-256 | $(sha256sum "$aab" | cut -d' ' -f1) |"
             fi
             echo ""
             echo "Native debug symbols are not uploaded: this is a Flutter"
             echo "default build with no obfuscation mapping to attach."
-            if [ -f "$RUNNER_TEMP/no-release-note" ]; then
-              echo ""
-              cat "$RUNNER_TEMP/no-release-note"
-            fi
             echo ""
             echo "Play Console: https://play.google.com/console"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # A release page for a build Play never received would read as shipped.
+      # Only when this run's release step succeeded: before it there may be no
+      # release to mark.
+      - id: mark_release
+        name: Mark the release as not on Play
+        if: failure() && steps.release.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          notes="$(gh release view "$TAG" --json body --jq .body)"
+          printf '%s\n\n%s\n' \
+            "**This build did not reach Play:** the release run failed after this release was created ($RUN_URL)." \
+            "$notes" > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          echo "marked the $TAG release as not on Play"
 
       - id: name_failure
         name: Name the failed step
