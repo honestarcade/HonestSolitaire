@@ -1,3 +1,8 @@
+@Tags(['guard'])
+library;
+
+// The tab Statistics and How to play open on (#166, #170): a named game, then
+// the game in play, then the last game played.
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/data/app_store.dart';
