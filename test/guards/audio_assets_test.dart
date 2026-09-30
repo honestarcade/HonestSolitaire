@@ -7,6 +7,7 @@ library;
 // Sudoku's audio guard without its placeholder machinery.
 
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,7 @@ List<int> _wav(
   int bits = 16,
   int format = 1,
   int riffSlack = 0,
+  bool silent = false,
 }) {
   final data = (seconds * rate).round() * channels * bits ~/ 8;
   final b = ByteData(44 + data);
@@ -47,6 +49,13 @@ List<int> _wav(
   b.setUint16(34, bits, Endian.little);
   tag(36, 'data');
   b.setUint32(40, data, Endian.little);
+  // A 440 Hz tone, well above the level floor, unless [silent].
+  if (!silent && bits == 16) {
+    for (var i = 0; 44 + 2 * i + 1 < 44 + data; i++) {
+      final v = (8000 * math.sin(2 * math.pi * 440 * i / rate)).round();
+      b.setInt16(44 + 2 * i, v, Endian.little);
+    }
+  }
   return b.buffer.asUint8List();
 }
 
@@ -174,6 +183,37 @@ void main() {
       expect(wavProblems(_wav(28), loop: true).single, contains('under 29 s'));
       expect(wavProblems(_wav(32), loop: true).single, contains('over 31 s'));
     });
+
+    test('a silent or near-silent clip is refused as a placeholder (#174)', () {
+      expect(wavProblems(_wav(0.5), loop: false), isEmpty);
+      expect(wavProblems(_wav(0.5, silent: true), loop: false), [
+        contains('near silent'),
+      ], reason: 'audio-level: a silent clip passed');
+    });
+
+    test(
+      'two clips with the same bytes are refused as a placeholder (#174)',
+      () {
+        final same = _wav(0.5);
+        final offenders = audioOffenders(
+          {
+            'LICENSES.md': const [],
+            'PROMPTS.md': const [],
+            'deal.wav': same,
+            'music.wav': _wav(30),
+            'flip.wav': [...same],
+          },
+          _licences(['deal.wav', 'music.wav', 'flip.wav']),
+          [
+            ...declared,
+            (name: 'flip.wav', asset: 'assets/audio/flip.wav', loop: false),
+          ],
+        );
+        expect(offenders.map((o) => '${o.path}: ${o.message}'), [
+          'flip.wav: the same bytes as deal.wav',
+        ], reason: 'audio-level: a copied clip passed');
+      },
+    );
 
     test('the pubspec bundles each clip, never the directory', () {
       const ok =

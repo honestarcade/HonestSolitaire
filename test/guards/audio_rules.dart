@@ -1,7 +1,10 @@
 // The audio-assets rules (#98), as pure functions over file names, bytes,
 // the licence record and the clip list. Ported from Honest Sudoku's
-// audio_rules.dart (its #49) without its placeholder machinery.
+// audio_rules.dart (its #49) without its placeholder machinery; the level
+// and duplicate checks below are this project's placeholder check (#174).
 library;
+
+import 'dart:math' as math;
 
 /// One refusal, naming the file.
 typedef Offender = ({String path, String message});
@@ -20,6 +23,11 @@ const int kMaxClipBytes = 250 * 1024;
 const Duration kMinLoop = Duration(seconds: 29);
 const Duration kMaxLoop = Duration(seconds: 31);
 const int kMaxLoopBytes = 3 * 1024 * 1024;
+
+/// The quietest a clip may be, as RMS in dBFS. Silence and near-silent stubs
+/// are what a placeholder looks like; the recorded clips measured -21.5 to
+/// -36.6 dBFS on 2026-09-30 (Python's `wave` module over assets/audio, #174).
+const double kMinRmsDbfs = -50;
 
 /// The clips `clips.dart` names: every `ClipSpec('assets/audio/x.wav',
 /// loop: …)` in [source].
@@ -52,7 +60,7 @@ List<String> wavProblems(List<int> bytes, {required bool loop}) {
       'RIFF size ${u32(4)} does not match the file (${bytes.length - 8})',
     );
   }
-  int? format, channels, rate, bits, dataBytes;
+  int? format, channels, rate, bits, dataBytes, dataAt;
   var at = 12;
   while (at + 8 <= bytes.length) {
     final id = tag(at);
@@ -68,6 +76,7 @@ List<String> wavProblems(List<int> bytes, {required bool loop}) {
       bits = u16(at + 22);
     } else if (id == 'data') {
       dataBytes = size;
+      dataAt = at + 8;
     }
     at += 8 + size + size % 2;
   }
@@ -79,6 +88,14 @@ List<String> wavProblems(List<int> bytes, {required bool loop}) {
   if (bits != 16) out.add('$bits-bit, not 16-bit');
   if (rate != 44100) out.add('$rate Hz, not 44100 Hz');
   if (channels != 1) out.add('$channels channels, not mono');
+  if (format == 1 && bits == 16 && dataBytes > 1 && dataAt != null) {
+    final db = rmsDbfs(bytes.sublist(dataAt, dataAt + dataBytes));
+    if (db < kMinRmsDbfs) {
+      out.add(
+        'near silent: RMS ${db.toStringAsFixed(1)} dBFS, under $kMinRmsDbfs',
+      );
+    }
+  }
   if (channels! > 0 && bits! > 0 && rate! > 0) {
     final micros = dataBytes * 1000000 ~/ (channels * bits ~/ 8 * rate);
     if (loop) {
@@ -97,6 +114,21 @@ List<String> wavProblems(List<int> bytes, {required bool loop}) {
     }
   }
   return out;
+}
+
+/// The RMS level of 16-bit little-endian PCM [data], in dBFS.
+double rmsDbfs(List<int> data) {
+  var sum = 0.0;
+  final n = data.length ~/ 2;
+  for (var i = 0; i < n; i++) {
+    var v = data[2 * i] | data[2 * i + 1] << 8;
+    if (v >= 0x8000) v -= 0x10000;
+    sum += v * v;
+  }
+  final rms = math.sqrt(sum / n);
+  return rms == 0
+      ? double.negativeInfinity
+      : 20 * math.log(rms / 32768) / math.ln10;
 }
 
 final _isoDate = RegExp(r'^\d{4}-\d{2}-\d{2}$');
@@ -178,6 +210,22 @@ List<Offender> audioOffenders(
       out.add((path: clip.name, message: 'missing'));
     }
   }
+  // A copied file standing in for another clip is a placeholder too.
+  final clipNames = [
+    for (final name in files.keys)
+      if (byName.containsKey(name)) name,
+  ]..sort();
+  for (var i = 0; i < clipNames.length; i++) {
+    for (var j = i + 1; j < clipNames.length; j++) {
+      final a = files[clipNames[i]]!, b = files[clipNames[j]]!;
+      if (a.length == b.length && _same(a, b)) {
+        out.add((
+          path: clipNames[j],
+          message: 'the same bytes as ${clipNames[i]}',
+        ));
+      }
+    }
+  }
   for (final name in licensed) {
     if (!files.containsKey(name)) {
       out.add((path: name, message: 'licensed but absent'));
@@ -210,4 +258,11 @@ List<String> pubspecAudioOffenders(
     if (listed.contains('assets/audio/'))
       'assets/audio/: the directory would bundle LICENSES.md and PROMPTS.md',
   ];
+}
+
+bool _same(List<int> a, List<int> b) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
