@@ -507,9 +507,16 @@ class GameController extends ChangeNotifier {
   }
 
   /// The same game again after a restart or the app closing: nothing is
-  /// recorded; [hasMove] says whether it already counts as played.
-  void resumeGame(Game game, {required bool hasMove}) =>
-      _install(game, hasMove: hasMove);
+  /// recorded; [hasMove] says whether it already counts as played. A game
+  /// already in play runs its clock at once: the wait for a first move is
+  /// a new deal's (#163).
+  void resumeGame(Game game, {required bool hasMove}) {
+    _install(game, hasMove: hasMove);
+    if (hasMove) {
+      _moved = true;
+      _syncClock();
+    }
+  }
 
   void _abandonIf(bool sameType, AbandonReason reason) {
     if (_hasMove && sameType && !_game.isWon) {

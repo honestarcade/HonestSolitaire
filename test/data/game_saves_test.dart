@@ -457,7 +457,11 @@ void main() {
         final saved = saves.value.klondike!;
         controller.resumeGame(saved.game, hasMove: true);
         expect(controller.hasMove, isTrue);
-        expect(controller.clock.running, isFalse);
+        expect(
+          controller.clock.running,
+          isTrue,
+          reason: 'a resumed game in play runs its clock (#163)',
+        );
         await tester.pump(const Duration(milliseconds: 600));
         expect(events, hasLength(2));
         persistence.dispose();
