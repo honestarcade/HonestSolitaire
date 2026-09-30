@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Card;
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/engine/card.dart';
 import 'package:honest_solitaire/engine/deal_number.dart';
@@ -13,6 +14,7 @@ import 'package:honest_solitaire/ui/settings/display_options.dart';
 import 'package:honest_solitaire/ui/settings/play_settings.dart';
 
 import '../engine/positions.dart';
+import '../helpers/fonts.dart';
 import 'disposing_host.dart';
 
 GameController controllerFor(Game game, {bool oneTap = false}) =>
@@ -352,4 +354,65 @@ void main() {
       expect(gameOf(controller).tableau[0], cards('7H'), reason: 'unchanged');
     },
   );
+
+  group('the empty stock label', () {
+    // Widths are the point: measured with the bundled fonts.
+    setUpAll(loadAppFonts);
+
+    Game emptied() {
+      Game g = SpiderGame.deal(DealNumber(1000));
+      for (var i = 0; i < 5; i++) {
+        g = applied(g, const DealRow());
+      }
+      return g;
+    }
+
+    for (final (name, size, large) in [
+      ('320 dp', const Size(320, 568), false),
+      ('320 dp, Large cards', const Size(320, 568), true),
+      ('384 dp (S26 Ultra)', const Size(384, 824), false),
+      ('390 dp', const Size(390, 844), false),
+    ]) {
+      testWidgets('reads EMPTY on one line inside its slot at $name', (
+        tester,
+      ) async {
+        tester.view.physicalSize = size * 3;
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        final controller = GameController(
+          emptied(),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(DisplayOptions(largeCards: large)),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: DisposingHost(
+              controller: controller,
+              child: BoardView(controller: controller),
+            ),
+          ),
+        );
+        final text = find.text('EMPTY');
+        final render = tester.renderObject<RenderParagraph>(text);
+        final lines = render
+            .getBoxesForSelection(
+              const TextSelection(baseOffset: 0, extentOffset: 5),
+            )
+            .map((b) => b.top)
+            .toSet();
+        expect(
+          lines,
+          hasLength(1),
+          reason: 'EMPTY breaks across lines at $name (#164)',
+        );
+        final slot = tester.getRect(find.byKey(const Key('stock-empty')));
+        final label = tester.getRect(text);
+        expect(
+          slot.left <= label.left && label.right <= slot.right,
+          isTrue,
+          reason: 'EMPTY spills out of its slot at $name (#164)',
+        );
+      });
+    }
+  });
 }

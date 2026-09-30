@@ -1078,17 +1078,27 @@ class _Board extends StatelessWidget {
                 radius: tr,
                 edgeColor: _slotEdge(const StockPile(), _spiderEmptyEdge),
               ),
-              child: Center(
-                child: Text(
-                  'EMPTY',
-                  textScaler: TextScaler.noScaling, // a slot label (#106)
-                  style: TextStyle(
-                    fontSize: 9 * layout.scale,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.06 * 9 * layout.scale,
-                    // The placeholder alpha #102 proves on the felt (#109).
-                    color: Palette.placeholderSuit,
-                    height: 1,
+              // One word on one line, shrunk to the slot where it is wider
+              // than the slot (#164).
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 2 * layout.scale),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'EMPTY',
+                      maxLines: 1,
+                      softWrap: false,
+                      textScaler: TextScaler.noScaling, // a slot label (#106)
+                      style: TextStyle(
+                        fontSize: 9 * layout.scale,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.06 * 9 * layout.scale,
+                        // The placeholder alpha #102 proves on the felt (#109).
+                        color: Palette.placeholderSuit,
+                        height: 1,
+                      ),
+                    ),
                   ),
                 ),
               ),
