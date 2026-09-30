@@ -596,3 +596,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** #173 ends phase 1 with an undo and the same move again straight into the background. The suite first checks that the move is still unsaved, then that backgrounding saved it. A run with the flush disabled fails at "e2e: backgrounding did not save the board".
   **Why:** the first version of this check passed with the flush disabled: the tap helpers' waits let the throttle's trailing write land first. The precondition turns a too-slow run into a loud failure rather than a vacuous pass.
   **Issue:** #173
+- **Decision (Rule 1, my own error):** the first commit of #169's tests wrote them over `test/guards/release_scripts_test.dart`, an M1 guard (#37: `ci_version.sh` and `verify_upload_cert.sh` refusals, 13 tests). The gate stayed green, since a removed guard fails nothing. A per-file count against e233e08 (JSON reporter) found it before the PR. The original is restored unchanged, and #169's tests live in `test/guards/release_steps_test.dart` with the prefix `release-steps:`.
+  **Why:** a guard silently deleted is the failure the mutation battery exists to catch; the full battery is re-run on this branch.
+  **Issue:** #169, #37

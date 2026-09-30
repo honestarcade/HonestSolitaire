@@ -1,226 +1,178 @@
-@Tags(['guard'])
+@Tags(['guard', 'slow'])
 library;
 
-// release.yml's GitHub-release scripts, run for real (#169, #175): each
-// step's `run:` is read from the workflow and executed by bash against a
-// stubbed gh and a scratch repository holding the tags, so what a tag does
-// to its release is proven, not read.
+// The release path's two refusals, exercised (#37): ci_version.sh must refuse
+// a ref it cannot turn into a version, and verify_upload_cert.sh must refuse a
+// bundle signed by any key but the committed one. The certificate case signs a
+// throwaway zip with a key made on the spot, so no real key material is used.
+// Tagged slow: keytool and jarsigner are JVM start-ups.
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yaml/yaml.dart';
 
 import 'repo_files.dart';
 
-/// The `run:` script of the ship job's step [id] in the real release.yml.
-String stepScript(String id) {
-  final doc = loadYaml(readFile('.github/workflows/release.yml')) as YamlMap;
-  final steps =
-      ((doc['jobs'] as YamlMap)['ship'] as YamlMap)['steps'] as YamlList;
-  final step = steps.whereType<YamlMap>().firstWhere((s) => s['id'] == id);
-  return step['run'] as String;
-}
+ProcessResult _run(
+  String script,
+  List<String> args, [
+  Map<String, String>? env,
+]) => Process.runSync('bash', [
+  '${repoRoot.path}/tools/$script',
+  ...args,
+], environment: env);
 
-/// A gh that answers the release calls the scripts make, from a state
-/// directory: `exists` marks a release, `prerelease` its flag, `body` its
-/// notes. Every call is logged, one per line, to `calls`.
-const _gh = r'''#!/bin/bash
-echo "$*" >> "$STATE/calls"
-case "$1 $2" in
-  "release view")
-    if [ ! -f "$STATE/exists" ]; then echo "release not found" >&2; exit 1; fi
-    case "$*" in
-      *"--json url"*) echo "https://example.test/$3" ;;
-      *"--json isPrerelease"*) [ -f "$STATE/prerelease" ] && echo true || echo false ;;
-      *"--json body"*) cat "$STATE/body" 2>/dev/null ;;
-    esac ;;
-  "release create")
-    touch "$STATE/exists"
-    case "$*" in *--prerelease*) touch "$STATE/prerelease" ;; esac ;;
-  "release edit")
-    shift 3
-    if [ "$1" = "--notes-file" ]; then cp "$2" "$STATE/body"; fi ;;
-  *) echo "stub gh: unexpected $*" >&2; exit 9 ;;
-esac
-''';
-
-/// Runs step [id] for [tag] in a repository whose history is v0.2.0, then
-/// v1.0.0-rc.1, then the commit [tag] names; returns the exit code, the
-/// output and the state directory.
-Future<(int, String, Directory)> runStep(
-  String id,
-  String tag, {
-  bool exists = false,
-  String? body,
-}) async {
-  final dir = Directory.systemTemp.createTempSync('hs-release');
-  addTearDown(() => dir.deleteSync(recursive: true));
-  final state = Directory('${dir.path}/state')..createSync();
-  final bin = Directory('${dir.path}/bin')..createSync();
-  File('${bin.path}/gh').writeAsStringSync(_gh);
-  Process.runSync('chmod', ['+x', '${bin.path}/gh']);
-  if (exists) File('${state.path}/exists').writeAsStringSync('');
-  if (body != null) File('${state.path}/body').writeAsStringSync(body);
-  final repo = Directory('${dir.path}/repo')..createSync();
-  void git(List<String> args) {
-    final r = Process.runSync('git', [
-      '-c',
-      'user.name=t',
-      '-c',
-      'user.email=t@t',
-      ...args,
-    ], workingDirectory: repo.path);
-    if (r.exitCode != 0) throw StateError('git ${args.join(' ')}: ${r.stderr}');
+/// The JDK tool [name], resolved the way the release scripts resolve keytool.
+String jdkTool(String name) {
+  final hint = Platform.environment['HS_KEYTOOL'];
+  final candidates = [
+    if (hint != null) '${File(hint).parent.path}/$name',
+    '/opt/homebrew/opt/openjdk@21/bin/$name',
+    if (Platform.environment['JAVA_HOME'] != null)
+      '${Platform.environment['JAVA_HOME']}/bin/$name',
+  ];
+  for (final c in candidates) {
+    if (File(c).existsSync()) return c;
   }
-
-  git(['init', '-q']);
-  for (final t in ['v0.2.0', 'v1.0.0-rc.1', tag]) {
-    git(['commit', '-q', '--allow-empty', '-m', t]);
-    git(['tag', t]);
-  }
-  final script = File('${dir.path}/step.sh')..writeAsStringSync(stepScript(id));
-  final r = await Process.run(
-    'bash',
-    [script.path],
-    workingDirectory: repo.path,
-    environment: {
-      'PATH': '${bin.path}:${Platform.environment['PATH']}',
-      'STATE': state.path,
-      'TAG': tag,
-      'NAME': '1.0.0',
-      'RUN_URL': 'https://example.test/run/1',
-      'RUNNER_TEMP': dir.path,
-      'GITHUB_OUTPUT': '${dir.path}/output',
-    },
-  );
-  return (r.exitCode, '${r.stdout}${r.stderr}', state);
-}
-
-List<String> calls(Directory state) {
-  final f = File('${state.path}/calls');
-  return f.existsSync() ? f.readAsLinesSync() : const [];
+  final which = Process.runSync('which', [name]);
+  if (which.exitCode == 0) return (which.stdout as String).trim();
+  throw StateError('guard: no $name — set HS_KEYTOOL or JAVA_HOME');
 }
 
 void main() {
-  group('the create step', () {
-    test('an existing release is left untouched', () async {
-      final (code, out, state) = await runStep(
-        'release',
-        'v1.0.0',
-        exists: true,
-      );
-      expect(code, 0, reason: out);
-      expect(
-        calls(state).where((c) => !c.startsWith('release view')),
-        isEmpty,
-        reason: 'release-scripts: an existing release was created or edited',
-      );
+  group('ci_version.sh', () {
+    test('positive control: a release tag yields its name and code', () {
+      final r = _run('ci_version.sh', ['v0.1.0', '12', '1']);
+      expect(r.exitCode, 0, reason: '${r.stderr}');
+      expect(r.stdout, 'name=0.1.0\ncode=1121\n');
     });
 
-    test(
-      'a missing final release is created with notes from the last final tag',
-      () async {
-        final (code, out, state) = await runStep('release', 'v1.0.0');
-        expect(code, 0, reason: out);
-        final create = calls(state)
-            .singleWhere((c) => c.startsWith('release create'));
-        expect(create, contains('--verify-tag'));
-        expect(create, contains('--generate-notes'));
+    for (final bad in [
+      ['main', '12', '1'],
+      ['v1.2', '12', '1'],
+      ['v01.2.3', '12', '1'],
+      ['v1.2.3', '0', '1'],
+      ['v1.2.3', '12', '10'],
+      ['v1.2.3', '12'],
+      ['v1.2.3-rc.01', '12', '1'],
+      ['v1.2.3-', '12', '1'],
+      ['v1.2.3-rc..1', '12', '1'],
+      // A newline would inject a line into the step's output file (#37).
+      ['v1.2.3\nx', '12', '1'],
+    ]) {
+      test('refuses ${bad.join(' ').replaceAll('\n', r'\n')}', () {
+        final r = _run('ci_version.sh', bad);
         expect(
-          create,
-          contains('--notes-start-tag v0.2.0'),
+          [r.exitCode, '${r.stdout}'.contains('code=')],
+          [2, false],
           reason:
-              'release-scripts: a final release\'s notes skip the candidates',
+              'release-scripts: ci_version.sh accepted ${bad.join(' ')}\n'
+              '${r.stdout}${r.stderr}',
         );
-        expect(
-          create,
-          isNot(contains('--prerelease')),
-          reason: 'release-scripts: a final release was made a prerelease',
-        );
-        expect(
-          File('${state.parent.path}/output').readAsStringSync(),
-          contains('prerelease=false'),
-        );
-      },
-    );
-
-    test('a missing candidate is a prerelease, never Latest', () async {
-      final (code, out, state) = await runStep('release', 'v1.0.0-rc.2');
-      expect(code, 0, reason: out);
-      final create = calls(state)
-          .singleWhere((c) => c.startsWith('release create'));
-      expect(
-        create,
-        allOf(contains('--prerelease'), contains('--latest=false')),
-        reason: 'release-scripts: a candidate was not made a prerelease',
-      );
-      expect(create, contains('--notes-start-tag v1.0.0-rc.1'));
-    });
+      });
+    }
   });
 
-  group('the not-on-Play mark', () {
-    const mark = '**This build did not reach Play:**';
+  group('verify_upload_cert.sh', () {
+    late Directory dir;
+    late String keytool;
+    late String bundle;
+    late String pem;
 
-    test('a failed run marks the release, once', () async {
-      final (code, out, state) = await runStep(
-        'mark_release',
-        'v1.0.0',
-        exists: true,
-        body: 'The notes.\n',
+    setUpAll(() {
+      keytool = jdkTool('keytool');
+      final jarsigner = jdkTool('jarsigner');
+      dir = Directory.systemTemp.createTempSync('hs-cert');
+      final ks = '${dir.path}/throwaway.p12';
+      void ok(ProcessResult r) {
+        if (r.exitCode != 0) throw StateError('${r.stdout}${r.stderr}');
+      }
+
+      ok(
+        Process.runSync(keytool, [
+          '-genkeypair',
+          '-keystore',
+          ks,
+          '-storetype',
+          'PKCS12',
+          '-storepass',
+          'throwaway-pass',
+          '-alias',
+          'k',
+          '-keyalg',
+          'RSA',
+          '-keysize',
+          '2048',
+          '-validity',
+          '2',
+          '-dname',
+          'CN=throwaway',
+        ]),
       );
-      expect(code, 0, reason: out);
-      final notes = File('${state.path}/body').readAsStringSync();
-      expect(
-        notes,
-        startsWith(mark),
-        reason: 'release-scripts: a failed run left no mark',
+      pem = '${dir.path}/throwaway.pem';
+      ok(
+        Process.runSync(keytool, [
+          '-exportcert',
+          '-rfc',
+          '-keystore',
+          ks,
+          '-storetype',
+          'PKCS12',
+          '-storepass',
+          'throwaway-pass',
+          '-alias',
+          'k',
+          '-file',
+          pem,
+        ]),
       );
-      expect(notes, contains('The notes.'));
-      final (_, _, again) = await runStep(
-        'mark_release',
-        'v1.0.0',
-        exists: true,
-        body: notes,
+      File('${dir.path}/payload.txt').writeAsStringSync('not an app');
+      ok(
+        Process.runSync('zip', [
+          '-q',
+          'app.aab',
+          'payload.txt',
+        ], workingDirectory: dir.path),
       );
-      expect(
-        RegExp(RegExp.escape(mark))
-            .allMatches(File('${again.path}/body').readAsStringSync()),
-        hasLength(1),
-        reason: 'release-scripts: a second failure stacked a second mark',
+      bundle = '${dir.path}/app.aab';
+      ok(
+        Process.runSync(jarsigner, [
+          '-keystore',
+          ks,
+          '-storetype',
+          'PKCS12',
+          '-storepass',
+          'throwaway-pass',
+          bundle,
+          'k',
+        ]),
       );
     });
 
-    test('a run that reaches Play clears an earlier mark', () async {
-      final (code, out, state) = await runStep(
-        'clear_release_mark',
-        'v1.0.0',
-        exists: true,
-        body:
-            '$mark the release run failed (https://example.test/run/1).\n\nThe notes.\n',
+    tearDownAll(() => dir.deleteSync(recursive: true));
+
+    test('positive control: the signing key\'s own certificate matches', () {
+      final r = _run(
+        'verify_upload_cert.sh',
+        [bundle],
+        {'HS_KEYTOOL': keytool, 'HS_UPLOAD_CERT': pem},
       );
-      expect(code, 0, reason: out);
-      final notes = File('${state.path}/body').readAsStringSync();
-      expect(
-        notes,
-        isNot(contains(mark)),
-        reason: 'release-scripts: a run that reached Play left the mark',
-      );
-      expect(notes, contains('The notes.'));
+      expect(r.exitCode, 0, reason: '${r.stdout}${r.stderr}');
+      expect('${r.stdout}', contains('MATCH'));
     });
 
-    test('a release with no mark is not edited', () async {
-      final (code, out, state) = await runStep(
-        'clear_release_mark',
-        'v1.0.0',
-        exists: true,
-        body: 'The notes.\n',
+    test('a bundle signed by another key is refused', () {
+      final r = _run(
+        'verify_upload_cert.sh',
+        [bundle],
+        {'HS_KEYTOOL': keytool},
       );
-      expect(code, 0, reason: out);
       expect(
-        calls(state).where((c) => c.startsWith('release edit')),
-        isEmpty,
-        reason: 'release-scripts: an unmarked release was edited',
+        [r.exitCode, '${r.stderr}'.contains('MISMATCH')],
+        [1, true],
+        reason:
+            'release-scripts: a foreign-key bundle passed the '
+            'certificate check\n${r.stdout}${r.stderr}',
       );
     });
   });
