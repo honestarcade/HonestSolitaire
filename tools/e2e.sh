@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The on-device end-to-end suite (#112): every integration_test/*_test.dart
-# except perf_test.dart, each in two phases with a real force-stop between
+# The on-device end-to-end suite (#112): every integration_test/*_game_test.dart,
+# each in two phases with a real force-stop between
 # them. Phase 1 plays, backgrounds the app through the lifecycle channel and
 # prints E2E_PHASE1_DONE; the script then kills the app, and phase 2 cold
 # starts it and continues the saved game to the win.
@@ -79,8 +79,7 @@ run_phase() { # file phase extra-define...
     --dart-define=E2E_PHASE="$phase" "$@" >>"$LOG" 2>&1
 }
 
-for file in integration_test/*_test.dart; do
-  [ "$(basename "$file")" = "perf_test.dart" ] && continue
+for file in integration_test/*_game_test.dart; do
   say "e2e: uninstalling $PACKAGE"
   "$ADB" -s "$SERIAL" uninstall "$PACKAGE" >>"$LOG" 2>&1 || true
 

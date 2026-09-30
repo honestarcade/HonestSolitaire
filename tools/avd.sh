@@ -87,7 +87,10 @@ if [ ! -d "$AVD_DIR" ]; then
   image_dir="$SDK/$(printf '%s' "$IMAGE" | tr ';' '/')"
   if [ ! -d "$image_dir" ]; then
     echo "avd: installing $IMAGE" >&2
-    yes | "$SDKMANAGER" --install "$IMAGE" >&2 || { echo "avd: could not install $IMAGE" >&2; exit 4; }
+    # Not `yes | sdkmanager`: under pipefail, yes dies of SIGPIPE when the
+    # licence prompts end, and the pipeline reports that as a failure.
+    "$SDKMANAGER" --install "$IMAGE" < <(yes) >&2 || true
+    [ -f "$image_dir/system.img" ] || { echo "avd: could not install $IMAGE" >&2; exit 4; }
   fi
   echo "no" | "$AVDMANAGER" create avd -n "$NAME" -k "$IMAGE" -d "$DEVICE" --force >&2 ||
     { echo "avd: could not create $NAME" >&2; exit 4; }
