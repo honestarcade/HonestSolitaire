@@ -89,20 +89,25 @@ class LinkText extends StatelessWidget {
         key: Key('about-link-${link.name}'),
         behavior: HitTestBehavior.opaque,
         onTap: () => opener.open(context, link),
-        child: Container(
+        // Sized to its label: inside a Wrap, an aligned Container would take
+        // the whole line and stack every link (#160).
+        child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
-          alignment: Alignment.centerLeft,
-          child: Container(
-            padding: EdgeInsets.only(bottom: 2 * s),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0x667FA6D8))),
-            ),
-            child: Text.rich(
-              TextSpan(
-                text: '$label ',
-                children: [inlineGlyph(Glyph.external, _linkStyle(s))],
+          child: Align(
+            alignment: Alignment.centerLeft,
+            widthFactor: 1,
+            child: Container(
+              padding: EdgeInsets.only(bottom: 2 * s),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0x667FA6D8))),
               ),
-              style: _linkStyle(s),
+              child: Text.rich(
+                TextSpan(
+                  text: '$label ',
+                  children: [inlineGlyph(Glyph.external, _linkStyle(s))],
+                ),
+                style: _linkStyle(s),
+              ),
             ),
           ),
         ),

@@ -8,6 +8,7 @@ import 'package:honest_solitaire/ui/content/links.dart';
 import 'package:honest_solitaire/ui/screens/about_app_screen.dart';
 import 'package:honest_solitaire/ui/screens/about_studio_screen.dart';
 
+import '../helpers/fonts.dart';
 import 'setup_helpers.dart';
 
 /// Records openUrl calls on the app's own method channel.
@@ -38,6 +39,8 @@ class ChannelSpy {
 }
 
 void main() {
+  linkRowTests();
+
   testWidgets('About the App renders every section', (tester) async {
     await openScreen(tester, const AboutAppScreen());
     expect(find.text('About the App'), findsOneWidget);
@@ -151,3 +154,56 @@ void main() {
     },
   );
 }
+
+/// Where a link row's pieces sit: each link's centre and the separator's.
+({Offset site, Offset source, Offset dot}) linkRow(WidgetTester tester) => (
+  site: tester.getCenter(find.byKey(const Key('about-link-site'))),
+  source: tester.getCenter(find.byKey(const Key('about-link-source'))),
+  dot: tester.getCenter(find.text('·')),
+);
+
+void linkRowTests() => group('link rows (#160)', () {
+  // Widths are the point: measured with the bundled fonts.
+  setUpAll(loadAppFonts);
+  for (final (name, screen) in [
+    ('About the App', const AboutAppScreen() as Widget),
+    ('About Honest Arcade', const AboutStudioScreen()),
+  ]) {
+    testWidgets(
+      '$name: the two links share one line, the dot between them (#160)',
+      (tester) async {
+        await openScreen(tester, screen);
+        await tester.ensureVisible(find.byKey(const Key('about-link-source')));
+        await tester.pumpAndSettle();
+        final row = linkRow(tester);
+        expect(
+          row.source.dy,
+          moreOrLessEquals(row.site.dy, epsilon: 1),
+          reason: 'the links sit on one line on a 390 dp phone',
+        );
+        expect(
+          row.dot.dx,
+          allOf(greaterThan(row.site.dx), lessThan(row.source.dx)),
+          reason: 'the separator sits between the links',
+        );
+      },
+    );
+
+    testWidgets(
+      '$name: at 320 dp the separator never sits alone on a line (#160)',
+      (tester) async {
+        await openScreen(tester, screen);
+        tester.view.physicalSize = const Size(320 * 3, 568 * 3);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('about-link-source')));
+        await tester.pumpAndSettle();
+        final row = linkRow(tester);
+        expect(
+          [row.site.dy, row.source.dy].any((y) => (y - row.dot.dy).abs() <= 1),
+          isTrue,
+          reason: 'the separator shares its line with a link',
+        );
+      },
+    );
+  }
+});
