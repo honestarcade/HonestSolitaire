@@ -9,6 +9,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honest_solitaire/ui/theme/contrast.dart';
 import 'package:honest_solitaire/ui/theme/palette.dart';
+import 'package:honest_solitaire/ui/widgets/option_panel.dart';
 
 String _hex(Color c) =>
     '#${rounded(c).toARGB32().toRadixString(16).substring(2).toUpperCase()}';
@@ -60,6 +61,31 @@ void main() {
       isEmpty,
       reason:
           'contrast: ${failures.length} pair(s) fail\n  ${failures.join('\n  ')}',
+    );
+  });
+
+  test('each setup accent\'s text passes on its own tint over navy (#175)', () {
+    // Keep playing and the selected options draw accent text on the accent's
+    // translucent fill, on the setup screens' navy.
+    final failures = <String>[];
+    for (final (name, accent) in [
+      ('teal', SetupAccent.teal),
+      ('violet', SetupAccent.violet),
+    ]) {
+      final surface = composite(accent.fill, Palette.navy);
+      final fg = composite(accent.text, surface);
+      final ratio = contrastRatio(fg, surface);
+      if (ratio < kTextContrast) {
+        failures.add(
+          '$name: ${_hex(fg)} on ${_hex(surface)} is ${ratio.toStringAsFixed(2)}:1, below $kTextContrast:1',
+        );
+      }
+    }
+    expect(
+      failures,
+      isEmpty,
+      reason:
+          'contrast: setup accent text fails on its tint\n  ${failures.join('\n  ')}',
     );
   });
 
