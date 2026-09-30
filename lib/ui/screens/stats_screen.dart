@@ -77,7 +77,7 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     final scope = GameScope.of(context);
     final s = screenScale(context);
-    final tab = _tab ??= widget.game ?? GameType.of(scope.controller.game);
+    final tab = _tab ??= openingTab(scope, widget.game);
     return PopScope(
       canPop: !_confirming,
       onPopInvokedWithResult: (didPop, _) {

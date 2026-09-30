@@ -50,7 +50,7 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
   Widget build(BuildContext context) {
     final scope = GameScope.of(context);
     final s = screenScale(context);
-    final tab = _tab ??= widget.game ?? GameType.of(scope.controller.game);
+    final tab = _tab ??= openingTab(scope, widget.game);
     final cards = rulesFor(tab);
     return ScreenScaffold(
       controller: _scroll,
