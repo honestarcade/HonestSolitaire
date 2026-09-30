@@ -17,37 +17,137 @@ import 'repo_files.dart';
 /// `secrets['X']`, `toJSON(secrets)` — not only the dotted form (#46).
 final _secretExpr = RegExp(r'\$\{\{[^}]*\bsecrets\b');
 
-/// True when a shell script turns on tracing: any `set` whose options carry
-/// an x flag (`set -x`, `set -euxo pipefail`, `set -e -x`) or `xtrace` as the
-/// argument of an `o`-ending group (`set -o xtrace`, `set -euo xtrace`), or a
-/// shell started with such options (`bash -x`, GitHub's default
-/// `bash --noprofile --norc -eo pipefail {0}` with `-x` appended).
+const _shells = {'bash', 'sh', 'zsh', 'ksh'};
+
+/// True when a shell script turns on tracing: a `set` whose options carry an
+/// x flag or `-o xtrace`, or a shell started with such options — including
+/// GitHub's own `shell:` template and a `-c` body, which is read as a script
+/// in its turn.
 bool tracesShell(String script) {
-  for (final m in RegExp(
-    r'(?:^|[;&|(\s])(?:set|(?:ba|z|k)?sh)((?:[ \t]+[^\s;&|#]+)+)',
-    multiLine: true,
-  ).allMatches(script)) {
-    if (_optionsTrace(m.group(1)!.trim().split(RegExp(r'\s+')))) return true;
+  final words = _shellWords(script);
+  for (var i = 0; i < words.length; i++) {
+    final w = words[i];
+    if (w.op || (w.text != 'set' && !_shells.contains(w.text))) continue;
+    final args = [
+      for (final t in words.skip(i + 1).takeWhile((t) => !t.op)) t.text,
+    ];
+    if (_optionsTrace(args, shell: w.text != 'set')) return true;
   }
   return false;
 }
 
-/// Reads [args] as shell options: `--long` options are skipped, a `-` group
-/// is checked for x, and a group ending in `o` consumes the next word as its
-/// option name. Scanning stops at the first word that is none of these, so `bash tools/run.sh -x` is a script
-/// argument, not tracing.
-bool _optionsTrace(List<String> args) {
+/// Reads [args] as the options of `set` or of a [shell]. A word that is not
+/// an option ends them — so `bash tools/run.sh -x` passes `-x` to a script —
+/// and if a `c` flag came first, that word is the shell's script.
+bool _optionsTrace(List<String> args, {required bool shell}) {
+  var body = false;
   for (var i = 0; i < args.length; i++) {
     final a = args[i];
-    if (RegExp(r'^--[a-zA-Z][a-zA-Z-]*$').hasMatch(a)) continue;
-    if (!RegExp(r'^-[a-zA-Z]+$').hasMatch(a)) return false;
-    if (a.contains('x')) return true;
-    if (a.endsWith('o') && i + 1 < args.length) {
-      if (args[i + 1] == 'xtrace') return true;
+    if (RegExp(r'^--[a-zA-Z][a-zA-Z-]*=').hasMatch(a)) continue;
+    if (a == '--rcfile' || a == '--init-file') {
       i++;
+      continue;
+    }
+    if (RegExp(r'^--[a-zA-Z][a-zA-Z-]*$').hasMatch(a)) continue;
+    final group = RegExp(r'^([-+])([a-zA-Z]+)$').firstMatch(a);
+    if (group == null) return body && tracesShell(a);
+    final on = group[1] == '-';
+    for (final flag in group[2]!.split('')) {
+      if (flag == 'x' && on) return true;
+      if (flag == 'c' && shell) body = true;
+      // A value left unconsumed (`-O extglob`) would end the options before
+      // a `-x` that follows it.
+      if (flag == 'o' || flag == 'O') {
+        if (++i >= args.length) return false;
+        if (flag == 'o' && on && args[i] == 'xtrace') return true;
+      }
     }
   }
   return false;
+}
+
+class _Word {
+  const _Word(this.text, {this.op = false});
+  final String text;
+
+  /// A separator that ends a simple command: newline, `;`, `&`, `|`, `(`,
+  /// `)` or a backtick.
+  final bool op;
+}
+
+/// Splits [script] into shell words, the way the shell would: quotes removed
+/// (single, double and `$'…'`, with their escapes), a backslash-newline
+/// joined, and a `#` that starts a word dropped with the rest of its line.
+List<_Word> _shellWords(String script) {
+  final s = script;
+  final out = <_Word>[];
+  final word = StringBuffer();
+  var inWord = false;
+  void end() {
+    if (inWord) out.add(_Word(word.toString()));
+    word.clear();
+    inWord = false;
+  }
+
+  var i = 0;
+  while (i < s.length) {
+    final c = s[i];
+    if (c == r'\' && i + 1 < s.length) {
+      if (s[i + 1] != '\n') {
+        word.write(s[i + 1]);
+        inWord = true;
+      }
+      i += 2;
+    } else if (c == '#' && !inWord) {
+      while (i < s.length && s[i] != '\n') {
+        i++;
+      }
+    } else if (c == "'") {
+      final close = s.indexOf("'", i + 1);
+      final stop = close < 0 ? s.length : close;
+      word.write(s.substring(i + 1, stop));
+      inWord = true;
+      i = stop + 1;
+    } else if (c == r'$' && i + 1 < s.length && s[i + 1] == "'") {
+      i += 2;
+      while (i < s.length && s[i] != "'") {
+        if (s[i] == r'\' && i + 1 < s.length) {
+          final e = s[i + 1];
+          word.write(const {'n': '\n', 't': '\t', 'r': '\r'}[e] ?? e);
+          i += 2;
+        } else {
+          word.write(s[i++]);
+        }
+      }
+      inWord = true;
+      i++;
+    } else if (c == '"') {
+      i++;
+      while (i < s.length && s[i] != '"') {
+        if (s[i] == r'\' && i + 1 < s.length && '\$`"\\\n'.contains(s[i + 1])) {
+          if (s[i + 1] != '\n') word.write(s[i + 1]);
+          i += 2;
+        } else {
+          word.write(s[i++]);
+        }
+      }
+      inWord = true;
+      i++;
+    } else if (c == ' ' || c == '\t') {
+      end();
+      i++;
+    } else if ('\n;&|()`'.contains(c)) {
+      end();
+      out.add(_Word(c, op: true));
+      i++;
+    } else {
+      word.write(c);
+      inWord = true;
+      i++;
+    }
+  }
+  end();
+  return out;
 }
 
 /// Every way [workflowYaml] could expose a secret, one line per finding.
@@ -113,10 +213,29 @@ jobs:
           tools/verify_upload_cert.sh --exit-code
           bash tools/run.sh -x
           set -o pipefail
+          # set -x here would print the password
+          true # set -x here would print it too
+          echo "a # set -x inside quotes is not a comment, nor tracing"
+          echo a#set -x
+          bash -O extglob tools/run.sh -x
+          bash --rcfile=/dev/null tools/run.sh -x
+          bash -c "tools/run.sh -x" -x
+          bash -c 'echo set to -x; echo "don'\''t"'
+          sh -c $'echo \'set -x\''
+          set +o xtrace
+          bash +O extglob tools/run.sh -x
+      - id: shell
+        shell: bash -O extglob -e {0}
+        run: true
 ''';
 
     test('secrets in step env with no tracing pass', () {
-      expect(secretExposures(clean), isEmpty);
+      final findings = secretExposures(clean);
+      expect(
+        findings,
+        isEmpty,
+        reason: 'workflow-secrets: clean line flagged\n${findings.join('\n')}',
+      );
     });
 
     test('every exposure shape is caught', () {
@@ -157,10 +276,48 @@ jobs:
         run: echo hi
       - id: twelve
         run: set -euo xtrace
+      - id: thirteen
+        shell: bash -O extglob -x {0}
+        run: echo hi
+      - id: fourteen
+        shell: bash --rcfile=/dev/null -x {0}
+        run: echo hi
+      - id: fifteen
+        run: bash -c "set -x; true"
+      - id: sixteen
+        run: bash -c 'set -eux'
+      - id: seventeen
+        run: bash -c $'true\nset -x'
+      - id: eighteen
+        run: |
+          sh -c "echo \"a # b\"; set -o xtrace"
+      - id: nineteen
+        run: |
+          zsh -ec "
+            true
+            set -x
+          "
+      - id: twenty
+        shell: bash -eO extglob +O dotglob -x {0}
+        run: echo hi
+      - id: twentyone
+        shell: ksh -c 'set -x; . {0}'
+        run: echo hi
+      - id: twentytwo
+        run: |
+          bash --init-file /dev/null \
+            -x tools/thing.sh
+      - id: twentythree
+        run: bash -c $'set \'-x\''
   other:
     defaults:
       run:
         shell: bash -eux {0}
+    steps: []
+  third:
+    defaults:
+      run:
+        shell: sh -c "set -x; . {0}"
     steps: []
 ''';
       expect(secretExposures(dirty), [
@@ -178,7 +335,19 @@ jobs:
         'ship/ten: secret in run',
         'ship/eleven: shell traces',
         'ship/twelve: shell tracing',
+        'ship/thirteen: shell traces',
+        'ship/fourteen: shell traces',
+        'ship/fifteen: shell tracing',
+        'ship/sixteen: shell tracing',
+        'ship/seventeen: shell tracing',
+        'ship/eighteen: shell tracing',
+        'ship/nineteen: shell tracing',
+        'ship/twenty: shell traces',
+        'ship/twentyone: shell traces',
+        'ship/twentytwo: shell tracing',
+        'ship/twentythree: shell tracing',
         'other: default shell traces',
+        'third: default shell traces',
       ]);
       expect(secretExposures('defaults:\n  run:\n    shell: bash -x {0}\n'), [
         'workflow default shell traces',

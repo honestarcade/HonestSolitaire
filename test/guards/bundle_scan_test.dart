@@ -189,6 +189,23 @@ void main() {
     );
   });
 
+  test('a debuggable bundle fails the scan, with exit 6', () {
+    // <application android:debuggable="true">: the attribute name as its own
+    // run after the namespace, then its value's packed bytes.
+    final r = scan(
+      manifest(extra: ['application"n', _ns, 'debuggable', '(', '*']),
+    );
+    expect(
+      [
+        r.exitCode,
+        r.output.contains('DEBUGGABLE: debuggable'),
+        r.output.contains('PERMISSION:'),
+      ],
+      [6, true, false],
+      reason: 'bundle-scan: a debuggable bundle was not refused\n${r.output}',
+    );
+  });
+
   test('a wrong package is reported as the package, with exit 2', () {
     final r = scan(manifest(pkg: 'com.honestarcade.sudoku'));
     expect(
