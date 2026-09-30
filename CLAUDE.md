@@ -89,7 +89,9 @@ Honest Sudoku went through.
    same seed and options (game, draw count or suit count) always produce the
    same deal, in any build. No deal is bundled. *(test-enforced:
    `test/guards/engine_determinism_test.dart` — golden deals, a 1..300 sweep
-   and a fresh-isolate comparison — guard: #70 (merged))*
+   and a fresh-isolate comparison — guard: #70 (merged); on-device check:
+   `integration_test/perf_test.dart` against the same golden, run by
+   `tools/perf.sh` — #117)*
 4. **"Winnable deals only" is honest.** With that option on, every deal the
    app hands out has been proven solvable by the on-device solver before it is
    shown; with it off, the deal is a true uniform shuffle. *(the winnable

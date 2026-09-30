@@ -479,6 +479,93 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 
 ## /n8-exec M6 -- 2026-09-29
 
+- **Decision:** The owner's three play-through bugs (#152 sev:critical, #153, #154) were fixed first on the milestone branch, each with its failing-first test, before any story work: #118 (the final internal build) waits on them and #112's suite asserts #152's route on a device.
+  **Why:** M6's shared context: every finding is filed and fixed in M6; a critical bug in the win bookkeeping would have made every later device run record a wrong statistic.
+  **Issue:** #152, #153, #154
+- **Decision:** #154 departs from the design's grey "Keep playing" button: it now wears the setup screen's accent (fill, 1.5 px border, 14/w600 text), with amendment comments on #88, #89 and #91.
+  **Why:** the owner's words on 2026-09-29: "Make it a more pop 'color'".
+  **Issue:** #154
+- **Decision (Rule 3):** `tools/gate.sh` and `release.yml` build the release bundle without `--no-pub`. After a plain `pub get` the generated plugin registrant names `integration_test`, and a `--no-pub` release build then fails to compile; the build's own `pub get` regenerates the registrant without dev plugins.
+  **Why:** adding the dev-only SDK package (#112) broke the release build otherwise; `tools/check_aab.sh` now refuses a bundle that carries `IntegrationTestPlugin` (exit 5), so nothing can ship through this change.
+  **Issue:** #112
+- **Decision:** #112's Spider deal comes from a test-only beam search (`integration_test/support/spider_search.dart`, width 150, deals from 1000), not the planned hint-following playout.
+  **Why:** a hint-following playout won 0 of 500 deals on the host (it loops); a depth-first search found lines of 574–3498 moves. The beam wins deal 1000 in 113 moves, and its line meets a strict-deal refusal (an empty column with rows left) at move index 21, which the test asserts on the board and on disk.
+  **Issue:** #112
+- **Decision:** #112's phases hand the elapsed time over through `--dart-define=E2E_ELAPSED_MS` set by `tools/e2e.sh`, not the planned `e2e_handoff.json`; phase 2 recomputes the deal and its line from the same deterministic search. The app stays installed between phases through `flutter test --no-uninstall`.
+  **Why:** a handoff file inside the app's data would sit next to the saves the test is checking; everything else in it is deterministic (invariant 3) and needs no handoff.
+  **Issue:** #112
+- **Decision:** #112 runs debug builds (`flutter test` on a device builds nothing else), not the planned `--profile`; the planned exit 3 for a rejected profile is replaced by exit 3 for a missing or unauthorised device.
+  **Why:** `--profile` would need `flutter drive` with a driver file for a suite that checks behaviour, not timing; timing on a profile build stays #117's job.
+  **Issue:** #112, #117
+- **Decision:** #112's dead-end deal is found by following hints from deal 1000 until `hint()` says no move is left (host: deal 1001 after 78 moves), and empty columns are tapped at their slot's centre rather than through semantics actions.
+  **Why:** no Klondike deal from 1000 is dead at deal time; the slot's own hit area is the path a player's finger takes.
+  **Issue:** #112
+- **Decision:** The end-to-end comparison ignores `elapsedMs` (checked separately within +1 s) and `lastUndone`, which a replay of the same moves never sets.
+  **Why:** undo followed by the same move is the state the test compares against a straight replay.
+  **Issue:** #112
+- **Decision:** Filed #159 (sev:high, confirmed) from #112's first phase-2 run and fixed it in M6: a kill after backgrounding lost the play time since the last written move (restored 3744 ms, 6995 ms at backgrounding).
+  **Why:** owner's M6 severity rule: a wrong statistic (best time) and time bonus misleads.
+  **Issue:** #159, #112
+- **Decision:** `.claude/` is excluded in `.git/info/exclude` on this machine (agent worktrees), not in `.gitignore`.
+  **Why:** it is local tooling state, not something the repository should know about.
+  **Issue:** none
+- **Decision:** #117's golden gains deal numbers 1000, 31337, 500000 and 999998 in every mode (35 records); the 15 existing pins are byte-identical after regeneration. `integration_test/golden_deals.g.dart` is a const map, and #70's guard imports it and compares entry by entry with the JSON rather than comparing file text.
+  **Why:** a semantic comparison cannot go red over formatting, and the device test imports the same map without file access; mutation `#117a` changes one piles string in the `.g.dart`.
+  **Issue:** #117, #70
+- **Decision:** #117's deals tried is computed as found − base + 1 (wrapping), not taken from the last Progress event; timing starts before `WinnableDealer.search()`, so isolate spawn is included. The 95 % statistics live in `tools/perf_report.py` (unit-tested), not in the device test.
+  **Why:** the found number is exact; Progress is throttled to ten a second and can lag. Python keeps the arithmetic testable in the gate's tools step.
+  **Issue:** #117
+- **Decision:** #114's layout checks run as an integration test on the device (`integration_test/layout_sweep_test.dart` via `tools/layout.sh`): every route with Large cards off and on, at font 1.0 and the device's largest, failing on overflow or ellipsis outside #106's allowlist, with screenshots judged by the agent. Not adb taps screen by screen, as the plan described.
+  **Why:** the framework's own overflow report and the paragraph's `didExceedMaxLines` are exact where a screenshot is a judgement; the screenshots remain for what only eyes can judge (bars, overlap, reachability).
+  **Issue:** #114
+- **Decision (Rule 1):** `tools/avd.sh` no longer pipes `yes` into sdkmanager: under `pipefail` the pipeline reported yes's SIGPIPE as a failed install after the API 24 image had installed. It now checks that the image's `system.img` exists.
+  **Why:** found booting `solitaire-api24` for the first time.
+  **Issue:** #114, #112
+- **Decision:** `tools/e2e.sh` runs `integration_test/*_game_test.dart`, not "every `*_test.dart` except `perf_test.dart`" as #112's AC words it.
+  **Why:** #114's layout sweep is also an integration test, and it is a single-phase run with its own script; the game files are the two-phase suite.
+  **Issue:** #112, #114
+- **Decision:** PR #157 (#113's pipeline half) and PR #158 (#56, #57) were built by background agents on branches off `main` and merged to `main` directly after their CI went green, each reviewed first; #113 stays open for its owner step.
+  **Why:** they touch CI and guards only, and landing them on `main` early let every later branch build on them.
+  **Issue:** #113, #56, #57
 - **Decision:** `release.yml` now creates the GitHub release for a pushed tag when none exists, in a step (`id: release`) after the bundle scan and certificate check and before the attach: title "Honest Solitaire <version name>", notes generated from the previous tag (the previous final tag for a final release), and a prerelease not marked Latest for a tag with a `-` suffix such as `v1.0.0-rc.N`. An existing release -- as `/n8-release` creates one with the tag -- is reused untouched. The attach step's not-found branch is now a failure, the `no-release-note` summary note is gone (the summary shows the release URL and prerelease flag, `n/a` if the release step never ran), and a failure after the release step prepends "did not reach Play" to the release notes. `tools/check_aab.sh` also refuses any `debuggable` string in the bundle manifest (exit 6, `DEBUGGABLE:`).
   **Why:** a tag pushed without `/n8-release` used to go green with the bundle attached nowhere and its hash never re-checked; #113 makes that impossible rather than relying on the release being made first. `/n8-release` does not need to change: it may keep creating the release, and the workflow leaves it alone.
   **Issue:** #113 (mutations `#38`, `#113` in `tools/mutation_check.py`)
+## #116 accessibility sweep -- 2026-09-30
+
+- **Decision:** The Spider scan in `tools/find_a11y_deals.dart` was run over deals 1–1000, not 1–5000; it chose deal 924 (88 moves). The Klondike scan covered 1–5000 and chose deal 2982 (35 moves before FINISH).
+  **Why:** the #112 beam search took 14–30 s a deal and the 1–1000 run took 1965 s with 10 workers on the development machine (agent, 2026-09-30, `/usr/bin/time` over the tool); 1–5000 would have taken hours. The tool still defaults to 5000 for anyone with the time.
+  **Issue:** #116
+- **Decision:** The Klondike TalkBack win ends with the owner double-tapping FINISH, not with Auto-finish starting by itself.
+  **Why:** the fewest-moves-before-`canFinish` deal leaves cards in the stock, and Auto-finish starts itself only on an empty stock and waste (`isSolved`); FINISH runs the same sweep. The script says which, and the test holds it to that (`Ends with: FINISH`).
+  **Issue:** #116
+- **Decision:** `test/qa/a11y_sweep_test.dart` reads the move lines back out of `qa/a11y-sweep.md` and matches each against the legal moves, instead of re-running the searches as `listening_test.dart` does; it is tagged `guard` with mutations #116a–e. `spider_search.dart` stays in `integration_test/support/` and is imported from `test/qa/`.
+  **Why:** a beam search per test run would add seconds to every mutation in the battery; reading the script also makes it the single source of the deal numbers.
+  **Issue:** #116
+- **Decision:** The replay sends TalkBack's taps as the board's semantics send them, with no time, and every double-tap line — the staged stock refusals included — must do what it says; a line that needs the Actions menu instead is a `[TalkBack]` bug. The replay's first run found two misfires, which #162 fixed on 2026-09-30 (fbde1b6). Announcement kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
+  **Why:** the replay should match what TalkBack really sends, so a regression of #162 fails it.
+  **Issue:** #116, #162
+- **Decision:** Filed and fixed #160 (sev:medium) from #114's layout sweep. `LinkText` sizes to its label, and the About screens' `·` separator sits in one `Row` with the link after it. The defect was on every width, not only 320 dp.
+  **Why:** the design has both link rows inline; the fix is small, and a medium bug left in M6 blocks `tools/m6_gate.sh`.
+  **Issue:** #160, #114
+- **Decision:** Filed and fixed #162 (sev:high) from #116's replay. Board semantics taps and TalkBack's DEAL activation carried time zero, so a second activation read as a double tap and Spider's stock was debounced. Tap time is now `Duration?`, and null never pairs or debounces. A device check on the emulator's Google TalkBack with v0.2.0 did **not** reproduce the stock half: both activations dealt. Recorded on #162; the Samsung TalkBack check is part of the owner's #116 sweep.
+  **Why:** the fix is correct for every activation that arrives as a semantics tap, and it leaves pointer taps unchanged.
+  **Issue:** #162, #116
+- **Decision:** Filed #161 (`needs-triage`, not fixed in M6). In a debug build on the API 24 emulator, the winnable search's 5 s choice never appeared while one solve ran over 90 s. The v0.2.0 release build found a deal within 3 s on the same emulator. #114's sweep now screenshots the loading screen and cancels it.
+  **Why:** not reproduced in a release build, and outside #114's scope (layout).
+  **Issue:** #161, #114
+- **Decision:** #114's API 24 core-check walk-through (release v0.2.0 by adb) was delegated to a background agent in its own worktree. My own runs cover the rest: `tools/e2e.sh` (PASSED on API 24), `tools/layout.sh` (both fonts PASSED on 320 dp after #160 was found), and the release install and cold start.
+  **Why:** the walk-through is long and screenshot-heavy; delegating it kept this run's context for the fixes.
+  **Issue:** #114
+- **Decision:** `tools/m6_gate.sh` counts an open bug with no severity label as a blocker ("not known to be minor"), in addition to the plan's three kinds. #136 (M2, sev:low, not `confirmed`) was not moved into M6, since the plan moves confirmed M2–M5 bugs only.
+  **Why:** the same rule as `/n8-verify`'s gate: an unrated bug is not known to be minor.
+  **Issue:** #118
+- **Decision:** Filed and fixed four more bugs from #114's API 24 walk-through, each with a failing-first test:
+  - #163 (sev:high): a game resumed with a move now runs its clock and pauses on return. #84's resume test had pinned the clock as stopped, and the amendment is noted on #84.
+  - #164 (sev:high): Spider's "EMPTY" stays on one line and scales to its slot. It broke at 384 dp too, so it visibly broke the design on the S26 Ultra.
+  - #165 (sev:high): `ScreenScaffold` lays out above the keyboard. The deal number field was hidden at 384×824 as well.
+  - #166 (sev:medium): Statistics and How to play pick their tab through `openingTab`, where the controller's game counts only once it has a move.
+  **Why:** M6's rule: every finding filed in M6 and fixed with a test that failed first. None was carried, so no owner OK was needed.
+  **Issue:** #163, #164, #165, #166, #114
+- **Decision:** #114's screenshots stay on the development machine (`build/layout/`, `build/qa114-walk/`) instead of going to a never-published `qa-artifacts` draft release as its pass-2 notes planned. The record cites them by file name.
+  **Why:** the evidence that decides pass or fail is in the record and on the issues; publishing a release object, even a draft, is an outward-facing step not needed for any criterion.
+  **Issue:** #114

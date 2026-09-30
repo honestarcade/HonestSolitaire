@@ -138,51 +138,59 @@ class ScreenScaffold extends StatelessWidget {
     final insets = MediaQuery.viewPaddingOf(context);
     return DecoratedBox(
       decoration: BoxDecoration(color: Palette.navy, gradient: gradient),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = math.min(constraints.maxWidth, maxBoardWidth);
-          return SingleChildScrollView(
-            controller: controller,
-            padding: EdgeInsets.only(
-              top: insets.top + 20 * s,
-              bottom: insets.bottom + 24 * s,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: width,
-                  minHeight:
-                      constraints.maxHeight -
-                      insets.top -
-                      insets.bottom -
-                      44 * s,
-                ),
-                // IntrinsicHeight bounds the column to the taller of the
-                // viewport and its content, so the Spacer before the
-                // pinned part has a finite height to fill.
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20 * s),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < children.length; i++) ...[
-                          if (i > 0) SizedBox(height: gap * s),
-                          children[i],
+      // Above the keyboard: these screens have no Scaffold to resize them,
+      // and a focused field scrolls into view only inside a viewport the
+      // keyboard does not cover (#165).
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = math.min(constraints.maxWidth, maxBoardWidth);
+            return SingleChildScrollView(
+              controller: controller,
+              padding: EdgeInsets.only(
+                top: insets.top + 20 * s,
+                bottom: insets.bottom + 24 * s,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: width,
+                    minHeight:
+                        constraints.maxHeight -
+                        insets.top -
+                        insets.bottom -
+                        44 * s,
+                  ),
+                  // IntrinsicHeight bounds the column to the taller of the
+                  // viewport and its content, so the Spacer before the
+                  // pinned part has a finite height to fill.
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20 * s),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < children.length; i++) ...[
+                            if (i > 0) SizedBox(height: gap * s),
+                            children[i],
+                          ],
+                          if (pinned != null) ...[
+                            const Spacer(),
+                            SizedBox(height: gap * s),
+                            pinned!,
+                          ],
                         ],
-                        if (pinned != null) ...[
-                          const Spacer(),
-                          SizedBox(height: gap * s),
-                          pinned!,
-                        ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -580,4 +580,62 @@ void main() {
       expect(plural(12, 'card'), '12 cards');
     });
   });
+
+  group('TalkBack activations carry no pointer time (#162)', () {
+    testWidgets(
+      'activating a selected card again clears the selection, not a double tap',
+      (tester) async {
+        final controller = controllerFor(
+          KlondikeGame.deal(
+            DealNumber(1000),
+            const KlondikeOptions(draw: DrawMode.one),
+          ),
+        );
+        await pumpBoard(tester, controller);
+        tapNode(tester, 'Ace of clubs, column 1, top card');
+        await tester.pump();
+        expect(controller.selection, (const TableauPile(0), 0));
+        await tester.pump(const Duration(seconds: 1));
+        tapNode(tester, 'Ace of clubs, column 1, top card, selected');
+        await tester.pump();
+        final k = controller.game as KlondikeGame;
+        expect(
+          [controller.selection, k.foundations.every((f) => f.isEmpty)],
+          [null, isTrue],
+          reason:
+              'a second TalkBack activation of a selected card deselects it',
+        );
+      },
+    );
+
+    testWidgets(
+      'the Spider stock deals on every activation, the DEAL button\'s too',
+      (tester) async {
+        final controller = controllerFor(SpiderGame.deal(DealNumber(1000)));
+        await pumpBoard(tester, controller);
+        String stock() => spiderStockLabel(controller.game as SpiderGame);
+        tapNode(tester, stock());
+        await tester.pump(const Duration(seconds: 1));
+        tapNode(tester, stock());
+        await tester.pump(const Duration(seconds: 1));
+        expect(
+          (controller.game as SpiderGame).rowsLeft,
+          3,
+          reason: 'two stock activations a second apart deal two rows',
+        );
+        tester.semantics.performAction(
+          find.semantics.byLabel('Deal, 3 left'),
+          SemanticsAction.tap,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        tapNode(tester, stock());
+        await tester.pump(const Duration(seconds: 1));
+        expect(
+          (controller.game as SpiderGame).rowsLeft,
+          1,
+          reason: 'a stock activation after a DEAL-button activation deals',
+        );
+      },
+    );
+  });
 }

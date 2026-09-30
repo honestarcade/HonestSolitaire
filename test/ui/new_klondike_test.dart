@@ -175,6 +175,25 @@ void main() {
     },
   );
 
+  testWidgets('Keep playing wears the screen\'s teal accent (#154)', (
+    tester,
+  ) async {
+    final scope = await openScreen(tester, const NewKlondikeScreen());
+    drawFromStock(scope);
+    await settle(tester);
+    final c = keepPlayingColours(tester, 'ksetup-keep');
+    expect(
+      c.border,
+      SetupAccent.teal.border,
+      reason: 'outlined in the accent, not grey',
+    );
+    expect(
+      c.text,
+      SetupAccent.teal.text,
+      reason: 'labelled in the accent, not grey',
+    );
+  });
+
   testWidgets(
     'dealing over an unfinished Klondike records one loss; a saved Klondike behind a live Spider too',
     (tester) async {

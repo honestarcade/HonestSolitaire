@@ -6,6 +6,18 @@ import 'package:flutter/material.dart' hide Card;
 import '../a11y/tap_target.dart';
 import '../game/game_event.dart';
 import '../theme/palette.dart';
+import '../app.dart';
+
+/// The tab a tabbed screen opens on: the game its caller named, else the
+/// controller's game once it has a move, else the game played last, else the
+/// controller's. After a cold start the controller holds a placeholder deal
+/// nobody has played, which must not hide the last game played (#166).
+GameType openingTab(GameScope scope, GameType? named) {
+  if (named != null) return named;
+  final c = scope.controller;
+  if (c.hasMove || c.game.moves > 0) return GameType.of(c.game);
+  return scope.saves.value.lastPlayed ?? GameType.of(c.game);
+}
 
 class GameTabs extends StatelessWidget {
   const GameTabs({

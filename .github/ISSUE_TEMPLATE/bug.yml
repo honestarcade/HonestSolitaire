@@ -1,6 +1,6 @@
 name: Bug
 description: Something isn't working
-labels: ["bug", "needs-triage"]
+labels: ["bug"]
 body:
   - type: textarea
     id: expected
@@ -24,9 +24,32 @@ body:
     validations:
       required: true
   - type: input
-    id: environment
+    id: build
     attributes:
-      label: Environment
-      description: Platform, OS version, app version.
+      label: Build
+      description: The version line at the bottom of Settings, e.g. v0.2.0 · BUILD 1021.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: The phone's model, or the emulator's profile and AVD name.
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      description: The Android version, and on Samsung phones the One UI version.
+    validations:
+      required: true
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Hardware or emulator
+      options:
+        - Hardware
+        - Emulator
     validations:
       required: true

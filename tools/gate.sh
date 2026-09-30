@@ -43,7 +43,10 @@ COMMANDS=(
   "dart analyze --fatal-infos"
   "dart format --output=none --set-exit-if-changed ."
   "flutter test --no-pub"
-  "flutter build appbundle --release --no-pub$BUILD_DEFINES"
+  # No --no-pub: the build's own pub get regenerates the plugin registrant for
+  # release, leaving out the dev-only integration_test plugin (#112). Step 1
+  # already enforced the lockfile, so this pub get cannot change it.
+  "flutter build appbundle --release$BUILD_DEFINES"
   "tools/check_aab.sh"
 )
 

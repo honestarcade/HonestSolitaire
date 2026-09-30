@@ -362,6 +362,53 @@ void main() {
       controller.dispose();
     });
 
+    for (final (route, autoFinish) in [
+      ('auto-finish', true),
+      ('FINISH', false),
+    ]) {
+      test('a win reached through $route is recorded once (#152)', () async {
+        final store = AppStore.memory();
+        final recorder = StatsRecorder(store);
+        await recorder.load();
+        final saves = GameSaves(store);
+        final controller = GameController(
+          inProgress(const KlondikeOptions()),
+          ValueNotifier(PlaySettings(oneTap: false, autoFinish: autoFinish)),
+          ValueNotifier(const DisplayOptions()),
+          observeLifecycle: false,
+        );
+        final listener = StatsListener(controller, recorder, saves);
+        // One move from solved-but-not-won: the solving move starts the
+        // sweep, the route most Klondike wins take.
+        final twoToGo = klondike(
+          tableau: [cards('KC'), cards('QC'), [], [], [], [], []],
+          foundations: [
+            suitRun(Suit.spades, 13),
+            suitRun(Suit.hearts, 13),
+            suitRun(Suit.diamonds, 13),
+            suitRun(Suit.clubs, 11),
+          ],
+        );
+        controller.resumeGame(twoToGo, hasMove: true);
+        controller.move(
+          const TableauPile(1),
+          0,
+          const FoundationPile(Suit.clubs),
+        );
+        if (!autoFinish) controller.finish();
+        await listener.lastRecord;
+        expect(controller.game.isWon, isTrue, reason: 'won via $route');
+        expect(
+          recorder.document.klondike.total.won,
+          1,
+          reason: 'a $route win must reach statistics',
+        );
+        expect(recorder.document.klondike.total.played, 1);
+        listener.dispose();
+        controller.dispose();
+      });
+    }
+
     test('an app restart with a saved game records nothing; finishing it later records once', () async {
       final store = AppStore.memory();
       final recorder = StatsRecorder(store);

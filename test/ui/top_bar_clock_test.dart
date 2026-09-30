@@ -146,6 +146,51 @@ void main() {
       expect(controller.game.elapsed, const Duration(seconds: 5));
     });
 
+    testWidgets(
+      'a resumed game with a move runs its clock and pauses on return (#163)',
+      (tester) async {
+        final controller = controllerFor(KlondikeGame.deal(DealNumber(7)));
+        await pumpBar(tester, controller);
+        final saved = applied(
+          KlondikeGame.deal(DealNumber(9)),
+          const Draw(),
+        ).tick(const Duration(seconds: 10));
+        controller.resumeGame(saved, hasMove: true);
+        await passTime(tester, const Duration(seconds: 3));
+        expect(
+          controller.game.elapsed,
+          const Duration(seconds: 13),
+          reason: 'a resumed game in play runs its clock without a new move',
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        expect(
+          controller.isPaused,
+          isTrue,
+          reason: 'returning to a resumed game in play opens the pause card',
+        );
+      },
+    );
+
+    testWidgets('a resumed game with no move still waits for one (#163)', (
+      tester,
+    ) async {
+      final controller = controllerFor(KlondikeGame.deal(DealNumber(7)));
+      await pumpBar(tester, controller);
+      controller.resumeGame(KlondikeGame.deal(DealNumber(9)), hasMove: false);
+      await passTime(tester, const Duration(seconds: 3));
+      expect(controller.game.elapsed, Duration.zero);
+      expect(controller.clock.running, isFalse);
+    });
+
     testWidgets('stops at a win, and resets to waiting on a new game', (
       tester,
     ) async {

@@ -36,5 +36,24 @@ class BinaryRoundTrip(unittest.TestCase):
             self.assertEqual(target.read_bytes(), data)
 
 
+class CreatedTargets(unittest.TestCase):
+    def mutation(self, target, creates):
+        return mutation_check.Mutation(
+            "#test", "x", "", None, "why",
+            replaces_with=((target, "fixture"),), creates=creates)
+
+    def test_a_new_file_named_in_creates_may_be_absent(self):
+        target = "qa/runs/not-there-yet.md"
+        m = self.mutation(target, (target,))
+        self.assertEqual(
+            mutation_check.missing_targets(m, [mutation_check.ROOT / target]), [])
+
+    def test_an_absent_target_not_in_creates_is_missing(self):
+        target = "qa/runs/not-there-yet.md"
+        m = self.mutation(target, ())
+        path = mutation_check.ROOT / target
+        self.assertEqual(mutation_check.missing_targets(m, [path]), [path])
+
+
 if __name__ == "__main__":
     unittest.main()

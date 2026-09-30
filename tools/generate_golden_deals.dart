@@ -1,8 +1,9 @@
-// Regenerates test/fixtures/golden_deals.json — a deliberate act.
+// Regenerates test/fixtures/golden_deals.json and its on-device copy,
+// integration_test/golden_deals.g.dart — a deliberate act.
 //
-// The golden pins the deal for numbers 1, 2 and 999999 in every mode so
-// test/guards/engine_determinism_test.dart can prove the shuffle has not
-// changed. Run it only when the deal algorithm is meant to change, and say
+// The golden pins the deal for every number in `goldenDeals` in every mode
+// so test/guards/engine_determinism_test.dart can prove the shuffle has not
+// changed, on the host and (integration_test/perf_test.dart) on a device. Run it only when the deal algorithm is meant to change, and say
 // so in the commit that carries the new file:
 //
 //   dart run tools/generate_golden_deals.dart
@@ -25,7 +26,10 @@ void main() {
     'deals': records,
   });
   File('test/fixtures/golden_deals.json').writeAsStringSync('$text\n');
+  File('integration_test/golden_deals.g.dart')
+      .writeAsStringSync(goldenDartSource(records));
   stdout.writeln(
-    'wrote ${records.length} records to test/fixtures/golden_deals.json',
+    'wrote ${records.length} records to test/fixtures/golden_deals.json and '
+    'integration_test/golden_deals.g.dart (run dart format on it)',
   );
 }

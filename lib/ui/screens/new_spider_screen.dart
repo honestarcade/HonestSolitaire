@@ -116,6 +116,7 @@ class _NewSpiderScreenState extends State<NewSpiderScreen> {
               if (keep != null) ...[
                 SizedBox(height: 9 * s),
                 KeepPlayingButton(
+                  accent: accent,
                   key: const Key('ssetup-keep'),
                   scale: s,
                   onPressed: () => keepPlaying(context, keep),

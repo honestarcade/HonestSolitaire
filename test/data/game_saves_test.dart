@@ -227,6 +227,80 @@ void main() {
       },
     );
 
+    testWidgets(
+      'a background event with no move pending still writes the time played since the last write (#159)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        var now = Duration.zero;
+        final controller = GameController(
+          KlondikeGame.deal(DealNumber(7)),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(const DisplayOptions()),
+          clockNow: () => now,
+        );
+        final persistence = GamePersistence(controller, saves);
+        controller.tapPile(const StockPile(), null);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(persistence.writes, 1, reason: 'one move, its window closed');
+        now = const Duration(seconds: 30);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(
+          saves.value.klondike!.game.elapsed,
+          const Duration(seconds: 30),
+          reason: 'backgrounding writes the clock even with no move pending',
+        );
+        final written = persistence.writes;
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(
+          persistence.writes,
+          written,
+          reason: 'a second background with no time played writes nothing',
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
+    testWidgets(
+      'a background event before the first move writes no slot (#159)',
+      (tester) async {
+        final store = AppStore.memory();
+        final saves = GameSaves(store);
+        final controller = controllerFor(KlondikeGame.deal(DealNumber(7)));
+        final persistence = GamePersistence(controller, saves);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        expect(persistence.writes, 0, reason: 'an untouched deal is not saved');
+        expect(saves.value.klondike, isNull);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        persistence.dispose();
+        controller.dispose();
+      },
+    );
+
     testWidgets('a win clears the slot and nothing resurrects it', (
       tester,
     ) async {
@@ -266,6 +340,71 @@ void main() {
       persistence.dispose();
       controller.dispose();
     });
+
+    // One move from solved-but-not-won: the move that solves it starts the
+    // auto-finish sweep, which is how most Klondike games are won (#152).
+    KlondikeGame twoToGo() => klondike(
+      tableau: [cards('KC'), cards('QC'), [], [], [], [], []],
+      foundations: [
+        suitRun(Suit.spades, 13),
+        suitRun(Suit.hearts, 13),
+        suitRun(Suit.diamonds, 13),
+        suitRun(Suit.clubs, 11),
+      ],
+    );
+
+    for (final (route, autoFinish) in [
+      ('auto-finish', true),
+      ('FINISH', false),
+    ]) {
+      testWidgets(
+        'a win reached through $route clears the slot and offers no resume (#152)',
+        (tester) async {
+          final store = AppStore.memory();
+          final saves = GameSaves(store);
+          final controller = GameController(
+            KlondikeGame.deal(DealNumber(7)),
+            ValueNotifier(PlaySettings(oneTap: false, autoFinish: autoFinish)),
+            ValueNotifier(const DisplayOptions()),
+            observeLifecycle: false,
+          );
+          final persistence = GamePersistence(
+            controller,
+            saves,
+            observeLifecycle: false,
+          );
+          controller.tapPile(const StockPile(), null);
+          await tester.pump(const Duration(milliseconds: 600));
+          controller.replaceGame(twoToGo());
+          controller.move(
+            const TableauPile(1),
+            0,
+            const FoundationPile(Suit.clubs),
+          );
+          await tester.pump(const Duration(milliseconds: 600));
+          if (!autoFinish) {
+            expect(controller.canFinish, isTrue);
+            controller.finish();
+          }
+          await tester.pump(const Duration(seconds: 3));
+          expect(controller.game.isWon, isTrue, reason: 'won via $route');
+          expect(
+            saves.value.klondike,
+            isNull,
+            reason: 'a won game leaves no slot behind ($route)',
+          );
+          expect(
+            saves.value.resumeTarget,
+            isNull,
+            reason: 'Continue must not offer the pre-finish board ($route)',
+          );
+          await store.flush();
+          expect(await store.read(StoreDoc.gameKlondike), isA<Absent>());
+          persistence.dispose();
+          controller.dispose();
+        },
+      );
+    }
 
     testWidgets(
       'undo, restart and a new deal save; a resumed game records nothing and keeps hasMove',
@@ -318,7 +457,11 @@ void main() {
         final saved = saves.value.klondike!;
         controller.resumeGame(saved.game, hasMove: true);
         expect(controller.hasMove, isTrue);
-        expect(controller.clock.running, isFalse);
+        expect(
+          controller.clock.running,
+          isTrue,
+          reason: 'a resumed game in play runs its clock (#163)',
+        );
         await tester.pump(const Duration(milliseconds: 600));
         expect(events, hasLength(2));
         persistence.dispose();

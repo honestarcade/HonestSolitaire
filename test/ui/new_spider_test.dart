@@ -86,6 +86,26 @@ void main() {
     },
   );
 
+  testWidgets('Keep playing wears the screen\'s violet accent (#154)', (
+    tester,
+  ) async {
+    final scope = await openScreen(tester, const NewSpiderScreen());
+    scope.controller.replaceGame(SpiderGame.deal(DealNumber(9)));
+    drawFromStock(scope);
+    await settle(tester);
+    final c = keepPlayingColours(tester, 'ssetup-keep');
+    expect(
+      c.border,
+      SetupAccent.violet.border,
+      reason: 'outlined in the accent, not grey',
+    );
+    expect(
+      c.text,
+      SetupAccent.violet.text,
+      reason: 'labelled in the accent, not grey',
+    );
+  });
+
   testWidgets(
     'dealing over an unfinished Spider with a move records one loss',
     (tester) async {

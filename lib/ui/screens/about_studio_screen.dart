@@ -215,18 +215,29 @@ class _AboutStudioScreenState extends State<AboutStudioScreen> {
                 opener: _opener,
                 scale: s,
               ),
-              // A separator, not a word (#109): TalkBack skips it.
-              ExcludeSemantics(
-                child: Text(
-                  '·',
-                  style: TextStyle(fontSize: 9.5 * s, color: Palette.textFaint),
-                ),
-              ),
-              LinkText(
-                label: 'SOURCE ON GITHUB',
-                link: studioSourceLink,
-                opener: _opener,
-                scale: s,
+              // The separator travels with the link after it, so a wrap
+              // never leaves it alone on a line (#160).
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // A separator, not a word (#109): TalkBack skips it.
+                  ExcludeSemantics(
+                    child: Text(
+                      '·',
+                      style: TextStyle(
+                        fontSize: 9.5 * s,
+                        color: Palette.textFaint,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8 * s),
+                  LinkText(
+                    label: 'SOURCE ON GITHUB',
+                    link: studioSourceLink,
+                    opener: _opener,
+                    scale: s,
+                  ),
+                ],
               ),
             ],
           ),

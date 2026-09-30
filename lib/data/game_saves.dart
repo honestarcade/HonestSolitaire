@@ -244,6 +244,11 @@ class GamePersistence {
   Game? _lastGame;
   final Map<GameType, Timer> _windows = {};
   final Map<GameType, bool> _dirty = {};
+
+  /// Each slot's elapsed as last written. Clock ticks change the game
+  /// without a move, so they never mark a slot dirty; backgrounding compares
+  /// against this instead.
+  final Map<GameType, Duration> _writtenElapsed = {};
   bool _disposed = false;
 
   /// Writes that landed since construction, for tests.
@@ -283,6 +288,7 @@ class GamePersistence {
 
   void _write(Game game, GameType type) {
     _dirty[type] = false;
+    _writtenElapsed[type] = game.elapsed;
     writes++;
     saves.save(game, start: controller.hasMove || game.moves > 0).ignore();
   }
@@ -293,6 +299,7 @@ class GamePersistence {
       final type = GameType.of(event.game);
       _windows.remove(type)?.cancel();
       _dirty[type] = false;
+      _writtenElapsed.remove(type);
       saves.clear(type).ignore();
     }
   }
@@ -308,14 +315,21 @@ class GamePersistence {
   /// part-second flushed into it first. A won game is not saved.
   void flush() {
     if (_disposed) return;
-    final game = controller.game;
-    final type = GameType.of(game);
-    if (game.isWon) return;
+    final type = GameType.of(controller.game);
+    if (controller.game.isWon) return;
     final pending = _dirty[type] ?? false;
-    if (!pending && !_windows.containsKey(type)) return;
+    final written = _writtenElapsed[type];
+    if (!pending && !_windows.containsKey(type) && written == null) return;
     controller.flushClockIntoGame();
     _windows.remove(type)?.cancel();
-    if (pending) _write(controller.game, type);
+    final game = controller.game;
+    // Time played since the last write is lost if Android kills the app
+    // while it is in the background.
+    final timePlayed =
+        written != null &&
+        game.elapsed != written &&
+        (controller.hasMove || game.moves > 0);
+    if (pending || timePlayed) _write(game, type);
   }
 
   void dispose() {
