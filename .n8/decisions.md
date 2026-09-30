@@ -476,3 +476,54 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The closed test runs release candidates `v1.0.0-rc.N`, and production gets `v1.0.0` rebuilt at the last rc's commit with only the version line changed. The owner chose the rebuild over promoting the rc binary itself, so the store shows 1.0.0 while testers and the public run the same app code (`tools/app_diff.sh` proves it). Changed: every M7 story's shared context; #124 retitled "Cut the first release candidate and put it on the closed-testing track" (tags `v1.0.0-rc.1` as a prerelease; retries are `rc.N`; the pubspec version bump moves here from #113); #127 gains the `v1.0.0` cut and its promotion to closed before the owner's production click; #126's hold fixes ship as rc builds; #123 gains rc release notes; #22's first dispatch promotes `1.0.0-rc.1`; the milestone's outcome 6, phases 3 and 6, and a "Replanned" note. Epic #10 unchanged; no closures, no new stories, no dependency changes.
   **Why:** the owner's 2026-09-27 versioning decision ("rc will be when it goes to testing with other testers") put the rc at exactly the point M7's closed test begins; #124 as planned tagged plain `1.0.0` there.
   **Issue:** #22, #120–#128. Reconciled Ad-hoc entries: 2026-09-23 (first promotion moved to M7 — already carried by #22 and #124), 2026-09-26 (backup wording — already carried by #121), 2026-09-27 (versioning — M6 on 2026-09-29, M7 here), 2026-09-27 carried-bugs (#139's `drag_layer` log — affects no plan).
+
+## /n8-exec M6 -- 2026-09-29
+
+- **Decision:** The owner's three play-through bugs (#152 sev:critical, #153, #154) were fixed first on the milestone branch, each with its failing-first test, before any story work: #118 (the final internal build) waits on them and #112's suite asserts #152's route on a device.
+  **Why:** M6's shared context: every finding is filed and fixed in M6; a critical bug in the win bookkeeping would have made every later device run record a wrong statistic.
+  **Issue:** #152, #153, #154
+- **Decision:** #154 departs from the design's grey "Keep playing" button: it now wears the setup screen's accent (fill, 1.5 px border, 14/w600 text), with amendment comments on #88, #89 and #91.
+  **Why:** the owner's words on 2026-09-29: "Make it a more pop 'color'".
+  **Issue:** #154
+- **Decision (Rule 3):** `tools/gate.sh` and `release.yml` build the release bundle without `--no-pub`. After a plain `pub get` the generated plugin registrant names `integration_test`, and a `--no-pub` release build then fails to compile; the build's own `pub get` regenerates the registrant without dev plugins.
+  **Why:** adding the dev-only SDK package (#112) broke the release build otherwise; `tools/check_aab.sh` now refuses a bundle that carries `IntegrationTestPlugin` (exit 5), so nothing can ship through this change.
+  **Issue:** #112
+- **Decision:** #112's Spider deal comes from a test-only beam search (`integration_test/support/spider_search.dart`, width 150, deals from 1000), not the planned hint-following playout.
+  **Why:** a hint-following playout won 0 of 500 deals on the host (it loops); a depth-first search found lines of 574–3498 moves. The beam wins deal 1000 in 113 moves, and its line meets a strict-deal refusal (an empty column with rows left) at move index 21, which the test asserts on the board and on disk.
+  **Issue:** #112
+- **Decision:** #112's phases hand the elapsed time over through `--dart-define=E2E_ELAPSED_MS` set by `tools/e2e.sh`, not the planned `e2e_handoff.json`; phase 2 recomputes the deal and its line from the same deterministic search. The app stays installed between phases through `flutter test --no-uninstall`.
+  **Why:** a handoff file inside the app's data would sit next to the saves the test is checking; everything else in it is deterministic (invariant 3) and needs no handoff.
+  **Issue:** #112
+- **Decision:** #112 runs debug builds (`flutter test` on a device builds nothing else), not the planned `--profile`; the planned exit 3 for a rejected profile is replaced by exit 3 for a missing or unauthorised device.
+  **Why:** `--profile` would need `flutter drive` with a driver file for a suite that checks behaviour, not timing; timing on a profile build stays #117's job.
+  **Issue:** #112, #117
+- **Decision:** #112's dead-end deal is found by following hints from deal 1000 until `hint()` says no move is left (host: deal 1001 after 78 moves), and empty columns are tapped at their slot's centre rather than through semantics actions.
+  **Why:** no Klondike deal from 1000 is dead at deal time; the slot's own hit area is the path a player's finger takes.
+  **Issue:** #112
+- **Decision:** The end-to-end comparison ignores `elapsedMs` (checked separately within +1 s) and `lastUndone`, which a replay of the same moves never sets.
+  **Why:** undo followed by the same move is the state the test compares against a straight replay.
+  **Issue:** #112
+- **Decision:** Filed #159 (sev:high, confirmed) from #112's first phase-2 run and fixed it in M6: a kill after backgrounding lost the play time since the last written move (restored 3744 ms, 6995 ms at backgrounding).
+  **Why:** owner's M6 severity rule: a wrong statistic (best time) and time bonus misleads.
+  **Issue:** #159, #112
+- **Decision:** `.claude/` is excluded in `.git/info/exclude` on this machine (agent worktrees), not in `.gitignore`.
+  **Why:** it is local tooling state, not something the repository should know about.
+  **Issue:** none
+- **Decision:** #117's golden gains deal numbers 1000, 31337, 500000 and 999998 in every mode (35 records); the 15 existing pins are byte-identical after regeneration. `integration_test/golden_deals.g.dart` is a const map, and #70's guard imports it and compares entry by entry with the JSON rather than comparing file text.
+  **Why:** a semantic comparison cannot go red over formatting, and the device test imports the same map without file access; mutation `#117a` changes one piles string in the `.g.dart`.
+  **Issue:** #117, #70
+- **Decision:** #117's deals tried is computed as found − base + 1 (wrapping), not taken from the last Progress event; timing starts before `WinnableDealer.search()`, so isolate spawn is included. The 95 % statistics live in `tools/perf_report.py` (unit-tested), not in the device test.
+  **Why:** the found number is exact; Progress is throttled to ten a second and can lag. Python keeps the arithmetic testable in the gate's tools step.
+  **Issue:** #117
+- **Decision:** #114's layout checks run as an integration test on the device (`integration_test/layout_sweep_test.dart` via `tools/layout.sh`): every route with Large cards off and on, at font 1.0 and the device's largest, failing on overflow or ellipsis outside #106's allowlist, with screenshots judged by the agent. Not adb taps screen by screen, as the plan described.
+  **Why:** the framework's own overflow report and the paragraph's `didExceedMaxLines` are exact where a screenshot is a judgement; the screenshots remain for what only eyes can judge (bars, overlap, reachability).
+  **Issue:** #114
+- **Decision (Rule 1):** `tools/avd.sh` no longer pipes `yes` into sdkmanager: under `pipefail` the pipeline reported yes's SIGPIPE as a failed install after the API 24 image had installed. It now checks that the image's `system.img` exists.
+  **Why:** found booting `solitaire-api24` for the first time.
+  **Issue:** #114, #112
+- **Decision:** `tools/e2e.sh` runs `integration_test/*_game_test.dart`, not "every `*_test.dart` except `perf_test.dart`" as #112's AC words it.
+  **Why:** #114's layout sweep is also an integration test, and it is a single-phase run with its own script; the game files are the two-phase suite.
+  **Issue:** #112, #114
+- **Decision:** PR #157 (#113's pipeline half) and PR #158 (#56, #57) were built by background agents on branches off `main` and merged to `main` directly after their CI went green, each reviewed first; #113 stays open for its owner step.
+  **Why:** they touch CI and guards only, and landing them on `main` early let every later branch build on them.
+  **Issue:** #113, #56, #57
