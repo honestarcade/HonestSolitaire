@@ -569,3 +569,6 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** #114's screenshots stay on the development machine (`build/layout/`, `build/qa114-walk/`) instead of going to a never-published `qa-artifacts` draft release as its pass-2 notes planned. The record cites them by file name.
   **Why:** the evidence that decides pass or fail is in the record and on the issues; publishing a release object, even a draft, is an outward-facing step not needed for any criterion.
   **Issue:** #114
+- **Decision:** PR #167's `mutations` job was left to finish past `/n8-exec`'s 30-minute pending limit, not treated as a blocker. It had taken 41m37s on PR #158 (2026-09-30), the workflow's own timeout is 60 minutes, and it passed at 12:20 on 2026-09-30, 52 minutes after starting.
+  **Why:** the limit exists to catch a stuck check, and this one's length was known and bounded.
+  **Issue:** #167 (the M6 PR)
