@@ -50,7 +50,7 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
   **Why:** M0/M1 deliver infrastructure; screens belong to later milestones, planned from the design by `/n8-plan`.
   **Issue:** M0 epic
 
-## Ad-hoc -- 2026-09-23
+## Ad-hoc -- 2026-09-23 — reconciled by /n8-replan 2026-09-29
 
 - **Change:** The first real run of the promote workflow (internal → closed testing, #22) moved from M1 to M7.
   **Why:** Owner: there is nothing to test yet. The workflow and `tools/play_promote.sh` still ship in M1 from the template; only their proof moves to when the closed test starts.
@@ -278,7 +278,7 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
   **Why:** #81's discretion; one parent keeps light and dark mode identical, which the design is.
   **Issue:** #81
 
-## Ad-hoc -- 2026-09-26
+## Ad-hoc -- 2026-09-26 — reconciled by /n8-replan 2026-09-29
 
 - **Change:** Invariant 1 now says the app itself sends player data nowhere, and that Android's own system backup, when the player has it on, may include the app's data in their Google account backup; the app does not set `android:allowBackup="false"`.
   **Why:** Owner, /n8-plan M4 round two (2026-09-24): "We will allow google cloud backup. That's a user decision, not ours. We don't send the data anywhere else, but if the user has a system-level feature turned on that does we won't stop it." Applied by #83 as planned; `docs/privacy.md` says the same.
@@ -447,13 +447,13 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
   **Why:** all four were "a missing complement is confirmed" findings from `/n8-verify`'s own rule; #144 and #145 were sev:high and blocked M5's closure.
   **Issue:** #144, #145, #146, #147
 
-## Ad-hoc (carried-bugs fix pass) -- 2026-09-27
+## Ad-hoc (carried-bugs fix pass) -- 2026-09-27 — reconciled by /n8-replan 2026-09-29
 
 - **Decision:** #77's plan called for a separate `drag_layer.dart` file for `_dragLayer`/`_dragTargets`; that was never done, and unlike #73's analogous rename it was never logged. Kept inline in `board_view.dart` rather than extracted now — both are private methods on `BoardViewState` that read the same layout/controller state every other build-time method there does, with no caller outside this class; splitting them into their own file today would be a file-organization change with no behavior or test benefit, not a fix. Documenting the decision here is the fix `/n8-verify` asked for.
   **Why:** #139 flagged the missing log entry, not a functional defect; CLAUDE.md's own guidance is against introducing an abstraction (a new file/module boundary) beyond what a change requires.
   **Issue:** #139
 
-## Ad-hoc -- 2026-09-27
+## Ad-hoc -- 2026-09-27 — reconciled by /n8-replan 2026-09-29
 
 - **Decision:** The first release after M0-M5 is `v0.2.0`, not `v1.0.0-rc.1` as the M7 plan's round-one answer named release candidates. The owner: this build hasn't been through their own testing or a bug-fixing pass yet, and `rc` is reserved for the point M7 actually opens testing to outside testers. `v0.2.0` reflects the real capability jump (infrastructure-only to a fully playable app) without claiming release-candidate readiness.
   **Why:** owner's explicit correction during `/n8-release`, overriding the M7 planning note recorded 2026-09-26.
@@ -470,3 +470,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Replanned M6 around the owner's versioning decision (Ad-hoc 2026-09-27): release candidates start in M7, so M6 ends with an internal build (`v0.2.N`), not `v1.0.0-rc.1`. Changed: epic #9's goal and first criterion (owner-approved epic change), the milestone's goal, outcome 1, coverage items 1 and 10, phases and a "Replanned" note; every story's shared context; #113 retitled "Harden the release pipeline and put the internal build on the owner's phone" (rc cut, `1.0.0+1` bump, #38 closing and e2e-before-tagging removed — #38 was closed by v0.2.0's run 36340218909, and the owner installed v0.2.0 from the internal test link); #118 retitled "…re-check the final internal build" (e2e-before-tagging moved here); #112 now requires the Klondike win through FINISH and no Continue afterwards (after #152); #114/#115 run on the current internal build, #115 transcribes the owner's 2026-09-29 play-through. #114–#117 no longer wait on #113, #113 no longer waits on #112, #118 now waits on #112 and #113. #152 relabelled `sev:critical` under the owner's M6 severity rule ("loses a game or statistics").
   **Why:** executing M6 as planned would have tagged `v1.0.0-rc.1`, which the owner rejected; `/n8-exec M6` stopped on that drift.
   **Issue:** #9, #111–#118, #152. The 2026-09-27 Ad-hoc entry stays unreconciled until M7 is replanned (#124 cuts `1.0.0` straight to closed testing, and every M7 story's context names rc).
+
+## /n8-replan M7 -- 2026-09-29
+
+- **Decision:** The closed test runs release candidates `v1.0.0-rc.N`, and production gets `v1.0.0` rebuilt at the last rc's commit with only the version line changed. The owner chose the rebuild over promoting the rc binary itself, so the store shows 1.0.0 while testers and the public run the same app code (`tools/app_diff.sh` proves it). Changed: every M7 story's shared context; #124 retitled "Cut the first release candidate and put it on the closed-testing track" (tags `v1.0.0-rc.1` as a prerelease; retries are `rc.N`; the pubspec version bump moves here from #113); #127 gains the `v1.0.0` cut and its promotion to closed before the owner's production click; #126's hold fixes ship as rc builds; #123 gains rc release notes; #22's first dispatch promotes `1.0.0-rc.1`; the milestone's outcome 6, phases 3 and 6, and a "Replanned" note. Epic #10 unchanged; no closures, no new stories, no dependency changes.
+  **Why:** the owner's 2026-09-27 versioning decision ("rc will be when it goes to testing with other testers") put the rc at exactly the point M7's closed test begins; #124 as planned tagged plain `1.0.0` there.
+  **Issue:** #22, #120–#128. Reconciled Ad-hoc entries: 2026-09-23 (first promotion moved to M7 — already carried by #22 and #124), 2026-09-26 (backup wording — already carried by #121), 2026-09-27 (versioning — M6 on 2026-09-29, M7 here), 2026-09-27 carried-bugs (#139's `drag_layer` log — affects no plan).
