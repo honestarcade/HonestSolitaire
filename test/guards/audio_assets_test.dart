@@ -57,9 +57,10 @@ const Map<Clip, ClipSpec> clips = {
 };
 ''';
 
-String _licences(Iterable<String> names) =>
-    '# Audio\n\n## Licensed\n\n| File | Source | Licence |\n|---|---|---|\n'
-    '${names.map((n) => '| `$n` | ElevenLabs | Creator plan |\n').join()}';
+String _licences(Iterable<String> names, {String date = '2026-09-27'}) =>
+    '# Audio\n\n## Licensed\n\n'
+    '| File | Source | Licence | Date |\n|---|---|---|---|\n'
+    '${names.map((n) => '| `$n` | ElevenLabs | Creator plan | $date |\n').join()}';
 
 void main() {
   group('the rules', () {
@@ -112,6 +113,27 @@ void main() {
           _licences(['deal.wav', 'music.wav']),
         ).single.path,
         'PROMPTS.md',
+      );
+    });
+
+    test('a row counts only with its date (#115)', () {
+      expect(licensedClips(_licences(['deal.wav'])), {'deal.wav'});
+      expect(licensedClips(_licences(['deal.wav'], date: '')), isEmpty);
+      expect(licensedClips(_licences(['deal.wav'], date: 'soon')), isEmpty);
+      expect(
+        licensedClips(
+          '## Licensed\n\n| File | Source | Licence |\n|---|---|---|\n'
+          '| `deal.wav` | ElevenLabs | Creator plan |\n',
+        ),
+        isEmpty,
+        reason: 'the undated three-column row is the pre-#115 format',
+      );
+      expect(
+        check(
+          files(),
+          _licences(['deal.wav', 'music.wav'], date: 'n/a'),
+        ).map((o) => o.message),
+        everyElement(contains('dated')),
       );
     });
 
