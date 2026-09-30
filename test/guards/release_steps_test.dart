@@ -130,8 +130,7 @@ void main() {
         expect(
           create,
           contains('--notes-start-tag v0.2.0'),
-          reason:
-              'release-steps: a final release\'s notes skip the candidates',
+          reason: 'release-steps: a final release\'s notes skip the candidates',
         );
         expect(
           create,
