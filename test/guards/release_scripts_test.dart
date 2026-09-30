@@ -40,7 +40,7 @@ case "$1 $2" in
     case "$*" in *--prerelease*) touch "$STATE/prerelease" ;; esac ;;
   "release edit")
     shift 3
-    [ "$1" = "--notes-file" ] && cp "$2" "$STATE/body" ;;
+    if [ "$1" = "--notes-file" ]; then cp "$2" "$STATE/body"; fi ;;
   *) echo "stub gh: unexpected $*" >&2; exit 9 ;;
 esac
 ''';
