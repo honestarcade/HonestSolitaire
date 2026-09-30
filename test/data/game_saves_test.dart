@@ -267,6 +267,71 @@ void main() {
       controller.dispose();
     });
 
+    // One move from solved-but-not-won: the move that solves it starts the
+    // auto-finish sweep, which is how most Klondike games are won (#152).
+    KlondikeGame twoToGo() => klondike(
+      tableau: [cards('KC'), cards('QC'), [], [], [], [], []],
+      foundations: [
+        suitRun(Suit.spades, 13),
+        suitRun(Suit.hearts, 13),
+        suitRun(Suit.diamonds, 13),
+        suitRun(Suit.clubs, 11),
+      ],
+    );
+
+    for (final (route, autoFinish) in [
+      ('auto-finish', true),
+      ('FINISH', false),
+    ]) {
+      testWidgets(
+        'a win reached through $route clears the slot and offers no resume (#152)',
+        (tester) async {
+          final store = AppStore.memory();
+          final saves = GameSaves(store);
+          final controller = GameController(
+            KlondikeGame.deal(DealNumber(7)),
+            ValueNotifier(PlaySettings(oneTap: false, autoFinish: autoFinish)),
+            ValueNotifier(const DisplayOptions()),
+            observeLifecycle: false,
+          );
+          final persistence = GamePersistence(
+            controller,
+            saves,
+            observeLifecycle: false,
+          );
+          controller.tapPile(const StockPile(), null);
+          await tester.pump(const Duration(milliseconds: 600));
+          controller.replaceGame(twoToGo());
+          controller.move(
+            const TableauPile(1),
+            0,
+            const FoundationPile(Suit.clubs),
+          );
+          await tester.pump(const Duration(milliseconds: 600));
+          if (!autoFinish) {
+            expect(controller.canFinish, isTrue);
+            controller.finish();
+          }
+          await tester.pump(const Duration(seconds: 3));
+          expect(controller.game.isWon, isTrue, reason: 'won via $route');
+          expect(
+            saves.value.klondike,
+            isNull,
+            reason: 'a won game leaves no slot behind ($route)',
+          );
+          expect(
+            saves.value.resumeTarget,
+            isNull,
+            reason: 'Continue must not offer the pre-finish board ($route)',
+          );
+          await store.flush();
+          expect(await store.read(StoreDoc.gameKlondike), isA<Absent>());
+          persistence.dispose();
+          controller.dispose();
+        },
+      );
+    }
+
     testWidgets(
       'undo, restart and a new deal save; a resumed game records nothing and keeps hasMove',
       (tester) async {

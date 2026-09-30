@@ -298,7 +298,13 @@ class GameController extends ChangeNotifier {
     // moment; the board shows the steps.
     _game = result;
     _moved = true;
+    _hasMove = true;
     _syncClock();
+    // Committed without [_commit], so its bookkeeping is repeated here:
+    // without it statistics never see the win and the saved slot keeps the
+    // pre-sweep board.
+    gameChanged.fire();
+    if (result.isWon) events.value = Won(result);
     displayGame.value = game;
     notifyListeners();
     // No card motion: the steps are not shown one by one (#99).
