@@ -476,3 +476,18 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** The closed test runs release candidates `v1.0.0-rc.N`, and production gets `v1.0.0` rebuilt at the last rc's commit with only the version line changed. The owner chose the rebuild over promoting the rc binary itself, so the store shows 1.0.0 while testers and the public run the same app code (`tools/app_diff.sh` proves it). Changed: every M7 story's shared context; #124 retitled "Cut the first release candidate and put it on the closed-testing track" (tags `v1.0.0-rc.1` as a prerelease; retries are `rc.N`; the pubspec version bump moves here from #113); #127 gains the `v1.0.0` cut and its promotion to closed before the owner's production click; #126's hold fixes ship as rc builds; #123 gains rc release notes; #22's first dispatch promotes `1.0.0-rc.1`; the milestone's outcome 6, phases 3 and 6, and a "Replanned" note. Epic #10 unchanged; no closures, no new stories, no dependency changes.
   **Why:** the owner's 2026-09-27 versioning decision ("rc will be when it goes to testing with other testers") put the rc at exactly the point M7's closed test begins; #124 as planned tagged plain `1.0.0` there.
   **Issue:** #22, #120–#128. Reconciled Ad-hoc entries: 2026-09-23 (first promotion moved to M7 — already carried by #22 and #124), 2026-09-26 (backup wording — already carried by #121), 2026-09-27 (versioning — M6 on 2026-09-29, M7 here), 2026-09-27 carried-bugs (#139's `drag_layer` log — affects no plan).
+
+## #116 accessibility sweep -- 2026-09-30
+
+- **Decision:** The Spider scan in `tools/find_a11y_deals.dart` was run over deals 1–1000, not 1–5000; it chose deal 924 (88 moves). The Klondike scan covered 1–5000 and chose deal 2982 (35 moves before FINISH).
+  **Why:** the #112 beam search took 14–30 s a deal and the 1–1000 run took 1965 s with 10 workers on the development machine (agent, 2026-09-30, `/usr/bin/time` over the tool); 1–5000 would have taken hours. The tool still defaults to 5000 for anyone with the time.
+  **Issue:** #116
+- **Decision:** The Klondike TalkBack win ends with the owner double-tapping FINISH, not with Auto-finish starting by itself.
+  **Why:** the fewest-moves-before-`canFinish` deal leaves cards in the stock, and Auto-finish starts itself only on an empty stock and waste (`isSolved`); FINISH runs the same sweep. The script says which, and the test holds it to that (`Ends with: FINISH`).
+  **Issue:** #116
+- **Decision:** `test/qa/a11y_sweep_test.dart` reads the move lines back out of `qa/a11y-sweep.md` and matches each against the legal moves, instead of re-running the searches as `listening_test.dart` does; it is tagged `guard` with mutations #116a–e. `spider_search.dart` stays in `integration_test/support/` and is imported from `test/qa/`.
+  **Why:** a beam search per test run would add seconds to every mutation in the battery; reading the script also makes it the single source of the deal numbers.
+  **Issue:** #116
+- **Decision:** The replay models TalkBack taps a second apart (the #108 intent), and the lines where the app's timeless semantic taps misfire — a re-tap of the card node tapped last, and Spider stock taps after the first stock deal (#137's debounce) — are listed as `Watch:` lines with Actions fallbacks, not routed around. Staged kinds the wins do not reach are staged in listed steps; test-plan Deals gained D10 and D11 for the greyscale stock hints.
+  **Why:** the sweep exists to find these on the phone; the script keeps the win playable either way. Filing is left to the owner's run.
+  **Issue:** #116
