@@ -1079,24 +1079,29 @@ class _Board extends StatelessWidget {
                 radius: tr,
                 edgeColor: _slotEdge(const StockPile(), _spiderEmptyEdge),
               ),
-              // The design's mono caps, one word on one line, shrunk only by
-              // what they overhang the slot (#164, #171).
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'EMPTY',
-                    maxLines: 1,
-                    softWrap: false,
-                    textScaler: TextScaler.noScaling, // a slot label (#106)
-                    style: TextStyle(
-                      fontFamily: kFontMono,
-                      fontSize: 8.5 * layout.scale,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.06 * 8.5 * layout.scale,
-                      // The placeholder alpha #102 proves on the felt (#109).
-                      color: Palette.placeholderSuit,
-                      height: 1,
+              // The design's mono caps, one word on one line, kept clear of
+              // the slot's border and shrunk only by what they overhang
+              // (#164, #171). Unspaced: the design's 0.06 em spacing is what
+              // made the word wider than its own slot.
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'EMPTY',
+                      maxLines: 1,
+                      softWrap: false,
+                      textScaler: TextScaler.noScaling, // a slot label (#106)
+                      style: TextStyle(
+                        fontFamily: kFontMono,
+                        fontSize: 8.5 * layout.scale,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0,
+                        // The placeholder alpha #102 proves on the felt (#109).
+                        color: Palette.placeholderSuit,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ),

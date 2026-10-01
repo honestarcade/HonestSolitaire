@@ -86,6 +86,43 @@ void main() {
       expect(readout(tester, 'readout-moves'), 'MOV 1');
     });
 
+    testWidgets(
+      'with a clock that reads in microseconds, every whole second shows on time (#181)',
+      (tester) async {
+        // A device's Stopwatch reads in microseconds and never lands on a
+        // whole millisecond: here it runs 370 µs per second fast against the
+        // test's own clock, read at the instant each timer fires.
+        final start = tester.binding.clock.now();
+        Duration deviceNow() {
+          final d = tester.binding.clock.now().difference(start);
+          return d + Duration(microseconds: d.inMicroseconds * 37 ~/ 100000);
+        }
+
+        final controller = GameController(
+          KlondikeGame.deal(DealNumber(7)),
+          ValueNotifier(const PlaySettings(oneTap: false)),
+          ValueNotifier(const DisplayOptions()),
+          clockNow: deviceNow,
+        );
+        await pumpBar(tester, controller);
+        controller.tapPile(const StockPile(), null);
+        final shown = <String>[];
+        for (var i = 0; i < 400; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+          // Saves flush the clock into the game mid-second (#172, moves).
+          if (i % 20 == 7) controller.flushClockIntoGame();
+          shown.add(readout(tester, 'readout-time'));
+        }
+        final changes = <String>[
+          for (var i = 1; i < shown.length; i++)
+            if (shown[i] != shown[i - 1]) shown[i],
+        ];
+        expect(changes, [
+          for (var s = 1; s <= 20; s++) '0:${s.toString().padLeft(2, '0')}',
+        ], reason: 'the readout skipped or held a second');
+      },
+    );
+
     testWidgets('a move mid-second flushes the exact time before it applies', (
       tester,
     ) async {

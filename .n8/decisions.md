@@ -608,3 +608,15 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision:** Released `v0.2.1` at 9d3ad2e (PR #178, pubspec `0.2.1+3`). It includes M6 (PR #167), M6 fix pass 1 (PR #176), the CI timeout (PR #177) and PRs #157/#158. The tag ran release run 36799797772: the gate (gate and mutations) passed, then the ship job built version code 1031, scanned it ("no permissions declared"), checked the certificate, and created the GitHub release itself ("created the GitHub release for v0.2.1 (notes from v0.2.0)"; #113's first live run). The bundle was attached and its hash re-verified, and the build was uploaded to Play's internal track. A human summary was added above the generated notes. `tools/e2e.sh` passed on the code-identical 05d9b09 before tagging.
   **Why:** it is #118's final internal build. The owner waived `/n8-release`'s verified-closed and no-open-confirmed-bugs stops for it on 2026-09-30, because the remaining M6 re-checks need this build. The 17 bugs open in M6 are all fixed on `main` and await their re-check on it.
   **Issue:** #118, #113
+
+## /n8-exec M6 (fix pass 2) -- 2026-10-01
+
+- **Decision:** #181's cause, found by measurement before fixing: `Game.tick` keeps whole milliseconds, and `GameClock` advanced its own base by the exact time. Each flush left the game a fraction short of the second boundary its ticks aimed at. The readout lagged a second, and the next flush (the 10 s save from #172, or a move's save) made it jump. A device probe on `solitaire-dev` sampled the readout every 20 ms. Before the fix, gaps ran 267 ms to 2 s and a second was skipped; after it, in 25 s before and 25 s after backgrounding, there were 25 changes each time, with gaps of 983–1004 ms and none skipped. The fix: the clock hands over whole milliseconds and carries the remainder.
+  **Why:** the clock owns the part-second (its doc says so); the game's millisecond record stays as it is, so saved games and scoring don't change.
+  **Issue:** #181
+- **Decision:** #171: the empty-stock label is inset 2 per side and drops the design's 0.06 em letter-spacing.
+  **Why:** the design's spaced word is wider than the design's own 26 px slot, so it can't both keep its spacing and clear the border; legibility (shrink ≥ 0.8) wins over the spacing.
+  **Issue:** #171, #164
+- **Decision:** PRs #179 (the release log) and #180 (the v0.2.1 API 24 re-check record) were merged at the start of this pass, once their CI was green.
+  **Why:** both are records the next verification reads.
+  **Issue:** #118
