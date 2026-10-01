@@ -64,14 +64,18 @@ class GameClock extends ChangeNotifier {
   /// keeps running from now.
   Duration flush() {
     var out = _pending;
-    _pending = Duration.zero;
     if (running) {
       final now = _now();
       out += now - _startedAt!;
       _startedAt = now;
     }
-    _base += out;
-    return out;
+    // The game keeps whole milliseconds; the rest waits for the next flush,
+    // or the ticks aimed at whole seconds land a fraction short of them and
+    // the readout lags and jumps (#181).
+    final whole = Duration(milliseconds: out.inMilliseconds);
+    _pending = out - whole;
+    _base += whole;
+    return whole;
   }
 
   void _schedule() {
