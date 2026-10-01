@@ -602,3 +602,9 @@ Ad-hoc entries (decisions made outside a planning/execution command) use:
 - **Decision (Rule 3):** `ci.yml`'s mutations job timeout rises from 60 to 90 minutes. PR #176's 99-entry battery finished in 59m57s (run 36767830766, 2026-09-30), so the next added mutation would have been cancelled.
   **Why:** a cancelled check is not a red one; splitting the battery across jobs remains the option when it grows again.
   **Issue:** #176 (M6 fix pass 1)
+
+## /n8-release v0.2.1 -- 2026-10-01
+
+- **Decision:** Released `v0.2.1` at 9d3ad2e (PR #178, pubspec `0.2.1+3`). It includes M6 (PR #167), M6 fix pass 1 (PR #176), the CI timeout (PR #177) and PRs #157/#158. The tag ran release run 36799797772: the gate (gate and mutations) passed, then the ship job built version code 1031, scanned it ("no permissions declared"), checked the certificate, and created the GitHub release itself ("created the GitHub release for v0.2.1 (notes from v0.2.0)"; #113's first live run). The bundle was attached and its hash re-verified, and the build was uploaded to Play's internal track. A human summary was added above the generated notes. `tools/e2e.sh` passed on the code-identical 05d9b09 before tagging.
+  **Why:** it is #118's final internal build. The owner waived `/n8-release`'s verified-closed and no-open-confirmed-bugs stops for it on 2026-09-30, because the remaining M6 re-checks need this build. The 17 bugs open in M6 are all fixed on `main` and await their re-check on it.
+  **Issue:** #118, #113
