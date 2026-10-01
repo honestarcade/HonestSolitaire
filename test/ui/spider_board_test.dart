@@ -413,6 +413,12 @@ void main() {
           isTrue,
           reason: 'EMPTY spills out of its slot at $name (#164)',
         );
+        // The slot's border is 1 dp (2 when hinted); the word keeps clear.
+        expect(
+          [label.left - slot.left, slot.right - label.right],
+          everyElement(greaterThanOrEqualTo(1.5)),
+          reason: 'EMPTY touches the slot border at $name (#171)',
+        );
         expect(
           render.text.style?.fontFamily,
           kFontMono,
@@ -423,7 +429,7 @@ void main() {
         final shrink = label.width / render.size.width;
         expect(
           shrink,
-          greaterThanOrEqualTo(0.85),
+          greaterThanOrEqualTo(0.8),
           reason:
               'EMPTY is shrunk to ${shrink.toStringAsFixed(2)} of its size at $name (#171)',
         );
